@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 
 export interface CartItem {
   id: string;
@@ -57,31 +57,36 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items, shippingMethod, loaded]);
 
-  const totalBlocks = items.reduce((sum, item) => sum + item.text.replace(/\s/g, '').length * item.quantity, 0);
+  const totalBlocks = useMemo(() =>
+    items.reduce((sum, item) => sum + item.text.replace(/\s/g, '').length * item.quantity, 0),
+    [items]
+  );
 
-  const addItem = (newItem: Omit<CartItem, 'id' | 'quantity'>) => {
+  const addItem = useCallback((newItem: Omit<CartItem, 'id' | 'quantity'>) => {
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
     setItems(prev => [...prev, { ...newItem, id, quantity: 1 }]);
-  };
+  }, []);
 
-  const removeItem = (id: string) => {
+  const removeItem = useCallback((id: string) => {
     setItems(prev => prev.filter(item => item.id !== id));
-  };
+  }, []);
 
-  const updateQuantity = (id: string, quantity: number) => {
+  const updateQuantity = useCallback((id: string, quantity: number) => {
     if (quantity < 1) return;
     setItems(prev => prev.map(item => item.id === id ? { ...item, quantity } : item));
-  };
+  }, []);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setItems([]);
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    items, addItem, removeItem, updateQuantity, clearCart,
+    totalBlocks, shippingMethod, setShippingMethod,
+  }), [items, addItem, removeItem, updateQuantity, clearCart, totalBlocks, shippingMethod]);
 
   return (
-    <CartContext.Provider value={{
-      items, addItem, removeItem, updateQuantity, clearCart,
-      totalBlocks, shippingMethod, setShippingMethod,
-    }}>
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );

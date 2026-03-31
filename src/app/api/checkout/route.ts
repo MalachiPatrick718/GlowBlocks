@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const origin = req.headers.get('origin') || 'http://localhost:3000';
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || req.headers.get('origin') || 'http://localhost:3000';
 
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
