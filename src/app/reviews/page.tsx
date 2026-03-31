@@ -61,7 +61,7 @@ export default function ReviewsPage() {
     fetch('/api/reviews')
       .then((res) => res.json())
       .then((data) => {
-        setReviews(data.length > 0 ? data : SEED_REVIEWS);
+        setReviews([...data, ...SEED_REVIEWS]);
         setLoading(false);
       })
       .catch(() => { setReviews(SEED_REVIEWS); setLoading(false); });
@@ -83,7 +83,7 @@ export default function ReviewsPage() {
         setOrder('');
         setText('');
         const updated = await fetch('/api/reviews').then((r) => r.json());
-        setReviews(updated);
+        setReviews([...updated, ...SEED_REVIEWS]);
         setTimeout(() => { setSuccess(false); setShowForm(false); }, 2000);
       }
     } catch { /* ignore */ }

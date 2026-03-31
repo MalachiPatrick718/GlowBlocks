@@ -4,12 +4,13 @@ import { useState } from 'react';
 import Image from 'next/image';
 
 const PHOTOS = [
-  { src: '/images/gallery/1.jpg', alt: 'GlowBlocks on a nightstand' },
-  { src: '/images/gallery/2.jpg', alt: 'GlowBlocks on a bookshelf' },
-  { src: '/images/gallery/3.jpg', alt: 'GlowBlocks in a nursery' },
-  { src: '/images/gallery/4.jpg', alt: 'GlowBlocks on a desk' },
-  { src: '/images/gallery/5.jpg', alt: 'GlowBlocks as a gift' },
-  { src: '/images/gallery/6.jpg', alt: 'GlowBlocks close-up' },
+  { src: '/images/gallery/1.png', alt: 'GlowBlocks photo 1' },
+  { src: '/images/gallery/2.png', alt: 'GlowBlocks photo 2' },
+  { src: '/images/gallery/4.png', alt: 'GlowBlocks photo 3' },
+  { src: '/images/gallery/5.png', alt: 'GlowBlocks photo 4' },
+  { src: '/images/gallery/6.png', alt: 'GlowBlocks photo 5' },
+  { src: '/images/gallery/7.png', alt: 'GlowBlocks photo 6' },
+  { src: '/images/gallery/8.png', alt: 'GlowBlocks photo 7' },
 ];
 
 export default function GalleryCarousel() {
