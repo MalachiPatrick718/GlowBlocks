@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   title: "GlowBlocks Studio | Custom Illuminating Letter Blocks",
   description: "Create custom illuminating letter blocks with your choice of colors. Build. Connect. Glow.",
   icons: {
-    icon: "/images/logo-dark.png",
+    icon: "/favicon.svg",
   },
 };
 

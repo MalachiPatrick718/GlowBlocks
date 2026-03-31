@@ -1,6 +1,7 @@
 import Link from "next/link";
 import FloatingBlocks from "@/components/FloatingBlocks";
 import ReviewCarousel from "@/components/ReviewCarousel";
+import GalleryCarousel from "@/components/GalleryCarousel";
 
 export default function Home() {
   return (
@@ -70,21 +71,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Video Section */}
+      {/* Gallery */}
       <section className="py-10 sm:py-14 px-4 bg-gray-950/50">
         <div className="max-w-4xl mx-auto text-center space-y-8">
-          <h2 className="text-2xl sm:text-3xl font-bold gradient-text">See it for yourself</h2>
-          <div className="relative aspect-video bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden flex items-center justify-center">
-            <div className="flex flex-col items-center gap-4 text-gray-500">
-              <div className="w-20 h-20 rounded-full border-2 border-gray-600 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" className="w-8 h-8 ml-1">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </div>
-              <p className="text-lg font-medium">Video coming soon</p>
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-purple-500/5 to-transparent pointer-events-none" />
-          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold gradient-text">See them in action</h2>
+          <GalleryCarousel />
         </div>
       </section>
 
