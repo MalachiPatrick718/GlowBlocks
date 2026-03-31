@@ -1,13 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
-
-let resend: Resend;
-function getResend() {
-  if (!resend) {
-    resend = new Resend(process.env.RESEND_API_KEY);
-  }
-  return resend;
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,20 +8,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    await getResend().emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'GlowBlocks <onboarding@resend.dev>',
-      to: process.env.CONTACT_TO_EMAIL || 'hello@glowblocks.com',
-      replyTo: email,
-      subject: `[GlowBlocks Contact] ${subject || 'General Inquiry'}`,
-      html: `
-        <h2>New Contact Form Submission</h2>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Subject:</strong> ${subject || 'General Inquiry'}</p>
-        <hr />
-        <p>${message.replace(/\n/g, '<br />')}</p>
-      `,
-    });
+    const apiKey = process.env.AIRTABLE_API_KEY;
+    const baseId = process.env.AIRTABLE_BASE_ID;
+    const tableName = process.env.AIRTABLE_CONTACT_TABLE || 'Contact';
+
+    if (!apiKey || !baseId) {
+      return NextResponse.json({ error: 'Airtable is not configured' }, { status: 500 });
+    }
+
+    const res = await fetch(
+      `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fields: {
+            Name: name,
+            Email: email,
+            Subject: subject || 'General',
+            Message: message,
+            Date: new Date().toISOString().split('T')[0],
+          },
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      const err = await res.json();
+      console.error('Airtable error:', err);
+      return NextResponse.json({ error: 'Failed to save message' }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
