@@ -2,6 +2,7 @@ import Link from "next/link";
 import FloatingBlocks from "@/components/FloatingBlocks";
 import ReviewCarousel from "@/components/ReviewCarousel";
 import GalleryCarousel from "@/components/GalleryCarousel";
+import InteractiveDemo from "@/components/InteractiveDemo";
 
 export default function Home() {
   return (
@@ -35,72 +36,19 @@ export default function Home() {
         </div>
       </section>
 
+      {/* How It Works — Interactive Demo */}
+      <InteractiveDemo />
+
       {/* Gallery */}
-      <section className="py-10 sm:py-14 px-4 bg-gray-950/50">
+      <section className="py-10 sm:py-14 px-4">
         <div className="max-w-4xl mx-auto text-center space-y-8">
           <h2 className="text-2xl sm:text-3xl font-bold gradient-text">See them in action</h2>
           <GalleryCarousel />
         </div>
       </section>
 
-      {/* Reviews */}
-      <section className="py-10 sm:py-14 overflow-hidden">
-        <div className="max-w-4xl mx-auto text-center mb-8 px-4">
-          <h2 className="text-2xl sm:text-3xl font-bold gradient-text">People love these</h2>
-        </div>
-        <ReviewCarousel />
-        <div className="text-center mt-6">
-          <Link href="/reviews" className="text-purple-400 hover:text-purple-300 font-medium transition-colors">
-            Read all reviews &rarr;
-          </Link>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="py-10 sm:py-14 px-4 bg-gray-950/50">
-        <div className="max-w-2xl mx-auto text-center space-y-5">
-          <h2 className="text-2xl sm:text-3xl font-bold gradient-text">How it works</h2>
-          <p className="text-gray-300 text-base sm:text-lg leading-relaxed">
-            No plugs. No app. No WiFi. No wires. Just tiles that know when they&apos;re touching.
-          </p>
-          <p className="text-gray-400 text-base leading-relaxed">
-            Place your letters together and they glow. Pull one away and it goes dark. It&apos;s the kind of thing you just have to see to believe.
-          </p>
-        </div>
-      </section>
-
-      {/* Made for Real Life */}
-      <section className="py-10 sm:py-14 px-4">
-        <div className="max-w-3xl mx-auto text-center space-y-6">
-          <h2 className="text-2xl sm:text-3xl font-bold gradient-text">Made for real life</h2>
-          <p className="text-gray-300 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto">
-            GlowBlocks look incredible on a nightstand, a bookshelf, a desk, or a kid&apos;s bedroom wall. A soft, breathing glow in whatever colour feels like you. Your name, a word that means something, a place, initials — if it can be spelled, we can make it glow.
-          </p>
-        </div>
-      </section>
-
-      {/* Set It and Forget It */}
-      <section className="py-10 sm:py-14 px-4">
-        <div className="max-w-2xl mx-auto text-center space-y-5">
-          <h2 className="text-2xl sm:text-3xl font-bold gradient-text">Set it and forget it</h2>
-          <p className="text-gray-300 text-base sm:text-lg leading-relaxed">
-            GlowBlocks run on small coin batteries — no charging, no cables, ever. Connected and glowing every evening, your set will last 6 to 7 months before you need to swap a battery. Takes about 30 seconds when you do.
-          </p>
-        </div>
-      </section>
-
-      {/* The Perfect Gift */}
-      <section className="py-10 sm:py-14 px-4 bg-gray-950/50">
-        <div className="max-w-2xl mx-auto text-center space-y-5">
-          <h2 className="text-2xl sm:text-3xl font-bold gradient-text">The perfect gift</h2>
-          <p className="text-gray-300 text-base sm:text-lg leading-relaxed">
-            Genuinely hard to find. Completely personal. Nothing else like it. Whether it&apos;s a name for a nursery, a word for a loved one, or something just for you — GlowBlocks is the kind of gift people keep for years.
-          </p>
-        </div>
-      </section>
-
       {/* How to Order */}
-      <section className="py-10 sm:py-14 px-4">
+      <section className="py-10 sm:py-14 px-4 bg-gray-950/50">
         <div className="max-w-3xl mx-auto text-center space-y-10">
           <h2 className="text-2xl sm:text-3xl font-bold gradient-text">Three steps. That&apos;s it.</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
@@ -118,7 +66,7 @@ export default function Home() {
       </section>
 
       {/* Pricing */}
-      <section className="py-10 sm:py-14 px-4 bg-gray-950/50">
+      <section className="py-10 sm:py-14 px-4">
         <div className="max-w-4xl mx-auto text-center space-y-6">
           <h2 className="text-2xl sm:text-3xl font-bold gradient-text">Simple pricing</h2>
           <p className="text-gray-400">More letters, better price. Custom colours are a one-time $5 fee.</p>
@@ -128,6 +76,19 @@ export default function Home() {
             <PricingCard letters="7-9" price="$10.99" />
             <PricingCard letters="10+" price="$9.50" />
           </div>
+        </div>
+      </section>
+
+      {/* Reviews */}
+      <section className="py-10 sm:py-14 overflow-hidden bg-gray-950/50">
+        <div className="max-w-4xl mx-auto text-center mb-8 px-4">
+          <h2 className="text-2xl sm:text-3xl font-bold gradient-text">People love these</h2>
+        </div>
+        <ReviewCarousel />
+        <div className="text-center mt-6">
+          <Link href="/reviews" className="text-purple-400 hover:text-purple-300 font-medium transition-colors">
+            Read all reviews &rarr;
+          </Link>
         </div>
       </section>
     </div>
@@ -145,7 +106,6 @@ function StepCard({ number, title, description }: { number: string; title: strin
     </div>
   );
 }
-
 
 function PricingCard({ letters, price, highlight }: { letters: string; price: string; highlight?: boolean }) {
   return (

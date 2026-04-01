@@ -54,6 +54,14 @@ export default function AboutPage() {
           </div>
         </section>
 
+        {/* Set It and Forget It */}
+        <section className="text-center space-y-6">
+          <h2 className="text-2xl font-bold text-white">Set it and forget it</h2>
+          <p className="text-gray-300 leading-relaxed max-w-2xl mx-auto">
+            GlowBlocks run on small coin batteries — no charging, no cables, ever. Connected and glowing every evening, your set will last 6 to 7 months before you need to swap a battery. Takes about 30 seconds when you do.
+          </p>
+        </section>
+
         {/* Made for Real Life */}
         <section className="text-center space-y-6">
           <h2 className="text-2xl font-bold text-white">Made for real life</h2>
