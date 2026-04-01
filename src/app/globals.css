@@ -70,6 +70,15 @@ html {
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
 }
 
+/* Stripe embedded checkout dark theme override */
+.stripe-checkout-wrapper {
+  background: #111113;
+}
+
+.stripe-checkout-wrapper iframe {
+  color-scheme: dark;
+}
+
 /* Floating blocks animation */
 @keyframes float {
   0%, 100% {

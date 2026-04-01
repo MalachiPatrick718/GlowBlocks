@@ -71,6 +71,18 @@ export default function CheckoutPage() {
           </div>
         </div>
 
+        {/* Pickup note */}
+        <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl px-4 py-3 flex items-start gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+          </svg>
+          <p className="text-sm text-gray-300">
+            <span className="text-purple-300 font-medium">Picking up instead?</span>{' '}
+            Enter your pickup code in the discount code field at checkout to waive the shipping fee.
+          </p>
+        </div>
+
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
             {error}
@@ -78,7 +90,7 @@ export default function CheckoutPage() {
         )}
 
         {/* Embedded Stripe Checkout */}
-        <div className="bg-white rounded-2xl overflow-hidden min-h-[400px]">
+        <div className="stripe-checkout-wrapper rounded-2xl overflow-hidden border border-gray-800 min-h-[400px]">
           <EmbeddedCheckoutProvider
             stripe={stripePromise}
             options={{ fetchClientSecret }}
