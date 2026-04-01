@@ -29,9 +29,13 @@ export async function POST(req: NextRequest) {
       const stripe = getStripe();
       const fullSession = await stripe.checkout.sessions.retrieve(session.id, {
         expand: ['line_items', 'shipping_cost.shipping_rate'],
-      });
+      }) as Stripe.Checkout.Session;
 
-      const shipping = fullSession.shipping_details;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const shipping = (fullSession as any).shipping_details as {
+        name?: string;
+        address?: { line1?: string; line2?: string; city?: string; state?: string; postal_code?: string; country?: string };
+      } | null;
       const address = shipping?.address;
       const customerName = shipping?.name || fullSession.customer_details?.name || '';
       const customerEmail = fullSession.customer_details?.email || '';
@@ -40,7 +44,8 @@ export async function POST(req: NextRequest) {
       const shippingCost = fullSession.shipping_cost;
       let shippingMethod = 'Unknown';
       if (shippingCost?.shipping_rate && typeof shippingCost.shipping_rate === 'object') {
-        shippingMethod = shippingCost.shipping_rate.display_name || 'Unknown';
+        const rate = shippingCost.shipping_rate as Stripe.ShippingRate;
+        shippingMethod = rate.display_name || 'Unknown';
       }
 
       // Get order details from metadata
