@@ -26,19 +26,25 @@ function BlockRow({ text, connected }: { text: string; connected: boolean }) {
         return (
           <div
             key={i}
-            className={`${size.tile} flex items-center justify-center font-bold rounded-lg border-2 select-none`}
+            className={`${size.tile} flex items-center justify-center rounded-lg border-2 border-gray-700 select-none`}
             style={{
               marginLeft: i === 0 ? 0 : connected ? size.connected : size.disconnected,
               backgroundColor: '#111827',
-              borderColor: connected ? color : '#374151',
-              color: connected ? color : '#555555',
-              textShadow: connected ? `0 0 8px ${color}90, 0 0 16px ${color}50` : '0 0 0px transparent',
-              boxShadow: connected ? `0 0 12px ${color}40, 0 0 24px ${color}20` : '0 0 0px transparent',
               opacity: connected ? 1 : 0.6,
               transition: 'all 700ms cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           >
-            {letter}
+            <span
+              style={{
+                fontFamily: 'var(--font-nunito), sans-serif',
+                fontWeight: 900,
+                color: connected ? color : '#555555',
+                textShadow: connected ? `0 0 8px ${color}90, 0 0 16px ${color}50, 0 0 32px ${color}30` : '0 0 0px transparent',
+                transition: 'all 700ms cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+            >
+              {letter}
+            </span>
           </div>
         );
       })}
@@ -49,8 +55,10 @@ function BlockRow({ text, connected }: { text: string; connected: boolean }) {
 export default function InteractiveDemo() {
   const [connected, setConnected] = useState(true);
   const [customText, setCustomText] = useState('');
+  const [showCustom, setShowCustom] = useState(false);
 
   const filteredCustom = customText.replace(/\s/g, '');
+  const displayText = showCustom && filteredCustom.length > 0 ? filteredCustom : 'GLOW';
 
   return (
     <section className="py-10 sm:py-14 px-4 bg-gray-950/50">
@@ -84,9 +92,9 @@ export default function InteractiveDemo() {
           </span>
         </div>
 
-        {/* Default GLOW demo */}
+        {/* Block demo */}
         <div className="py-4">
-          <BlockRow text="GLOW" connected={connected} />
+          <BlockRow text={displayText} connected={connected} />
         </div>
 
         {/* Tagline */}
@@ -106,19 +114,31 @@ export default function InteractiveDemo() {
         </div>
 
         {/* Preview your own */}
-        <div className="space-y-5 pt-4">
-          <h3 className="text-lg font-semibold text-gray-300">Preview your own</h3>
-          <input
-            type="text"
-            value={customText}
-            onChange={(e) => setCustomText(e.target.value.toUpperCase())}
-            placeholder="TYPE A NAME OR WORD..."
-            maxLength={15}
-            className="w-full max-w-sm mx-auto block px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-center text-lg tracking-widest placeholder-gray-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-          />
-          {filteredCustom.length > 0 && (
-            <div className="py-4">
-              <BlockRow text={filteredCustom} connected={connected} />
+        <div className="pt-4">
+          {!showCustom ? (
+            <button
+              onClick={() => setShowCustom(true)}
+              className="px-6 py-3 border border-purple-500/50 text-purple-400 hover:bg-purple-500/10 rounded-full font-medium transition-colors"
+            >
+              Preview your own
+            </button>
+          ) : (
+            <div className="space-y-4">
+              <input
+                type="text"
+                value={customText}
+                onChange={(e) => setCustomText(e.target.value.toUpperCase())}
+                placeholder="TYPE A NAME OR WORD..."
+                maxLength={15}
+                autoFocus
+                className="w-full max-w-sm mx-auto block px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-center text-lg tracking-widest placeholder-gray-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+              />
+              <button
+                onClick={() => { setShowCustom(false); setCustomText(''); }}
+                className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
+              >
+                Reset to GLOW
+              </button>
             </div>
           )}
         </div>
