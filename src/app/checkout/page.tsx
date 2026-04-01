@@ -78,8 +78,8 @@ export default function CheckoutPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
           </svg>
           <p className="text-sm text-gray-300">
-            <span className="text-purple-300 font-medium">Picking up instead?</span>{' '}
-            Enter your pickup code in the discount code field at checkout to waive the shipping fee.
+            <span className="text-purple-300 font-medium">Picking up your order instead?</span>{' '}
+            Add the code <span className="text-white font-semibold">PICKUP</span> as the discount code and you will be refunded the shipping fee.
           </p>
         </div>
 

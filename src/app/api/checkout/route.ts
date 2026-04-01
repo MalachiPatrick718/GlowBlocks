@@ -101,7 +101,6 @@ export async function POST(req: NextRequest) {
           },
         },
       ],
-      allow_promotion_codes: true,
       return_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       metadata: {
         order_details: JSON.stringify(
