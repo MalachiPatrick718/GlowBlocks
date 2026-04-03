@@ -79,24 +79,34 @@ export default function BlockPreview({ text, letterColors, selectedIndex, onSele
         const isSelected = selectedIndex === i;
 
         return (
-          <button
-            key={i}
-            type="button"
-            onClick={() => onSelectBlock?.(i)}
-            className={`
-              ${blockClass} shrink-0 aspect-square
-              bg-gray-900 rounded-lg flex items-center justify-center font-bold uppercase
-              border-2 transition-all duration-200
-              ${isSelected ? 'border-white scale-110 shadow-lg' : 'border-gray-700 hover:border-gray-500'}
-              ${onSelectBlock ? 'cursor-pointer' : 'cursor-default'}
-            `}
-            style={{
-              color,
-              textShadow: `0 0 6px ${color}90`,
-            }}
-          >
-            {letter}
-          </button>
+          <div key={i} className="flex flex-col items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => onSelectBlock?.(i)}
+              className={`
+                ${blockClass} shrink-0 aspect-square
+                bg-gray-900 rounded-lg flex items-center justify-center font-bold uppercase
+                border-2 transition-all duration-200
+                ${isSelected ? 'border-white scale-110 shadow-lg' : 'border-gray-700 hover:border-gray-500'}
+                ${onSelectBlock ? 'cursor-pointer' : 'cursor-default'}
+              `}
+              style={{
+                color,
+                textShadow: `0 0 6px ${color}90`,
+              }}
+            >
+              {letter}
+            </button>
+            {onSelectBlock && (
+              <span
+                className="text-[9px] text-gray-500 font-mono cursor-pointer hover:text-gray-300 transition-colors"
+                title="Click to copy"
+                onClick={() => navigator.clipboard.writeText(color)}
+              >
+                {color.toUpperCase()}
+              </span>
+            )}
+          </div>
         );
       })}
     </div>
