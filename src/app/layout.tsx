@@ -27,9 +27,14 @@ const nunito = Nunito({
 
 export const metadata: Metadata = {
   title: "GlowBlocks Studio | Custom Illuminating Letter Blocks",
-  description: "Create custom illuminating letter blocks with your choice of colors. Build. Connect. Glow.",
+  description: "Personalised letter tiles that light up when they're together — and go dark the moment they're apart. Build. Connect. Glow.",
   icons: {
-    icon: "/favicon.svg",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
   },
 };
 
