@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="flex flex-col gap-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="text-center md:text-left">
-              <h3 className="text-lg font-bold gradient-text">GlowBlocks Studio</h3>
+              <Link href="/" className="text-lg font-bold gradient-text hover:opacity-80 transition-opacity">GlowBlocks Studio</Link>
               <p className="text-sm text-cyan-400 mt-1 tracking-widest">BUILD. CONNECT. GLOW.</p>
             </div>
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-gray-400">
