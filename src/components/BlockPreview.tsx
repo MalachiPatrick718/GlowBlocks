@@ -43,6 +43,7 @@ export default function BlockPreview({ text, letterColors, selectedIndex, onSele
               key={i}
               className={`${cartSize.block} bg-gray-900 rounded-md flex items-center justify-center font-bold uppercase border border-gray-700 shrink-0`}
               style={{
+                fontFamily: 'var(--font-expletus), sans-serif',
                 color,
                 textShadow: `0 0 4px ${color}80`,
               }}
@@ -91,6 +92,7 @@ export default function BlockPreview({ text, letterColors, selectedIndex, onSele
                 ${onSelectBlock ? 'cursor-pointer' : 'cursor-default'}
               `}
               style={{
+                fontFamily: 'var(--font-expletus), sans-serif',
                 color,
                 textShadow: `0 0 6px ${color}90`,
               }}

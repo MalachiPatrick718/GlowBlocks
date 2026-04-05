@@ -36,7 +36,7 @@ function BlockRow({ text, connected }: { text: string; connected: boolean }) {
           >
             <span
               style={{
-                fontFamily: 'var(--font-nunito), sans-serif',
+                fontFamily: 'var(--font-expletus), sans-serif',
                 fontWeight: 900,
                 color: connected ? color : '#555555',
                 textShadow: connected ? `0 0 8px ${color}90, 0 0 16px ${color}50, 0 0 32px ${color}30` : '0 0 0px transparent',

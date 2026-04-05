@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Baloo_2, Nunito } from "next/font/google";
+import { Geist, Geist_Mono, Baloo_2, Nunito, Expletus_Sans } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -25,6 +25,12 @@ const nunito = Nunito({
   subsets: ["latin"],
 });
 
+const expletusSans = Expletus_Sans({
+  variable: "--font-expletus",
+  subsets: ["latin"],
+  weight: ["700"],
+});
+
 export const metadata: Metadata = {
   title: "GlowBlocks Studio | Custom Illuminating Letter Blocks",
   description: "Personalised letter tiles that light up when they're together — and go dark the moment they're apart. Build. Connect. Glow.",
@@ -44,7 +50,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${baloo.variable} ${nunito.variable} h-full antialiased dark`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${baloo.variable} ${nunito.variable} ${expletusSans.variable} h-full antialiased dark`}>
       <body className="min-h-full flex flex-col bg-black text-white">
         <CartProvider>
           <Navbar />
