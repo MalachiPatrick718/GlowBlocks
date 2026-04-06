@@ -76,12 +76,20 @@ export default function CartPage() {
                       </button>
                     </div>
 
-                    <button
-                      onClick={() => removeItem(item.id)}
-                      className="text-sm text-red-400 hover:text-red-300 text-left"
-                    >
-                      Remove
-                    </button>
+                    <div className="flex gap-4">
+                      <Link
+                        href={`/customize?edit=${item.id}`}
+                        className="text-sm text-purple-400 hover:text-purple-300"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        onClick={() => removeItem(item.id)}
+                        className="text-sm text-red-400 hover:text-red-300"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

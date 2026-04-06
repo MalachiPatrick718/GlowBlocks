@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useCallback, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import BlockPreview from '@/components/BlockPreview';
 import TextInput from '@/components/TextInput';
 import ColorPresets from '@/components/ColorPresets';
@@ -9,13 +9,41 @@ import ColorModal from '@/components/CustomColorPicker';
 import { useCart } from '@/context/CartContext';
 
 export default function CustomizePage() {
+  return (
+    <Suspense>
+      <CustomizeContent />
+    </Suspense>
+  );
+}
+
+function CustomizeContent() {
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit');
+
+  const { addItem, updateItem, items } = useCart();
+  const router = useRouter();
+
   const [text, setText] = useState('');
   const [letterColors, setLetterColors] = useState<string[]>([]);
   const [modalIndex, setModalIndex] = useState<number | null>(null);
   const [colorMode, setColorMode] = useState<'presets' | 'custom'>('presets');
   const [added, setAdded] = useState(false);
-  const { addItem } = useCart();
-  const router = useRouter();
+  const [initialized, setInitialized] = useState(false);
+
+  // Load existing item data when editing
+  useEffect(() => {
+    if (editId && !initialized && items.length > 0) {
+      const item = items.find(i => i.id === editId);
+      if (item) {
+        setText(item.text);
+        setLetterColors(item.letterColors);
+        setColorMode(item.customColors ? 'custom' : 'presets');
+      }
+      setInitialized(true);
+    } else if (!editId) {
+      setInitialized(true);
+    }
+  }, [editId, items, initialized]);
 
   const letters = text.split('');
   const nonSpaceLetters = text.replace(/\s/g, '');
@@ -57,7 +85,11 @@ export default function CustomizePage() {
 
   const handleAddToCart = () => {
     if (nonSpaceLetters.length === 0) return;
-    addItem({ text, letterColors, customColors: colorMode === 'custom' });
+    if (editId) {
+      updateItem(editId, { text, letterColors, customColors: colorMode === 'custom' });
+    } else {
+      addItem({ text, letterColors, customColors: colorMode === 'custom' });
+    }
     setAdded(true);
     setTimeout(() => {
       router.push('/cart');
@@ -136,7 +168,7 @@ export default function CustomizePage() {
                         : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40'
                     }`}
                   >
-                    {added ? 'Added to Cart!' : 'Finished — Add to Cart'}
+                    {added ? (editId ? 'Updated!' : 'Added to Cart!') : (editId ? 'Save Changes' : 'Finished — Add to Cart')}
                   </button>
                 </div>
               </>

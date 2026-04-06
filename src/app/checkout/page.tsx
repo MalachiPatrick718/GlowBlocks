@@ -48,7 +48,9 @@ export default function CheckoutPage() {
   }
 
   const pricePerBlock = getPricePerBlock(totalBlocks);
-  const subtotal = totalBlocks * pricePerBlock;
+  const hasCustomColors = items.some(item => item.customColors);
+  const customFee = hasCustomColors ? 5.00 : 0;
+  const subtotal = totalBlocks * pricePerBlock + customFee;
 
   return (
     <div className="min-h-screen py-8 px-4">
@@ -61,13 +63,23 @@ export default function CheckoutPage() {
         </div>
 
         {/* Order summary bar */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
-          <div className="text-sm text-gray-400">
-            <span className="text-white font-medium">{totalBlocks} block{totalBlocks !== 1 ? 's' : ''}</span>
-            {' '}@ ${pricePerBlock.toFixed(2)}/block
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="text-sm text-gray-400">
+              <span className="text-white font-medium">{totalBlocks} block{totalBlocks !== 1 ? 's' : ''}</span>
+              {' '}@ ${pricePerBlock.toFixed(2)}/block
+            </div>
+            <div className="text-sm text-gray-400">${(totalBlocks * pricePerBlock).toFixed(2)}</div>
           </div>
-          <div className="text-lg font-bold gradient-text">
-            Subtotal: ${subtotal.toFixed(2)}
+          {hasCustomColors && (
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="text-sm text-gray-400">Custom colours</div>
+              <div className="text-sm text-gray-400">$5.00</div>
+            </div>
+          )}
+          <div className="border-t border-gray-700 pt-2 flex flex-wrap items-center justify-between gap-4">
+            <div className="text-sm text-gray-300 font-medium">Subtotal</div>
+            <div className="text-lg font-bold gradient-text">${subtotal.toFixed(2)}</div>
           </div>
         </div>
 
