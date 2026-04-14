@@ -23,10 +23,10 @@ export default function TermsPage() {
           <Section title="Orders and pricing">
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li>Prices are listed in USD</li>
-              <li>1-3 letters: $14.99 per letter</li>
-              <li>4-6 letters: $12.99 per letter</li>
-              <li>7-9 letters: $10.99 per letter</li>
-              <li>10+ letters: $9.50 per letter</li>
+              <li>1-3 letters: $12.00 per letter</li>
+              <li>4-6 letters: $11.00 per letter</li>
+              <li>7-9 letters: $10.00 per letter</li>
+              <li>10+ letters: $9.00 per letter</li>
               <li>Custom colours: one-time $5.00 fee</li>
               <li>Shipping costs are calculated at checkout</li>
             </ul>

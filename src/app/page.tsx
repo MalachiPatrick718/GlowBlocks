@@ -71,10 +71,10 @@ export default function Home() {
           <h2 className="text-2xl sm:text-3xl font-bold gradient-text">Simple pricing</h2>
           <p className="text-gray-400">More letters, better price. Custom colours are a one-time $5 fee.</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <PricingCard letters="1-3" price="$14.99" />
-            <PricingCard letters="4-6" price="$12.99" highlight />
-            <PricingCard letters="7-9" price="$10.99" />
-            <PricingCard letters="10+" price="$9.50" />
+            <PricingCard letters="1-3" price="$12.00" />
+            <PricingCard letters="4-6" price="$11.00" highlight />
+            <PricingCard letters="7-9" price="$10.00" />
+            <PricingCard letters="10+" price="$9.00" />
           </div>
         </div>
       </section>
