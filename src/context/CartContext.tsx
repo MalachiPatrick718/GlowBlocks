@@ -25,10 +25,10 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function getPricePerBlock(totalBlocks: number): number {
-  if (totalBlocks >= 10) return 9.50;
-  if (totalBlocks >= 7) return 10.99;
-  if (totalBlocks >= 4) return 12.99;
-  return 14.99;
+  if (totalBlocks >= 10) return 9.00;
+  if (totalBlocks >= 7) return 10.00;
+  if (totalBlocks >= 4) return 11.00;
+  return 12.00;
 }
 
 export function getShippingCost(method: 'standard' | 'express'): number {
