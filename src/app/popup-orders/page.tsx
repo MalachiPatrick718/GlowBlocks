@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 interface PopupOrder {
@@ -31,6 +31,11 @@ function getStatusPillClasses(status?: string): string {
   return 'bg-gray-300 text-gray-900 border border-gray-400';
 }
 
+function formatPresetLabel(value?: string): string | null {
+  if (!value || value === 'Custom Numbers') return null;
+  return /preset$/i.test(value) ? value : `${value} Preset`;
+}
+
 function hexToRgbString(hex?: string | null): string | null {
   if (!hex || !/^#[0-9A-Fa-f]{6}$/.test(hex)) return null;
   const r = parseInt(hex.slice(1, 3), 16);
@@ -58,7 +63,7 @@ function getColorLines(order: PopupOrder): string[] {
           if (item.colorName && rgb) return `${letter} - ${item.colorName} (${rgb})`;
           if (item.colorName) return `${letter} - ${item.colorName}`;
           if (rgb) {
-            const presetLabel = order.colorMode && order.colorMode !== 'Custom Numbers' ? order.colorMode : null;
+            const presetLabel = formatPresetLabel(order.colorMode);
             return `${letter} - ${presetLabel || 'Preset'} (${rgb})`;
           }
           return `${letter} - ${item.colorHex}`;
@@ -76,7 +81,7 @@ function getColorLines(order: PopupOrder): string[] {
         .map((item) => {
           if (!item.colorHex || item.colorHex === '#FFFFFF') return `${item.letter} - No Color Set`;
           const rgb = hexToRgbString(item.colorHex);
-          const presetLabel = order.colorMode && order.colorMode !== 'Custom Numbers' ? order.colorMode : 'Preset';
+          const presetLabel = formatPresetLabel(order.colorMode) || 'Preset';
           return rgb ? `${item.letter} - ${presetLabel} (${rgb})` : `${item.letter} - ${item.colorHex}`;
         });
     }
@@ -88,6 +93,14 @@ function getColorLines(order: PopupOrder): string[] {
 }
 
 export default function PopupOrdersPage() {
+  return (
+    <Suspense>
+      <PopupOrdersContent />
+    </Suspense>
+  );
+}
+
+function PopupOrdersContent() {
   const searchParams = useSearchParams();
   const key = searchParams.get('key') || '';
   const [orders, setOrders] = useState<PopupOrder[]>([]);

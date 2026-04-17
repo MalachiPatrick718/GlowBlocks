@@ -8,32 +8,32 @@ interface ColorPresetsProps {
 const PRESETS: { name: string; colors: string[]; label: string }[] = [
   {
     name: 'rainbow',
-    label: 'Rainbow',
+    label: 'Rainbow Preset',
     colors: ['#FF3C3C', '#FF8C00', '#FFDC3C', '#50DC50'],
   },
   {
     name: 'american',
-    label: 'American Flag',
+    label: 'American Flag Preset',
     colors: ['#C82828', '#F0F0F0', '#283C78'],
   },
   {
     name: 'party',
-    label: 'Party',
+    label: 'Party Preset',
     colors: ['#FF3C8C', '#50B4FF', '#64DC64', '#FFDC50'],
   },
   {
     name: 'tropical',
-    label: 'Tropical',
+    label: 'Tropical Preset',
     colors: ['#FF7864', '#50C8C8', '#FFB43C', '#50B464'],
   },
   {
     name: 'sunset',
-    label: 'Sunset',
+    label: 'Sunset Preset',
     colors: ['#FF783C', '#FF508C', '#A050FF', '#FFB450'],
   },
   {
     name: 'ocean',
-    label: 'Ocean',
+    label: 'Ocean Preset',
     colors: ['#3CA096', '#28508C', '#64DCDC', '#50A064'],
   },
 ];
