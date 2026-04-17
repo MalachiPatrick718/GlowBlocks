@@ -13,6 +13,9 @@ interface PopupOrder {
   status?: string;
   deliveryMethod?: string;
   colorMode?: string;
+  orderType?: string;
+  pickupStatus?: string;
+  orderNumber?: string;
 }
 
 interface ParsedColorByLetter {
@@ -108,6 +111,8 @@ function PopupOrdersContent() {
   const [error, setError] = useState<string | null>(null);
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
   const [statusDrafts, setStatusDrafts] = useState<Record<string, string>>({});
+  const [pickupDrafts, setPickupDrafts] = useState<Record<string, string>>({});
+  const [orderFilter, setOrderFilter] = useState('');
   const statusOptions = ['Not Started', 'In Progress', 'Done', 'Picked Up', 'Ready to Ship'];
 
   useEffect(() => {
@@ -134,6 +139,12 @@ function PopupOrdersContent() {
         setStatusDrafts(
           nextOrders.reduce((acc: Record<string, string>, item: PopupOrder) => {
             acc[item.id] = item.status || 'New';
+            return acc;
+          }, {})
+        );
+        setPickupDrafts(
+          nextOrders.reduce((acc: Record<string, string>, item: PopupOrder) => {
+            acc[item.id] = item.pickupStatus || '';
             return acc;
           }, {})
         );
@@ -169,7 +180,18 @@ function PopupOrdersContent() {
       }
 
       setOrders((prev) =>
-        prev.map((order) => (order.id === orderId ? { ...order, status: statusDrafts[orderId] } : order))
+        prev.map((order) =>
+          order.id === orderId
+            ? {
+                ...order,
+                status: statusDrafts[orderId],
+                pickupStatus:
+                  statusDrafts[orderId].toLowerCase() === 'done' && (order.orderType || '').toLowerCase() === 'pickup'
+                    ? 'Ready for Pickup'
+                    : order.pickupStatus,
+              }
+            : order
+        )
       );
     } catch {
       setError('Failed to update order status.');
@@ -178,7 +200,47 @@ function PopupOrdersContent() {
     }
   };
 
+  const markPickedUp = async (orderId: string) => {
+    if (!key) return;
+    setSavingOrderId(orderId);
+    try {
+      const res = await fetch('/api/popup-orders', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-popup-admin-key': key,
+        },
+        body: JSON.stringify({
+          id: orderId,
+          pickupStatus: 'Picked Up',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to update pickup status.');
+        return;
+      }
+      setPickupDrafts((prev) => ({ ...prev, [orderId]: 'Picked Up' }));
+      setOrders((prev) =>
+        prev.map((order) => (order.id === orderId ? { ...order, pickupStatus: 'Picked Up' } : order))
+      );
+    } catch {
+      setError('Failed to update pickup status.');
+    } finally {
+      setSavingOrderId(null);
+    }
+  };
+
   const emptyState = useMemo(() => !loading && !error && orders.length === 0, [loading, error, orders.length]);
+  const filteredOrders = useMemo(() => {
+    const q = orderFilter.trim().toLowerCase();
+    if (!q) return orders;
+    return orders.filter((order) =>
+      (order.orderNumber || '').toLowerCase().includes(q) ||
+      (order.text || '').toLowerCase().includes(q) ||
+      (order.customerName || '').toLowerCase().includes(q)
+    );
+  }, [orders, orderFilter]);
 
   return (
     <div className="min-h-screen py-8 px-4">
@@ -194,12 +256,22 @@ function PopupOrdersContent() {
         {loading && <p className="text-gray-400">Loading popup orders...</p>}
         {error && <p className="text-red-300">{error}</p>}
         {emptyState && <p className="text-gray-400">No popup orders yet.</p>}
+        {!loading && (
+          <input
+            type="text"
+            value={orderFilter}
+            onChange={(e) => setOrderFilter(e.target.value)}
+            placeholder="Find by order number, name, or letters..."
+            className="w-full max-w-md px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500"
+          />
+        )}
 
-        {orders.map((order) => {
+        {filteredOrders.map((order) => {
           const colorLines = getColorLines(order);
           return (
           <div key={order.id} className="rounded-2xl border border-gray-800 bg-gray-950 p-5 space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <p><span className="text-gray-400">Order Number:</span> <span className="font-bold text-white">{order.orderNumber || '-'}</span></p>
               <p><span className="text-gray-400">Custom Letters:</span> <span className="font-bold text-white">{order.text}</span></p>
               <p><span className="text-gray-400">Customer Name:</span> {order.customerName}</p>
               <p><span className="text-gray-400">Number:</span> {order.phoneNumber}</p>
@@ -238,7 +310,22 @@ function PopupOrdersContent() {
               >
                 {savingOrderId === order.id ? 'Saving...' : 'Update Status'}
               </button>
+              {(order.orderType || '').toLowerCase() === 'pickup' && (
+                <button
+                  type="button"
+                  onClick={() => markPickedUp(order.id)}
+                  disabled={savingOrderId === order.id || (pickupDrafts[order.id] || order.pickupStatus) === 'Picked Up'}
+                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-sm font-semibold text-white"
+                >
+                  {(pickupDrafts[order.id] || order.pickupStatus) === 'Picked Up' ? 'Picked Up' : 'Mark Picked Up'}
+                </button>
+              )}
             </div>
+            {(order.orderType || '').toLowerCase() === 'pickup' && (
+              <p className="text-sm text-gray-300">
+                <span className="text-gray-400">Pickup Status:</span> {pickupDrafts[order.id] || order.pickupStatus || 'Not Ready'}
+              </p>
+            )}
 
             <div className="space-y-2 text-sm">
               <p className="text-gray-300">Colors by letter</p>

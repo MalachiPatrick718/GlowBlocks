@@ -18,6 +18,11 @@ function getHeaders() {
   };
 }
 
+function generateOrderNumber(): string {
+  const now = Date.now().toString().slice(-6);
+  return `GB-${now}`;
+}
+
 function isAuthorizedAdmin(req: NextRequest): boolean {
   if (!adminKey) return false;
   return req.headers.get('x-popup-admin-key') === adminKey;
@@ -47,6 +52,7 @@ export async function POST(req: NextRequest) {
 
     const normalizedDeliveryMethod = deliveryMethod === 'ship' ? 'ship' : 'pick-up';
     const mappedOrderType = normalizedDeliveryMethod === 'ship' ? 'Ship to Customer' : 'Pickup';
+    const orderNumber = generateOrderNumber();
     if (normalizedDeliveryMethod === 'ship' && !String(address || '').trim()) {
       return NextResponse.json({ error: 'Shipping address is required for shipping orders' }, { status: 400 });
     }
@@ -67,6 +73,7 @@ export async function POST(req: NextRequest) {
       'Phone Number': String(phoneNumber).slice(0, 40),
       Address: String(address || '').slice(0, 250),
       'Name/Word': text,
+      'Order Number': orderNumber,
       'Color Set': colorMode === 'custom' ? 'Custom Numbers' : (presetName || 'Preset Theme'),
       'Order Type': mappedOrderType,
       'Custom Colors': JSON.stringify({
@@ -79,6 +86,9 @@ export async function POST(req: NextRequest) {
 
     if (popupOrderStatusValue) {
       fields['Order Status'] = popupOrderStatusValue;
+    }
+    if (mappedOrderType === 'Pickup') {
+      fields['Pickup Status'] = 'Not Ready';
     }
 
     const airtableRes = await fetch(getAirtableUrl(), {
@@ -158,6 +168,8 @@ export async function GET(req: NextRequest) {
       date: record.createdTime || '',
       status: record.fields['Order Status'] || '',
       orderType: record.fields['Order Type'] || '',
+      pickupStatus: record.fields['Pickup Status'] || '',
+      orderNumber: record.fields['Order Number'] || '',
       deliveryMethod: delivery,
     });
     })
@@ -188,9 +200,33 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, status } = await req.json();
-    if (!id || !status) {
-      return NextResponse.json({ error: 'Missing record id or status' }, { status: 400 });
+    const { id, status, pickupStatus } = await req.json();
+    if (!id || (!status && !pickupStatus)) {
+      return NextResponse.json({ error: 'Missing record id and update fields' }, { status: 400 });
+    }
+
+    let orderType = '';
+    if (status) {
+      const existingRes = await fetch(getAirtableUrl(), {
+        headers: getHeaders(),
+        next: { revalidate: 0 },
+      });
+      if (existingRes.ok) {
+        const existingData = await existingRes.json();
+        const match = (existingData.records || []).find((record: { id: string; fields: Record<string, string> }) => record.id === String(id));
+        orderType = match?.fields?.['Order Type'] || '';
+      }
+    }
+
+    const fields: Record<string, string> = {};
+    if (status) {
+      fields['Order Status'] = String(status);
+      if (String(status).toLowerCase() === 'done' && orderType.toLowerCase() === 'pickup') {
+        fields['Pickup Status'] = 'Ready for Pickup';
+      }
+    }
+    if (pickupStatus) {
+      fields['Pickup Status'] = String(pickupStatus);
     }
 
     const res = await fetch(getAirtableUrl(), {
@@ -200,9 +236,7 @@ export async function PATCH(req: NextRequest) {
         records: [
           {
             id: String(id),
-            fields: {
-              'Order Status': String(status),
-            },
+            fields,
           },
         ],
       }),
