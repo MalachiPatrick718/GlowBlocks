@@ -113,7 +113,7 @@ function PopupOrdersContent() {
   const [statusDrafts, setStatusDrafts] = useState<Record<string, string>>({});
   const [pickupDrafts, setPickupDrafts] = useState<Record<string, string>>({});
   const [orderFilter, setOrderFilter] = useState('');
-  const statusOptions = ['Not Started', 'In Progress', 'Done', 'Picked Up', 'Ready to Ship'];
+  const baseStatusOptions = ['Not Started', 'In Progress', 'Done'];
 
   useEffect(() => {
     if (!key) {
@@ -286,6 +286,12 @@ function PopupOrdersContent() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              {(() => {
+                const isShipOrder = (order.deliveryMethod || '').toLowerCase() === 'ship';
+                const statusOptions = isShipOrder
+                  ? [...baseStatusOptions, 'Ready to Ship']
+                  : baseStatusOptions;
+                return (
               <select
                 value={statusDrafts[order.id] || order.status || 'New'}
                 onChange={(e) =>
@@ -302,6 +308,8 @@ function PopupOrdersContent() {
                   </option>
                 ))}
               </select>
+                );
+              })()}
               <button
                 type="button"
                 onClick={() => saveStatus(order.id)}
@@ -315,7 +323,7 @@ function PopupOrdersContent() {
                   type="button"
                   onClick={() => markPickedUp(order.id)}
                   disabled={savingOrderId === order.id || (pickupDrafts[order.id] || order.pickupStatus) === 'Picked Up'}
-                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-sm font-semibold text-white"
+                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-sm font-semibold text-white ml-auto"
                 >
                   {(pickupDrafts[order.id] || order.pickupStatus) === 'Picked Up' ? 'Picked Up' : 'Mark Picked Up'}
                 </button>
