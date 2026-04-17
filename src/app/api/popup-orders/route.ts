@@ -4,11 +4,16 @@ import { POPUP_COLOR_MAP } from '@/data/popupColorCatalog';
 const apiKey = process.env.AIRTABLE_API_KEY;
 const baseId = process.env.AIRTABLE_BASE_ID;
 const tableName = process.env.AIRTABLE_POPUP_ORDERS || process.env.AIRTABLE_POPUP_ORDERS_TABLE || 'Popup';
+const inventoryTableName = process.env.AIRTABLE_INVENTORY_TABLE || 'Inventory';
 const adminKey = process.env.POPUP_ORDERS_ADMIN_KEY;
 const popupOrderStatusValue = process.env.AIRTABLE_POPUP_ORDER_STATUS || '';
 
 function getAirtableUrl() {
   return `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`;
+}
+
+function getInventoryAirtableUrl() {
+  return `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(inventoryTableName)}`;
 }
 
 function getHeaders() {
@@ -26,6 +31,88 @@ function generateOrderNumber(): string {
 function isAuthorizedAdmin(req: NextRequest): boolean {
   if (!adminKey) return false;
   return req.headers.get('x-popup-admin-key') === adminKey;
+}
+
+type InventoryRecord = { id: string; fields: { Item?: string; Quantity?: number } };
+
+function isTruthy(value: unknown): boolean {
+  return value === true || value === 'true' || value === 'Yes' || value === 1;
+}
+
+function getLetterCounts(text: string): Record<string, number> {
+  return text
+    .toUpperCase()
+    .split('')
+    .filter((ch) => ch >= 'A' && ch <= 'Z')
+    .reduce((acc: Record<string, number>, ch) => {
+      acc[ch] = (acc[ch] || 0) + 1;
+      return acc;
+    }, {});
+}
+
+async function deductInventoryForOrder(orderText: string): Promise<boolean> {
+  if (!apiKey || !baseId) return false;
+
+  const inventoryRes = await fetch(getInventoryAirtableUrl(), {
+    headers: getHeaders(),
+    next: { revalidate: 0 },
+  });
+  if (!inventoryRes.ok) return false;
+
+  const inventoryData = await inventoryRes.json();
+  const records: InventoryRecord[] = inventoryData.records || [];
+  const byItem = new Map<string, InventoryRecord>();
+  records.forEach((record) => {
+    const key = (record.fields.Item || '').trim();
+    if (key) byItem.set(key, record);
+  });
+
+  const letterCounts = getLetterCounts(orderText);
+  const totalLetters = Object.values(letterCounts).reduce((sum, n) => sum + n, 0);
+  const deductions: Record<string, number> = {
+    ...letterCounts,
+    'P6 Bases': totalLetters,
+    'P2 Diffuser': totalLetters,
+    'PCB': totalLetters,
+  };
+
+  const updateRecords: Array<{ id: string; fields: { Quantity: number } }> = [];
+  const createRecords: Array<{ fields: { Item: string; Quantity: number } }> = [];
+
+  Object.entries(deductions).forEach(([item, amount]) => {
+    const existing = byItem.get(item);
+    if (existing) {
+      const currentQty = Number(existing.fields.Quantity) || 0;
+      updateRecords.push({
+        id: existing.id,
+        fields: { Quantity: currentQty - amount },
+      });
+    } else {
+      createRecords.push({
+        fields: { Item: item, Quantity: -amount },
+      });
+    }
+  });
+
+  if (updateRecords.length > 0) {
+    const patchRes = await fetch(getInventoryAirtableUrl(), {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ records: updateRecords }),
+    });
+    if (!patchRes.ok) return false;
+  }
+
+  if (createRecords.length > 0) {
+    const createRes = await fetch(getInventoryAirtableUrl(), {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ records: createRecords }),
+    });
+    if (!createRes.ok) return false;
+  }
+
+  return true;
 }
 
 export async function POST(req: NextRequest) {
@@ -68,7 +155,7 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    const fields: Record<string, string> = {
+    const fields: Record<string, string | boolean> = {
       Name: String(customerName).slice(0, 100),
       'Phone Number': String(phoneNumber).slice(0, 40),
       Address: String(address || '').slice(0, 250),
@@ -82,6 +169,7 @@ export async function POST(req: NextRequest) {
         colorsByLetter,
         deliveryMethod: normalizedDeliveryMethod,
       }),
+      'Inventory Deducted': false,
     };
 
     if (popupOrderStatusValue) {
@@ -170,6 +258,7 @@ export async function GET(req: NextRequest) {
       orderType: record.fields['Order Type'] || '',
       pickupStatus: record.fields['Pickup Status'] || '',
       orderNumber: record.fields['Order Number'] || '',
+      inventoryDeducted: record.fields['Inventory Deducted'] || false,
       deliveryMethod: delivery,
     });
     })
@@ -205,20 +294,22 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Missing record id and update fields' }, { status: 400 });
     }
 
-    let orderType = '';
-    if (status) {
-      const existingRes = await fetch(getAirtableUrl(), {
-        headers: getHeaders(),
-        next: { revalidate: 0 },
-      });
-      if (existingRes.ok) {
-        const existingData = await existingRes.json();
-        const match = (existingData.records || []).find((record: { id: string; fields: Record<string, string> }) => record.id === String(id));
-        orderType = match?.fields?.['Order Type'] || '';
-      }
+    const existingRes = await fetch(`${getAirtableUrl()}/${encodeURIComponent(String(id))}`, {
+      headers: getHeaders(),
+      next: { revalidate: 0 },
+    });
+    if (!existingRes.ok) {
+      return NextResponse.json({ error: 'Order record not found' }, { status: 404 });
     }
+    const existingRecord = await existingRes.json();
+    const existingFields = existingRecord.fields || {};
+    const orderType = String(existingFields['Order Type'] || '');
+    const orderText = String(existingFields['Name/Word'] || '');
+    const existingStatus = String(existingFields['Order Status'] || '');
+    const existingPickupStatus = String(existingFields['Pickup Status'] || '');
+    const inventoryAlreadyDeducted = isTruthy(existingFields['Inventory Deducted']);
 
-    const fields: Record<string, string> = {};
+    const fields: Record<string, string | boolean> = {};
     if (status) {
       fields['Order Status'] = String(status);
       if (String(status).toLowerCase() === 'done' && orderType.toLowerCase() === 'pickup') {
@@ -227,6 +318,19 @@ export async function PATCH(req: NextRequest) {
     }
     if (pickupStatus) {
       fields['Pickup Status'] = String(pickupStatus);
+    }
+
+    const nextStatus = String(fields['Order Status'] || existingStatus || '');
+    const nextPickupStatus = String(fields['Pickup Status'] || existingPickupStatus || '');
+    const pickupComplete = orderType.toLowerCase() === 'pickup' && nextPickupStatus.toLowerCase() === 'picked up';
+    const shipComplete = orderType.toLowerCase() === 'ship to customer' && nextStatus.toLowerCase() === 'ready to ship';
+    const isFulfilled = pickupComplete || shipComplete;
+
+    if (isFulfilled && !inventoryAlreadyDeducted) {
+      const deducted = await deductInventoryForOrder(orderText);
+      if (deducted) {
+        fields['Inventory Deducted'] = true;
+      }
     }
 
     const res = await fetch(getAirtableUrl(), {
