@@ -102,21 +102,13 @@ export default function PopupPage() {
     const timeout = setTimeout(async () => {
       try {
         const q = encodeURIComponent(address.trim());
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${q}`, {
+        const res = await fetch(`/api/address-suggest?q=${q}`, {
           signal: controller.signal,
-          headers: {
-            Accept: 'application/json',
-          },
         });
 
         if (!res.ok) return;
         const data = await res.json();
-        const suggestions = Array.isArray(data)
-          ? data
-              .map((item: { display_name?: string }) => item.display_name || '')
-              .filter(Boolean)
-              .slice(0, 5)
-          : [];
+        const suggestions = Array.isArray(data?.suggestions) ? data.suggestions : [];
         setAddressSuggestions(suggestions);
       } catch {
         // Ignore autocomplete failures and let manual address entry continue.
