@@ -1,7 +1,7 @@
 'use client';
 
 interface ColorPresetsProps {
-  onApplyPreset: (colors: string[]) => void;
+  onApplyPreset: (colors: string[], presetLabel?: string) => void;
   letterCount: number;
 }
 
@@ -9,39 +9,39 @@ const PRESETS: { name: string; colors: string[]; label: string }[] = [
   {
     name: 'rainbow',
     label: 'Rainbow',
-    colors: ['#FF0000', '#FF8C00', '#FFD700', '#00C853', '#2979FF', '#651FFF', '#D500F9'],
+    colors: ['#FF3C3C', '#FF8C00', '#FFDC3C', '#50DC50'],
   },
   {
     name: 'american',
     label: 'American Flag',
-    colors: ['#B22234', '#FFFFFF', '#3C3B6E'],
+    colors: ['#C82828', '#F0F0F0', '#283C78'],
   },
   {
     name: 'party',
     label: 'Party',
-    colors: ['#FF1493', '#00BFFF', '#32CD32', '#FFD700', '#9B30FF'],
+    colors: ['#FF3C8C', '#50B4FF', '#64DC64', '#FFDC50'],
   },
   {
     name: 'tropical',
     label: 'Tropical',
-    colors: ['#FF6B6B', '#00CED1', '#FFA500', '#2E8B57'],
+    colors: ['#FF7864', '#50C8C8', '#FFB43C', '#50B464'],
   },
   {
     name: 'sunset',
     label: 'Sunset',
-    colors: ['#FF6B35', '#FF1493', '#8B5CF6', '#F59E0B'],
+    colors: ['#FF783C', '#FF508C', '#A050FF', '#FFB450'],
   },
   {
     name: 'ocean',
     label: 'Ocean',
-    colors: ['#0D9488', '#1E3A5F', '#00FFFF', '#2E8B57'],
+    colors: ['#3CA096', '#28508C', '#64DCDC', '#50A064'],
   },
 ];
 
 export default function ColorPresets({ onApplyPreset, letterCount }: ColorPresetsProps) {
-  const handlePreset = (presetColors: string[]) => {
+  const handlePreset = (presetColors: string[], presetLabel: string) => {
     const applied = Array.from({ length: letterCount }, (_, i) => presetColors[i % presetColors.length]);
-    onApplyPreset(applied);
+    onApplyPreset(applied, presetLabel);
   };
 
   return (
@@ -51,7 +51,7 @@ export default function ColorPresets({ onApplyPreset, letterCount }: ColorPreset
         {PRESETS.map((preset) => (
           <button
             key={preset.name}
-            onClick={() => handlePreset(preset.colors)}
+            onClick={() => handlePreset(preset.colors, preset.label)}
             className="flex items-center gap-2 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg hover:border-purple-500 transition-colors text-sm"
           >
             <div className="flex gap-0.5">
