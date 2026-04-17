@@ -95,6 +95,15 @@ function getColorLines(order: PopupOrder): string[] {
   }
 }
 
+function isCompletedOrder(order: PopupOrder): boolean {
+  const pickupStatus = (order.pickupStatus || '').toLowerCase();
+  const status = (order.status || '').toLowerCase();
+  if (pickupStatus === 'picked up') return true;
+  if (status === 'picked up') return true;
+  if (status === 'ready to ship') return true;
+  return false;
+}
+
 export default function PopupOrdersPage() {
   return (
     <Suspense>
@@ -234,12 +243,17 @@ function PopupOrdersContent() {
   const emptyState = useMemo(() => !loading && !error && orders.length === 0, [loading, error, orders.length]);
   const filteredOrders = useMemo(() => {
     const q = orderFilter.trim().toLowerCase();
-    if (!q) return orders;
-    return orders.filter((order) =>
+    const filtered = !q ? orders : orders.filter((order) =>
       (order.orderNumber || '').toLowerCase().includes(q) ||
       (order.text || '').toLowerCase().includes(q) ||
       (order.customerName || '').toLowerCase().includes(q)
     );
+    return [...filtered].sort((a, b) => {
+      const aDone = isCompletedOrder(a) ? 1 : 0;
+      const bDone = isCompletedOrder(b) ? 1 : 0;
+      if (aDone !== bDone) return aDone - bDone;
+      return 0;
+    });
   }, [orders, orderFilter]);
 
   return (
@@ -313,7 +327,7 @@ function PopupOrdersContent() {
               <button
                 type="button"
                 onClick={() => saveStatus(order.id)}
-                disabled={savingOrderId === order.id}
+                disabled={savingOrderId === order.id || (pickupDrafts[order.id] || order.pickupStatus) === 'Picked Up'}
                 className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-60 text-sm font-semibold text-white"
               >
                 {savingOrderId === order.id ? 'Saving...' : 'Update Status'}
