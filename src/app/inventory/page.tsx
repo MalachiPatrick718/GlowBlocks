@@ -87,7 +87,7 @@ function InventoryContent() {
     const qty = Number(inventory[item] || 0);
     const isLow = qty < 10;
     return (
-      <div key={item} className={`rounded-lg border p-3 ${isLow ? 'border-red-500 bg-red-950/20' : 'border-gray-800 bg-gray-950'}`}>
+      <div key={item} className={`rounded-lg border p-3 ${isLow}`}>
         <p className="text-sm text-gray-300">{item}</p>
         <input
           type="number"
