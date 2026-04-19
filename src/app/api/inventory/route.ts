@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     });
 
     const lowStock = Object.entries(inventory)
-      .filter(([, qty]) => qty < 10)
+      .filter(([, qty]) => qty <= 6)
       .map(([item]) => item);
 
     return NextResponse.json({ inventory, recordIds, lowStock });

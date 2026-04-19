@@ -94,20 +94,24 @@ async function deductInventoryForOrder(orderText: string): Promise<boolean> {
     }
   });
 
-  if (updateRecords.length > 0) {
+  // Batch updates in groups of 10 (Airtable limit)
+  for (let i = 0; i < updateRecords.length; i += 10) {
+    const batch = updateRecords.slice(i, i + 10);
     const patchRes = await fetch(getInventoryAirtableUrl(), {
       method: 'PATCH',
       headers: getHeaders(),
-      body: JSON.stringify({ records: updateRecords }),
+      body: JSON.stringify({ records: batch }),
     });
     if (!patchRes.ok) return false;
   }
 
-  if (createRecords.length > 0) {
+  // Batch creates in groups of 10 (Airtable limit)
+  for (let i = 0; i < createRecords.length; i += 10) {
+    const batch = createRecords.slice(i, i + 10);
     const createRes = await fetch(getInventoryAirtableUrl(), {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ records: createRecords }),
+      body: JSON.stringify({ records: batch }),
     });
     if (!createRes.ok) return false;
   }
@@ -195,6 +199,36 @@ export async function POST(req: NextRequest) {
       const err = await airtableRes.json();
       console.error('Popup order Airtable error:', err);
       return NextResponse.json({ error: 'Failed to save popup order' }, { status: 500 });
+    }
+
+    const airtableData = await airtableRes.json();
+    const createdRecordId = airtableData.records?.[0]?.id;
+
+    // Deduct inventory immediately upon order submission
+    if (createdRecordId) {
+      const inventoryDeducted = await deductInventoryForOrder(text);
+
+      if (inventoryDeducted) {
+        // Update the order record to mark inventory as deducted
+        const updateRes = await fetch(getAirtableUrl(), {
+          method: 'PATCH',
+          headers: getHeaders(),
+          body: JSON.stringify({
+            records: [
+              {
+                id: createdRecordId,
+                fields: { 'Inventory Deducted': true },
+              },
+            ],
+          }),
+        });
+
+        if (!updateRes.ok) {
+          console.error('Failed to update Inventory Deducted flag, but order was created successfully');
+        }
+      } else {
+        console.warn('Failed to deduct inventory for order, but order was created successfully');
+      }
     }
 
     return NextResponse.json({ success: true });

@@ -19,6 +19,7 @@ function InventoryContent() {
   const searchParams = useSearchParams();
   const key = searchParams.get('key') || '';
   const [inventory, setInventory] = useState<Record<string, number>>({});
+  const [lowStock, setLowStock] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -42,6 +43,7 @@ function InventoryContent() {
           return;
         }
         setInventory(data.inventory || {});
+        setLowStock(data.lowStock || []);
       } catch {
         setMessage('Failed to load inventory.');
       } finally {
@@ -80,9 +82,17 @@ function InventoryContent() {
 
   const renderInput = (item: string) => {
     const qty = Number(inventory[item] || 0);
+    const isLowStock = lowStock.includes(item);
     return (
-      <div key={item} className="rounded-lg border border-gray-800 bg-gray-950 p-3">
-        <p className="text-sm text-gray-300">{item}</p>
+      <div key={item} className={`rounded-lg border p-3 ${isLowStock ? 'border-red-500 bg-red-950/20' : 'border-gray-800 bg-gray-950'}`}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-300">{item}</p>
+          {isLowStock && (
+            <span className="text-xs font-semibold text-red-400 flex items-center gap-1">
+              ⚠ Low
+            </span>
+          )}
+        </div>
         <input
           type="number"
           value={qty}
@@ -92,7 +102,7 @@ function InventoryContent() {
               [item]: Number(e.target.value || 0),
             }))
           }
-          className="mt-2 w-full px-3 py-2 rounded-md bg-black/50 border border-gray-700 text-white"
+          className={`mt-2 w-full px-3 py-2 rounded-md bg-black/50 border text-white ${isLowStock ? 'border-red-500' : 'border-gray-700'}`}
         />
       </div>
     );
