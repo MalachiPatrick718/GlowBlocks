@@ -107,11 +107,13 @@ export async function PUT(req: NextRequest) {
       }
     });
 
-    if (updates.length) {
+    // Batch updates in groups of 10 (Airtable limit)
+    for (let i = 0; i < updates.length; i += 10) {
+      const batch = updates.slice(i, i + 10);
       const patchRes = await fetch(getAirtableUrl(), {
         method: 'PATCH',
         headers: getHeaders(),
-        body: JSON.stringify({ records: updates }),
+        body: JSON.stringify({ records: batch }),
       });
       if (!patchRes.ok) {
         const err = await patchRes.json();
@@ -120,11 +122,13 @@ export async function PUT(req: NextRequest) {
       }
     }
 
-    if (creates.length) {
+    // Batch creates in groups of 10 (Airtable limit)
+    for (let i = 0; i < creates.length; i += 10) {
+      const batch = creates.slice(i, i + 10);
       const createRes = await fetch(getAirtableUrl(), {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ records: creates }),
+        body: JSON.stringify({ records: batch }),
       });
       if (!createRes.ok) {
         const err = await createRes.json();
