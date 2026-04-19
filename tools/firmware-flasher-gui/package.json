@@ -1,0 +1,53 @@
+{
+  "name": "glowblocks-programmer",
+  "version": "1.0.0",
+  "description": "GlowBlocks Programmer - Flash firmware to ATtiny1616 via ESP32 UPDI",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --enable-logging",
+    "package": "electron-builder --mac --dir",
+    "build": "electron-builder --mac"
+  },
+  "keywords": [
+    "glowblocks",
+    "firmware",
+    "attiny1616",
+    "updi",
+    "arduino"
+  ],
+  "author": "GlowBlocks Studio",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^32.2.10",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.glowblocks.programmer",
+    "productName": "GlowBlocks Programmer",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.png",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../firmware-flasher",
+        "to": "firmware-flasher",
+        "filter": ["colors.json", "presets.json", "prepare-sketch.mjs", "flash.mjs", "GlowBlocksFirmware_v3.template.ino"]
+      }
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    }
+  }
+}

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>GlowBlocks Programmer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>GlowBlocks Programmer</h1>
+      <div class="status-bar">
+        <span id="config-status" class="status-badge">⚠ Setup needed</span>
+        <span id="arduino-status" class="status-badge">⚙ Checking...</span>
+      </div>
+    </header>
+
+    <main>
+      <!-- Configuration Section -->
+      <section id="config-section" class="card">
+        <h2>Configuration</h2>
+        <div id="config-form">
+          <div class="form-group">
+            <label for="sketch-dir">Sketch Directory:</label>
+            <div class="input-with-button">
+              <input type="text" id="sketch-dir" placeholder="/path/to/GlowBlocksFirmware_v3">
+              <button id="browse-dir" class="btn-secondary">Browse...</button>
+            </div>
+            <small>Folder that will contain GlowBlocksFirmware_v3.ino</small>
+          </div>
+
+          <div class="form-group">
+            <label for="fqbn">FQBN:</label>
+            <input type="text" id="fqbn" placeholder="megaTinyCore:megaavr:atxy6:chip=1616,clock=internal16">
+            <small>Get from Arduino IDE verbose upload output</small>
+          </div>
+
+          <div class="form-group">
+            <label for="port">Serial Port:</label>
+            <div class="input-with-button">
+              <input type="text" id="port" placeholder="/dev/cu.usbserial-0001">
+              <button id="detect-port" class="btn-secondary">Auto-detect</button>
+            </div>
+            <small>ESP32 programmer port</small>
+          </div>
+
+          <div class="form-group">
+            <label for="programmer">Programmer:</label>
+            <input type="text" id="programmer" placeholder="jtag2updi">
+            <small>Get from Arduino IDE verbose upload output</small>
+          </div>
+
+          <button id="save-config" class="btn-primary">Save Configuration</button>
+          <div id="config-message" class="message"></div>
+        </div>
+        <div id="config-summary" style="display: none;">
+          <p><strong>Configuration loaded successfully</strong></p>
+          <button id="edit-config" class="btn-secondary">Edit Configuration</button>
+        </div>
+      </section>
+
+      <!-- Mode Selection -->
+      <section class="card">
+        <div class="mode-selection">
+          <button id="mode-single" class="mode-btn active">Single Upload</button>
+          <button id="mode-batch" class="mode-btn">Batch Programming</button>
+        </div>
+      </section>
+
+      <!-- Batch Letters Input (only shown in batch mode) -->
+      <section class="card" id="batch-input-section" style="display: none;">
+        <h2>Enter Letters</h2>
+        <div class="form-group">
+          <label for="batch-letters">Letters to Program:</label>
+          <input type="text" id="batch-letters" placeholder="e.g., MAL" maxlength="10" style="text-transform: uppercase;">
+          <small>Enter up to 10 letters</small>
+        </div>
+        <button id="save-letters" class="btn-primary">Save Letters</button>
+      </section>
+
+      <!-- Batch Letter Selection (only shown in batch mode after saving) -->
+      <section class="card" id="batch-letters-section" style="display: none;">
+        <h2>Select Letter to Assign Color</h2>
+        <div id="letter-buttons" class="letter-buttons"></div>
+        <button id="back-to-input" class="btn-secondary">Change Letters</button>
+      </section>
+
+      <!-- Color Selection Section -->
+      <section class="card" id="color-selection-section">
+        <h2 id="color-section-title">Color Selection</h2>
+
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="name">By Name</button>
+          <button class="tab-btn" data-tab="id">By ID</button>
+          <button class="tab-btn" data-tab="rgb">Custom RGB</button>
+          <button class="tab-btn" data-tab="presets">Presets</button>
+        </div>
+
+        <div class="tab-content">
+          <div id="tab-name" class="tab-panel active">
+            <div class="form-group">
+              <label for="color-search">Search Colors:</label>
+              <input type="text" id="color-search" placeholder="Type to search (e.g., 'Deep Red', 'Ocean')">
+            </div>
+            <div class="form-group">
+              <label for="color-select">Select Color:</label>
+              <select id="color-select" size="10">
+                <option value="">Loading colors...</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="tab-id" class="tab-panel">
+            <div class="form-group">
+              <label for="color-id">Color ID (1-200):</label>
+              <input type="number" id="color-id" min="1" max="200" placeholder="Enter color ID">
+            </div>
+          </div>
+
+          <div id="tab-rgb" class="tab-panel">
+            <div class="form-group">
+              <label>RGB Values (0-255):</label>
+              <div class="rgb-inputs">
+                <input type="number" id="rgb-r" min="0" max="255" placeholder="R">
+                <input type="number" id="rgb-g" min="0" max="255" placeholder="G">
+                <input type="number" id="rgb-b" min="0" max="255" placeholder="B">
+              </div>
+            </div>
+          </div>
+
+          <div id="tab-presets" class="tab-panel">
+            <div id="presets-container" class="presets-grid">
+              <!-- Presets will be loaded here -->
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="brightness-input">Brightness (0-255):</label>
+          <div class="brightness-control">
+            <input type="number" id="brightness-input" min="0" max="255" value="200">
+            <input type="range" id="brightness-slider" min="0" max="255" value="200" step="1">
+          </div>
+          <small>LED brightness for <span id="brightness-scope">this block</span></small>
+        </div>
+
+        <div class="color-preview">
+          <div id="preview-swatch" class="color-swatch"></div>
+          <div id="preview-info">
+            <strong id="preview-name">No color selected</strong>
+            <span id="preview-rgb"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Batch Assignment Section (only shown in batch mode when assigning) -->
+      <section class="card" id="batch-assignment-section" style="display: none;">
+        <h2>Assigning Color to Letter: <span id="current-letter-display"></span></h2>
+        <div id="batch-assignment-status" class="message"></div>
+        <button id="assign-color-btn" class="btn-primary" disabled>Assign Color to <span id="assign-letter-label"></span></button>
+      </section>
+
+      <!-- Upload Section -->
+      <section class="card" id="upload-section">
+        <h2 id="upload-section-title">Upload Firmware</h2>
+
+        <!-- Single Upload -->
+        <div id="single-upload-area">
+          <button id="upload-btn" class="btn-primary btn-large" disabled>
+            Upload to GlowBlock
+          </button>
+          <div id="upload-status" class="message"></div>
+        </div>
+
+        <!-- Batch Upload -->
+        <div id="batch-upload-area" style="display: none;">
+          <div id="batch-upload-prompt" class="upload-prompt">
+            <p><strong>Connect block for letter: <span id="prompt-letter"></span></strong></p>
+            <p>Color: <span id="prompt-color"></span></p>
+            <div class="color-swatch" id="prompt-swatch" style="width: 80px; height: 80px; margin: 10px auto;"></div>
+          </div>
+          <div class="batch-actions">
+            <button id="upload-next" class="btn-primary btn-large">Upload to Block</button>
+            <button id="skip-batch" class="btn-secondary">Skip This Block</button>
+          </div>
+          <div id="batch-upload-status" class="message"></div>
+          <div class="batch-preview">
+            <h3>Upload Progress</h3>
+            <div id="batch-upload-list"></div>
+          </div>
+        </div>
+
+        <div class="console-output">
+          <div class="console-header">Console Output</div>
+          <pre id="console-output"></pre>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>GlowBlocks Programmer v1.0 | GlowBlocks Studio</p>
+    </footer>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

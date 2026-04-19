@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "firmware:sync-colors": "node tools/firmware-flasher/sync-colors.mjs",
+    "firmware:list": "node tools/firmware-flasher/list-colors.mjs",
+    "firmware:prepare": "node tools/firmware-flasher/prepare-sketch.mjs",
+    "firmware:flash": "node tools/firmware-flasher/flash.mjs"
   },
   "dependencies": {
     "@netlify/plugin-nextjs": "^5.15.9",

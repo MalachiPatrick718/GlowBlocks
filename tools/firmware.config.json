@@ -1,0 +1,6 @@
+{
+  "sketchDir": "/Users/malachi/GlowBlocksFirmware_v3",
+  "fqbn": "megaTinyCore:megaavr:atxy6:chip=1616,clock=16internal",
+  "port": "/dev/cu.usbserial-0001",
+  "programmer": "serialupdi57k"
+}

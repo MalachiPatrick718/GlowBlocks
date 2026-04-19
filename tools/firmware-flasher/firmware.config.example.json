@@ -1,0 +1,7 @@
+{
+  "$comment": "Copy to firmware.config.json and fill in. Get FQBN + programmer from Arduino IDE: File → Preferences → verbose upload, then Upload Using Programmer.",
+  "sketchDir": "/absolute/path/to/your/GlowBlocksFirmware_sketch_folder",
+  "fqbn": "megaTinyCore:megaavr:atxy6:chip=1616,clock=internal16",
+  "port": "/dev/cu.usbserial-0001",
+  "programmer": "jtag2updi"
+}

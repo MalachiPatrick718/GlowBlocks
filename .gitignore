@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local firmware upload settings (paths, ports)
+/tools/firmware-flasher/firmware.config.json
+
+# Firmware flasher GUI
+/tools/firmware-flasher-gui/node_modules
+/tools/firmware-flasher-gui/dist
+/tools/firmware-flasher-gui/build

@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -52,11 +52,6 @@ function InventoryContent() {
     load();
   }, [key]);
 
-  const lowStockItems = useMemo(
-    () => Object.entries(inventory).filter(([, qty]) => Number(qty) < 10).map(([name]) => name),
-    [inventory]
-  );
-
   const saveInventory = async () => {
     if (!key) return;
     setSaving(true);
@@ -85,9 +80,8 @@ function InventoryContent() {
 
   const renderInput = (item: string) => {
     const qty = Number(inventory[item] || 0);
-    const isLow = qty < 10;
     return (
-      <div key={item} className={`rounded-lg border p-3 ${isLow}`}>
+      <div key={item} className="rounded-lg border border-gray-800 bg-gray-950 p-3">
         <p className="text-sm text-gray-300">{item}</p>
         <input
           type="number"
@@ -124,15 +118,6 @@ function InventoryContent() {
 
         {!loading && key && (
           <>
-            <div className="rounded-xl border border-gray-800 bg-gray-950 p-4">
-              <p className="text-sm text-gray-300">
-                Low stock alert threshold: <span className="font-semibold text-white">below 10</span>
-              </p>
-              <p className="text-sm text-gray-400 mt-1">
-                {lowStockItems.length ? `Low stock: ${lowStockItems.join(', ')}` : 'No low stock items.'}
-              </p>
-            </div>
-
             <div className="space-y-3">
               <h2 className="text-xl font-semibold text-white">Main Items</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
