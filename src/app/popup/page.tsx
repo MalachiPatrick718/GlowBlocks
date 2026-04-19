@@ -24,6 +24,15 @@ export default function PopupPage() {
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [confirmedWord, setConfirmedWord] = useState('');
+  const [confirmedOrderNumber, setConfirmedOrderNumber] = useState('');
+  const [confirmedPricing, setConfirmedPricing] = useState<{
+    letterCount: number;
+    pricePerLetter: number;
+    subtotal: number;
+    tax: number;
+    taxRate: number;
+    total: number;
+  } | null>(null);
 
   const nonSpaceLetters = text.replace(/\s/g, '');
 
@@ -88,7 +97,9 @@ export default function PopupPage() {
       setOrderConfirmed(false);
       setSubmitMessage(null);
       setConfirmedWord('');
-    }, 8000);
+      setConfirmedOrderNumber('');
+      setConfirmedPricing(null);
+    }, 15000);
     return () => clearTimeout(timeout);
   }, [orderConfirmed]);
 
@@ -149,6 +160,8 @@ export default function PopupPage() {
       }
 
       setConfirmedWord(text);
+      setConfirmedOrderNumber(data.orderNumber || '');
+      setConfirmedPricing(data.pricing || null);
       setOrderConfirmed(true);
       setSubmitMessage('Pop-up order submitted successfully.');
       setText('');
@@ -173,26 +186,84 @@ export default function PopupPage() {
     <div className="min-h-screen py-6 sm:py-8 px-3 sm:px-4">
       <div className="max-w-6xl mx-auto">
         {orderConfirmed ? (
-          <div className="max-w-2xl mx-auto mt-6 sm:mt-10 rounded-2xl border border-green-700 bg-green-950/30 p-6 sm:p-8 text-center space-y-4">
-            <h1 className="text-3xl sm:text-4xl font-bold text-green-300">Order Received</h1>
-            <p className="text-gray-200">
-              Your pop-up order for <span className="font-semibold text-white">{confirmedWord || 'your word'}</span> has been submitted.
-            </p>
-            <p className="text-sm text-gray-400">
-              We got your details. Please complete your payment at the kiosk.
-            </p>
-            <p className="text-sm text-gray-300">
-              Your GlowBlocks should be ready in about 10-15 minutes, and you will be texted when they are ready.
-            </p>
+          <div className="max-w-2xl mx-auto mt-6 sm:mt-10 rounded-2xl border border-green-700 bg-green-950/30 p-6 sm:p-8 space-y-6">
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl sm:text-4xl font-bold text-green-300">Order Received!</h1>
+              <p className="text-gray-200">
+                Your pop-up order for <span className="font-semibold text-white text-xl">{confirmedWord || 'your word'}</span>
+              </p>
+            </div>
+
+            {/* Order Number - Large and Bold */}
+            <div className="bg-gray-950/50 border-2 border-green-500 rounded-xl p-6 text-center">
+              <p className="text-sm text-gray-400 mb-2">Your Order Number</p>
+              <p className="text-7xl sm:text-8xl font-black text-white tracking-wider">
+                {confirmedOrderNumber || '--'}
+              </p>
+              <p className="text-xs text-gray-400 mt-2">Show this number when paying at the kiosk</p>
+            </div>
+
+            {/* Pricing Breakdown */}
+            {confirmedPricing && (
+              <div className="bg-gray-950/50 border border-gray-700 rounded-xl p-5 space-y-3">
+                <h3 className="font-semibold text-gray-300 text-center mb-3">Order Summary</h3>
+
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">
+                    {confirmedPricing.letterCount} Letter{confirmedPricing.letterCount !== 1 ? 's' : ''} × ${confirmedPricing.pricePerLetter.toFixed(2)} each
+                  </span>
+                  <span className="text-white font-medium">
+                    ${confirmedPricing.subtotal.toFixed(2)}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {confirmedPricing.letterCount <= 3 ? 'Tier: 1-3 letters ($12 each)' :
+                   confirmedPricing.letterCount <= 6 ? 'Tier: 4-6 letters ($11 each)' :
+                   confirmedPricing.letterCount <= 9 ? 'Tier: 7-9 letters ($10 each)' :
+                   'Tier: 10+ letters ($9 each)'}
+                </p>
+
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">
+                    Tax ({(confirmedPricing.taxRate * 100).toFixed(1)}%)
+                  </span>
+                  <span className="text-white font-medium">
+                    ${confirmedPricing.tax.toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="border-t border-gray-700 pt-3 flex justify-between text-lg font-bold">
+                  <span className="text-white">Total</span>
+                  <span className="text-green-400">
+                    ${confirmedPricing.total.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="text-center space-y-2 text-sm">
+              <p className="text-gray-300">
+                ✅ Order confirmed - Please complete payment at the kiosk
+              </p>
+              <p className="text-gray-400">
+                Your GlowBlocks should be ready in about 10-15 minutes
+              </p>
+              <p className="text-gray-400">
+                You will be texted when they are ready for pickup
+              </p>
+            </div>
+
             <button
               onClick={() => {
                 setOrderConfirmed(false);
                 setSubmitMessage(null);
                 setConfirmedWord('');
+                setConfirmedOrderNumber('');
+                setConfirmedPricing(null);
               }}
-              className="mt-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold transition-all"
+              className="w-full py-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold transition-all"
             >
-              Done
+              Place Another Order
             </button>
           </div>
         ) : (

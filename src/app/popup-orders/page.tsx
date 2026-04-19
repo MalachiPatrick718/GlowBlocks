@@ -17,6 +17,10 @@ interface PopupOrder {
   orderType?: string;
   pickupStatus?: string;
   orderNumber?: string;
+  letterCount?: number;
+  subtotal?: number;
+  tax?: number;
+  total?: number;
 }
 
 interface ParsedColorByLetter {
@@ -293,8 +297,20 @@ function PopupOrdersContent() {
           const colorLines = getColorLines(order);
           return (
           <div key={order.id} className="rounded-2xl border border-gray-800 bg-gray-950 p-5 space-y-3">
+            <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="text-3xl font-black text-white mb-1">{order.orderNumber || '--'}</p>
+                <p className="text-xs text-gray-500">Order Number</p>
+              </div>
+              {order.total !== undefined && (
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-green-400">${order.total.toFixed(2)}</p>
+                  <p className="text-xs text-gray-500">Amount to Charge</p>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              <p><span className="text-gray-400">Order Number:</span> <span className="font-bold text-white">{order.orderNumber || '-'}</span></p>
               <p><span className="text-gray-400">Custom Letters:</span> <span className="font-bold text-white">{order.text}</span></p>
               <p><span className="text-gray-400">Customer Name:</span> {order.customerName}</p>
               <p><span className="text-gray-400">Number:</span> {order.phoneNumber}</p>
@@ -307,6 +323,23 @@ function PopupOrdersContent() {
                 </span>
               </p>
             </div>
+
+            {order.subtotal !== undefined && (
+              <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Subtotal ({order.letterCount || 0} letters):</span>
+                  <span className="text-white font-medium">${order.subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Tax:</span>
+                  <span className="text-white font-medium">${(order.tax || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-gray-700 font-bold">
+                  <span className="text-white">Total:</span>
+                  <span className="text-green-400">${order.total?.toFixed(2) || '0.00'}</span>
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-2">
               {(() => {
