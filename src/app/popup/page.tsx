@@ -36,6 +36,23 @@ export default function PopupPage() {
 
   const nonSpaceLetters = text.replace(/\s/g, '');
 
+  // Calculate live pricing preview
+  const livePrice = useMemo(() => {
+    const count = nonSpaceLetters.length;
+    if (count === 0) return null;
+
+    let pricePerLetter = 12;
+    if (count >= 10) pricePerLetter = 9;
+    else if (count >= 7) pricePerLetter = 10;
+    else if (count >= 4) pricePerLetter = 11;
+
+    const subtotal = count * pricePerLetter;
+    const tax = subtotal * 0.08875;
+    const total = subtotal + tax;
+
+    return { count, pricePerLetter, subtotal, tax, total };
+  }, [nonSpaceLetters]);
+
   const handleTextChange = useCallback((newText: string) => {
     setText(newText);
     setLetterColors((prev) => {
@@ -420,7 +437,7 @@ export default function PopupPage() {
             )}
           </div>
 
-          <div className="lg:sticky lg:top-24 h-fit">
+          <div className="lg:sticky lg:top-24 h-fit space-y-4">
             <div className="bg-gray-950 border border-gray-800 rounded-2xl p-6 space-y-4">
               <h2 className="text-lg font-semibold text-gray-300">Live Preview</h2>
               <BlockPreview text={text} letterColors={letterColors} />
@@ -430,6 +447,32 @@ export default function PopupPage() {
                 </p>
               )}
             </div>
+
+            {livePrice && (
+              <div className="bg-gradient-to-br from-purple-950/50 to-pink-950/50 border border-purple-700/50 rounded-2xl p-6 space-y-3">
+                <h2 className="text-lg font-semibold text-purple-300">Price Estimate</h2>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between text-gray-300">
+                    <span>{livePrice.count} letter{livePrice.count !== 1 ? 's' : ''} × ${livePrice.pricePerLetter}</span>
+                    <span>${livePrice.subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-300">
+                    <span>Tax (8.875%)</span>
+                    <span>${livePrice.tax.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t border-purple-700/50 pt-2 flex justify-between text-lg font-bold">
+                    <span className="text-white">Total</span>
+                    <span className="text-green-400">${livePrice.total.toFixed(2)}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 text-center">
+                  {livePrice.count <= 3 ? '1-3 letters: $12 each' :
+                   livePrice.count <= 6 ? '4-6 letters: $11 each' :
+                   livePrice.count <= 9 ? '7-9 letters: $10 each' :
+                   '10+ letters: $9 each'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
           </>
