@@ -28,6 +28,8 @@ export default function PopupPage() {
   const [confirmedPricing, setConfirmedPricing] = useState<{
     letterCount: number;
     pricePerLetter: number;
+    letterSubtotal: number;
+    customColorFee: number;
     subtotal: number;
     tax: number;
     taxRate: number;
@@ -46,12 +48,14 @@ export default function PopupPage() {
     else if (count >= 7) pricePerLetter = 10;
     else if (count >= 4) pricePerLetter = 11;
 
-    const subtotal = count * pricePerLetter;
+    const letterSubtotal = count * pricePerLetter;
+    const customColorFee = colorMode === 'custom' ? 5.00 : 0;
+    const subtotal = letterSubtotal + customColorFee;
     const tax = subtotal * 0.08875;
     const total = subtotal + tax;
 
-    return { count, pricePerLetter, subtotal, tax, total };
-  }, [nonSpaceLetters]);
+    return { count, pricePerLetter, letterSubtotal, customColorFee, subtotal, tax, total };
+  }, [nonSpaceLetters, colorMode]);
 
   const handleTextChange = useCallback((newText: string) => {
     setText(newText);
@@ -213,11 +217,10 @@ export default function PopupPage() {
 
             {/* Order Number - Large and Bold */}
             <div className="bg-gray-950/50 border-2 border-green-500 rounded-xl p-6 text-center">
-              <p className="text-sm text-gray-400 mb-2">Your Order Number</p>
+              <p className="text-sm text-gray-400 mb-2">Tell this number at the kiosk to checkout</p>
               <p className="text-7xl sm:text-8xl font-black text-white tracking-wider">
                 {confirmedOrderNumber || '--'}
               </p>
-              <p className="text-xs text-gray-400 mt-2">Show this number when paying at the kiosk</p>
             </div>
 
             {/* Pricing Breakdown */}
@@ -230,7 +233,7 @@ export default function PopupPage() {
                     {confirmedPricing.letterCount} Letter{confirmedPricing.letterCount !== 1 ? 's' : ''} × ${confirmedPricing.pricePerLetter.toFixed(2)} each
                   </span>
                   <span className="text-white font-medium">
-                    ${confirmedPricing.subtotal.toFixed(2)}
+                    ${confirmedPricing.letterSubtotal.toFixed(2)}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500">
@@ -239,6 +242,15 @@ export default function PopupPage() {
                    confirmedPricing.letterCount <= 9 ? 'Tier: 7-9 letters ($10 each)' :
                    'Tier: 10+ letters ($9 each)'}
                 </p>
+
+                {confirmedPricing.customColorFee > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Custom Color Fee</span>
+                    <span className="text-white font-medium">
+                      ${confirmedPricing.customColorFee.toFixed(2)}
+                    </span>
+                  </div>
+                )}
 
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">
@@ -454,8 +466,14 @@ export default function PopupPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between text-gray-300">
                     <span>{livePrice.count} letter{livePrice.count !== 1 ? 's' : ''} × ${livePrice.pricePerLetter}</span>
-                    <span>${livePrice.subtotal.toFixed(2)}</span>
+                    <span>${livePrice.letterSubtotal.toFixed(2)}</span>
                   </div>
+                  {livePrice.customColorFee > 0 && (
+                    <div className="flex justify-between text-gray-300">
+                      <span>Custom Color Fee</span>
+                      <span>${livePrice.customColorFee.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-gray-300">
                     <span>Tax (8.875%)</span>
                     <span>${livePrice.tax.toFixed(2)}</span>

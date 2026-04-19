@@ -160,7 +160,9 @@ export async function POST(req: NextRequest) {
     // Calculate pricing with tiered rates
     const letterCount = text.length;
     const pricePerLetter = getPricePerLetter(letterCount);
-    const subtotal = letterCount * pricePerLetter;
+    const letterSubtotal = letterCount * pricePerLetter;
+    const customColorFee = colorMode === 'custom' ? 5.00 : 0;
+    const subtotal = letterSubtotal + customColorFee;
     const tax = subtotal * taxRate;
     const total = subtotal + tax;
 
@@ -191,6 +193,7 @@ export async function POST(req: NextRequest) {
       }),
       'Inventory Deducted': false,
       'Letter Count': letterCount,
+      'Custom Color Fee': customColorFee,
       'Subtotal': subtotal,
       'Tax': tax,
       'Total': total,
@@ -257,6 +260,8 @@ export async function POST(req: NextRequest) {
       pricing: {
         letterCount,
         pricePerLetter,
+        letterSubtotal,
+        customColorFee,
         subtotal,
         tax,
         taxRate,
@@ -326,6 +331,7 @@ export async function GET(req: NextRequest) {
       inventoryDeducted: record.fields['Inventory Deducted'] || false,
       deliveryMethod: delivery,
       letterCount: record.fields['Letter Count'] || 0,
+      customColorFee: record.fields['Custom Color Fee'] || 0,
       subtotal: record.fields['Subtotal'] || 0,
       tax: record.fields['Tax'] || 0,
       total: record.fields['Total'] || 0,

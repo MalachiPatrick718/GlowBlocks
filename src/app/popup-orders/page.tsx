@@ -18,6 +18,7 @@ interface PopupOrder {
   pickupStatus?: string;
   orderNumber?: string;
   letterCount?: number;
+  customColorFee?: number;
   subtotal?: number;
   tax?: number;
   total?: number;
@@ -327,9 +328,15 @@ function PopupOrdersContent() {
             {order.subtotal !== undefined && (
               <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 text-sm space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Subtotal ({order.letterCount || 0} letters):</span>
-                  <span className="text-white font-medium">${order.subtotal.toFixed(2)}</span>
+                  <span className="text-gray-400">Letters ({order.letterCount || 0}):</span>
+                  <span className="text-white font-medium">${((order.subtotal || 0) - (order.customColorFee || 0)).toFixed(2)}</span>
                 </div>
+                {(order.customColorFee || 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Custom Color Fee:</span>
+                    <span className="text-white font-medium">${order.customColorFee!.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-400">Tax:</span>
                   <span className="text-white font-medium">${(order.tax || 0).toFixed(2)}</span>
