@@ -7,6 +7,14 @@ const tableName = process.env.AIRTABLE_POPUP_ORDERS || process.env.AIRTABLE_POPU
 const inventoryTableName = process.env.AIRTABLE_INVENTORY_TABLE || 'Inventory';
 const adminKey = process.env.POPUP_ORDERS_ADMIN_KEY;
 const popupOrderStatusValue = process.env.AIRTABLE_POPUP_ORDER_STATUS || '';
+const taxRate = parseFloat(process.env.POPUP_TAX_RATE || '0.08875');
+
+function getPricePerLetter(letterCount: number): number {
+  if (letterCount <= 3) return 12.00;
+  if (letterCount <= 6) return 11.00;
+  if (letterCount <= 9) return 10.00;
+  return 9.00; // 10+
+}
 
 function getAirtableUrl() {
   return `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`;
@@ -24,8 +32,9 @@ function getHeaders() {
 }
 
 function generateOrderNumber(): string {
-  const now = Date.now().toString().slice(-6);
-  return `GB-${now}`;
+  // Generate 2-digit order number (01-99)
+  const num = Math.floor(Math.random() * 99) + 1;
+  return num.toString().padStart(2, '0');
 }
 
 function isAuthorizedAdmin(req: NextRequest): boolean {
@@ -148,6 +157,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Shipping address is required for shipping orders' }, { status: 400 });
     }
 
+    // Calculate pricing with tiered rates
+    const letterCount = text.length;
+    const pricePerLetter = getPricePerLetter(letterCount);
+    const subtotal = letterCount * pricePerLetter;
+    const tax = subtotal * taxRate;
+    const total = subtotal + tax;
+
     const colorsByLetter = text.split('').map((char: string, idx: number) => {
       const colorNumber = Array.isArray(colorNumbers) ? colorNumbers[idx] : null;
       const matched = typeof colorNumber === 'number' ? POPUP_COLOR_MAP.get(colorNumber) : null;
@@ -159,7 +175,7 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    const fields: Record<string, string | boolean> = {
+    const fields: Record<string, string | boolean | number> = {
       Name: String(customerName).slice(0, 100),
       'Phone Number': String(phoneNumber).slice(0, 40),
       Address: String(address || '').slice(0, 250),
@@ -174,6 +190,10 @@ export async function POST(req: NextRequest) {
         deliveryMethod: normalizedDeliveryMethod,
       }),
       'Inventory Deducted': false,
+      'Letter Count': letterCount,
+      'Subtotal': subtotal,
+      'Tax': tax,
+      'Total': total,
     };
 
     if (popupOrderStatusValue) {
@@ -231,7 +251,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      orderNumber,
+      pricing: {
+        letterCount,
+        pricePerLetter,
+        subtotal,
+        tax,
+        taxRate,
+        total,
+      },
+    });
   } catch (error) {
     console.error('Popup order API error:', error);
     return NextResponse.json({ error: 'Failed to submit popup order' }, { status: 500 });
@@ -294,6 +325,10 @@ export async function GET(req: NextRequest) {
       orderNumber: record.fields['Order Number'] || '',
       inventoryDeducted: record.fields['Inventory Deducted'] || false,
       deliveryMethod: delivery,
+      letterCount: record.fields['Letter Count'] || 0,
+      subtotal: record.fields['Subtotal'] || 0,
+      tax: record.fields['Tax'] || 0,
+      total: record.fields['Total'] || 0,
     });
     })
       .sort((a: { date: string }, b: { date: string }) => {
