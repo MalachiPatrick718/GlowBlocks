@@ -221,9 +221,9 @@ export async function POST(req: NextRequest) {
         colorNumbers: colorNumbers || [],
         colorsByLetter,
         deliveryMethod: normalizedDeliveryMethod,
+        onSiteEligible,
       }),
       'Inventory Deducted': false,
-      'On-Site Eligible': onSiteEligible,
       'Letter Count': letterCount,
       'Custom Color Fee': customColorFee,
       'Subtotal': subtotal,
@@ -313,10 +313,12 @@ export async function GET(req: NextRequest) {
     const orders = (data.records || []).map((record: { id: string; createdTime?: string; fields: Record<string, string> }) => {
       const customColorsRaw = record.fields['Custom Colors'] || '[]';
       let delivery = '';
+      let eligible: boolean | null = null;
       try {
         const parsed = JSON.parse(customColorsRaw);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.deliveryMethod) {
-          delivery = String(parsed.deliveryMethod);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          if (parsed.deliveryMethod) delivery = String(parsed.deliveryMethod);
+          if (typeof parsed.onSiteEligible === 'boolean') eligible = parsed.onSiteEligible;
         }
       } catch {
         delivery = '';
@@ -339,7 +341,7 @@ export async function GET(req: NextRequest) {
       pickupStatus: record.fields['Pickup Status'] || '',
       orderNumber: record.fields['Order Number'] || '',
       inventoryDeducted: record.fields['Inventory Deducted'] || false,
-      onSiteEligible: record.fields['On-Site Eligible'] ?? null,
+      onSiteEligible: eligible,
       deliveryMethod: delivery,
       letterCount: record.fields['Letter Count'] || 0,
       customColorFee: record.fields['Custom Color Fee'] || 0,
