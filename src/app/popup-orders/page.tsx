@@ -53,7 +53,14 @@ function hexToRgbString(hex?: string | null): string | null {
   return `${r}, ${g}, ${b}`;
 }
 
-function getColorLines(order: PopupOrder): string[] {
+interface ColorByLetter {
+  letter: string;
+  colorHex: string;
+  colorName?: string;
+  displayText: string;
+}
+
+function getColorLines(order: PopupOrder): ColorByLetter[] {
   try {
     const parsed = JSON.parse(order.colorsByLetter);
     const list = Array.isArray(parsed)
@@ -64,18 +71,33 @@ function getColorLines(order: PopupOrder): string[] {
         .filter((item: ParsedColorByLetter) => item?.letter && item.letter !== ' ')
         .map((item: ParsedColorByLetter) => {
           const letter = item.letter || '';
+          const colorHex = item.colorHex || '#FFFFFF';
+
           if (!item.colorHex || item.colorHex === '#FFFFFF') {
-            return `${letter} - No Color Set`;
+            return {
+              letter,
+              colorHex: '#FFFFFF',
+              displayText: `${letter} - No Color Set`
+            };
           }
 
           const rgb = hexToRgbString(item.colorHex);
-          if (item.colorName && rgb) return `${letter} - ${item.colorName} (${rgb})`;
-          if (item.colorName) return `${letter} - ${item.colorName}`;
-          if (rgb) {
+          let displayText = '';
+          if (item.colorName && rgb) displayText = `${letter} - ${item.colorName} (${rgb})`;
+          else if (item.colorName) displayText = `${letter} - ${item.colorName}`;
+          else if (rgb) {
             const presetLabel = formatPresetLabel(order.colorMode);
-            return `${letter} - ${presetLabel || 'Preset'} (${rgb})`;
+            displayText = `${letter} - ${presetLabel || 'Preset'} (${rgb})`;
+          } else {
+            displayText = `${letter} - ${item.colorHex}`;
           }
-          return `${letter} - ${item.colorHex}`;
+
+          return {
+            letter,
+            colorHex,
+            colorName: item.colorName || undefined,
+            displayText
+          };
         });
     }
 
@@ -88,10 +110,20 @@ function getColorLines(order: PopupOrder): string[] {
         .map((letter, idx) => ({ letter, colorHex: colorArray[idx] || '#FFFFFF' }))
         .filter((item) => item.letter && item.letter !== ' ')
         .map((item) => {
-          if (!item.colorHex || item.colorHex === '#FFFFFF') return `${item.letter} - No Color Set`;
-          const rgb = hexToRgbString(item.colorHex);
-          const presetLabel = formatPresetLabel(order.colorMode) || 'Preset';
-          return rgb ? `${item.letter} - ${presetLabel} (${rgb})` : `${item.letter} - ${item.colorHex}`;
+          const colorHex = item.colorHex || '#FFFFFF';
+          let displayText = '';
+          if (!item.colorHex || item.colorHex === '#FFFFFF') {
+            displayText = `${item.letter} - No Color Set`;
+          } else {
+            const rgb = hexToRgbString(item.colorHex);
+            const presetLabel = formatPresetLabel(order.colorMode) || 'Preset';
+            displayText = rgb ? `${item.letter} - ${presetLabel} (${rgb})` : `${item.letter} - ${item.colorHex}`;
+          }
+          return {
+            letter: item.letter,
+            colorHex,
+            displayText
+          };
         });
     }
 
@@ -400,10 +432,17 @@ function PopupOrdersContent() {
 
             <div className="space-y-2 text-sm">
               <p className="text-gray-300">Colors by letter</p>
-              <div className="rounded-lg bg-black/40 border border-gray-800 p-3 text-xs text-gray-300 space-y-1">
+              <div className="rounded-lg bg-black/40 border border-gray-800 p-3 text-xs text-gray-300 space-y-2">
                 {colorLines.length > 0 ? (
-                  colorLines.map((line, idx) => (
-                    <p key={idx}>{line}</p>
+                  colorLines.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      <div
+                        className="w-8 h-8 rounded border-2 border-gray-600 flex-shrink-0"
+                        style={{ backgroundColor: item.colorHex }}
+                        title={item.colorHex}
+                      />
+                      <p className="flex-1">{item.displayText}</p>
+                    </div>
                   ))
                 ) : (
                   <p>No Color Set</p>
