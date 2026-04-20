@@ -254,7 +254,7 @@ export default function PopupPage() {
 
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">
-                    Tax ({(confirmedPricing.taxRate * 100).toFixed(1)}%)
+                    Tax
                   </span>
                   <span className="text-white font-medium">
                     ${confirmedPricing.tax.toFixed(2)}
@@ -270,16 +270,14 @@ export default function PopupPage() {
               </div>
             )}
 
-            <div className="text-center space-y-2 text-sm">
-              <p className="text-gray-300">
-                ✅ Order confirmed - Please complete payment at the kiosk
+            <div className="bg-gray-900/60 border border-gray-700 rounded-xl p-5 text-center space-y-3">
+              <p className="text-white font-bold text-lg">
+                Please complete payment at the kiosk
               </p>
-              <p className="text-gray-400">
-                Your GlowBlocks should be ready in about 10-15 minutes
-              </p>
-              <p className="text-gray-400">
-                You will be texted when they are ready for pickup
-              </p>
+              <div className="space-y-1 text-sm text-gray-400">
+                <p>Your GlowBlocks should be ready in about 10-15 minutes</p>
+                <p>We&apos;ll text you when they&apos;re ready for pickup!</p>
+              </div>
             </div>
 
             <button
@@ -434,6 +432,13 @@ export default function PopupPage() {
                           )}
                         </>
                       )}
+                      {deliveryMethod === 'pick-up' && (
+                        <p className="text-xs text-gray-500">
+                          By submitting, you agree to receive SMS order updates at the number provided. Msg &amp; data rates may apply. View our{' '}
+                          <a href="/privacy" className="text-purple-400 hover:text-purple-300 underline">Privacy Policy</a> and{' '}
+                          <a href="/terms" className="text-purple-400 hover:text-purple-300 underline">Terms</a>.
+                        </p>
+                      )}
                       <button
                         onClick={submitOrder}
                         disabled={!canSubmit || submitting}
@@ -475,7 +480,7 @@ export default function PopupPage() {
                     </div>
                   )}
                   <div className="flex justify-between text-gray-300">
-                    <span>Tax (8.875%)</span>
+                    <span>Tax</span>
                     <span>${livePrice.tax.toFixed(2)}</span>
                   </div>
                   <div className="border-t border-purple-700/50 pt-2 flex justify-between text-lg font-bold">

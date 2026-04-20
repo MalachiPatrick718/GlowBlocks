@@ -47,6 +47,13 @@ export default function TermsPage() {
             </p>
           </Section>
 
+          <Section title="SMS notifications">
+            <p>
+              By placing a pop-up pickup order and providing your phone number, you consent to receive transactional SMS messages related to your order. These include an order confirmation and a pickup-ready notification. We do not send marketing messages. Message and data rates may apply. You may opt out of SMS notifications by contacting us through our{' '}
+              <a href="/contact" className="text-purple-400 hover:text-purple-300 underline">contact page</a>.
+            </p>
+          </Section>
+
           <Section title="Returns and refunds">
             <p>
               We offer a 30-day return policy for unused and undamaged items. GlowBlocks are custom-made products — please double-check your order before submitting. See our{' '}

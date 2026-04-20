@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { POPUP_COLOR_MAP } from '@/data/popupColorCatalog';
+import { sendSMS } from '@/lib/sms';
 
 const apiKey = process.env.AIRTABLE_API_KEY;
 const baseId = process.env.AIRTABLE_BASE_ID;
@@ -254,6 +255,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Send confirmation SMS for pickup orders
+    if (mappedOrderType === 'Pickup' && phoneNumber) {
+      const msg = `Hey, ${String(customerName).trim()}, Thanks for your Glowblocks Set Order! Your order number is ${orderNumber}. We will message you once your set is ready for pickup! It will take between 10-15 minutes! See you again soon!`;
+      sendSMS(String(phoneNumber), msg).catch((err) =>
+        console.error('Failed to send order confirmation SMS:', err)
+      );
+    }
+
     return NextResponse.json({
       success: true,
       orderNumber,
@@ -425,6 +434,30 @@ export async function PATCH(req: NextRequest) {
       const err = await res.json();
       console.error('Popup order status update error:', err);
       return NextResponse.json({ error: 'Failed to update status' }, { status: 500 });
+    }
+
+    // Send "ready for pickup" SMS when status → Done for pickup orders
+    const isNewDone = String(status).toLowerCase() === 'done'
+      && existingStatus.toLowerCase() !== 'done'
+      && orderType.toLowerCase() === 'pickup';
+    const doneTextAlreadySent = isTruthy(existingFields['Done Text Sent']);
+
+    if (isNewDone && !doneTextAlreadySent) {
+      const customerPhone = String(existingFields['Phone Number'] || '');
+      const customerName = String(existingFields['Name'] || '');
+      if (customerPhone) {
+        const msg = `Hey ${customerName}, your custom Glowblocks set is ready for pickup!`;
+        const sent = await sendSMS(customerPhone, msg);
+        if (sent) {
+          await fetch(getAirtableUrl(), {
+            method: 'PATCH',
+            headers: getHeaders(),
+            body: JSON.stringify({
+              records: [{ id: String(id), fields: { 'Done Text Sent': true } }],
+            }),
+          });
+        }
+      }
     }
 
     return NextResponse.json({ success: true });

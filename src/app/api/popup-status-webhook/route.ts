@@ -1,20 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { sendSMS } from '@/lib/sms';
 
 const webhookSecret = process.env.POPUP_STATUS_WEBHOOK_SECRET || '';
-const twilioSid = process.env.TWILIO_ACCOUNT_SID || '';
-const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN || '';
-const twilioFromNumber = process.env.TWILIO_FROM_NUMBER || '';
 const airtableApiKey = process.env.AIRTABLE_API_KEY || '';
 const airtableBaseId = process.env.AIRTABLE_BASE_ID || '';
 const airtablePopupTable = process.env.AIRTABLE_POPUP_ORDERS || process.env.AIRTABLE_POPUP_ORDERS_TABLE || 'Popup';
-
-function normalizePhone(value: string): string {
-  const trimmed = value.trim();
-  if (trimmed.startsWith('+')) return trimmed;
-  const digits = trimmed.replace(/[^\d]/g, '');
-  if (digits.length === 10) return `+1${digits}`;
-  return `+${digits}`;
-}
 
 function getAirtableUrl(recordId?: string): string {
   const base = `https://api.airtable.com/v0/${airtableBaseId}/${encodeURIComponent(airtablePopupTable)}`;
@@ -68,10 +58,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!twilioSid || !twilioAuthToken || !twilioFromNumber) {
-      return NextResponse.json({ error: 'Twilio is not configured' }, { status: 500 });
-    }
-
     const { status, customerName, customLetters, phoneNumber, recordId } = await req.json();
     if (!status || !customerName || !customLetters || !phoneNumber) {
       return NextResponse.json({ error: 'Missing required payload fields' }, { status: 400 });
@@ -85,30 +71,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ skipped: true, reason: 'Done SMS already sent for this order' });
     }
 
-    const message = `Hey ${customerName}, your Glowblocks order of ${customLetters} is ready for pickup! See you soon!`;
-    const to = normalizePhone(String(phoneNumber));
+    const message = `Hey ${customerName}, your custom Glowblocks set is ready for pickup!`;
+    const sent = await sendSMS(String(phoneNumber), message);
 
-    const twilioBody = new URLSearchParams({
-      To: to,
-      From: twilioFromNumber,
-      Body: message,
-    });
-
-    const twilioRes = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${twilioSid}:${twilioAuthToken}`).toString('base64')}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: twilioBody.toString(),
-      }
-    );
-
-    if (!twilioRes.ok) {
-      const err = await twilioRes.text();
-      console.error('Twilio send error:', err);
+    if (!sent) {
       return NextResponse.json({ error: 'Failed to send SMS' }, { status: 500 });
     }
 

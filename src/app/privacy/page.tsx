@@ -18,6 +18,7 @@ export default function PrivacyPage() {
             <p>When you place an order or contact us, we may collect:</p>
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li>Name and email address</li>
+              <li>Phone number</li>
               <li>Shipping address</li>
               <li>Payment information (processed securely through Stripe — we never see or store your card details)</li>
               <li>Order details (the letters, colours, and quantities you choose)</li>
@@ -28,7 +29,7 @@ export default function PrivacyPage() {
           <Section title="How we use your information">
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li>To fulfil and ship your orders</li>
-              <li>To communicate with you about your order</li>
+              <li>To communicate with you about your order, including via SMS</li>
               <li>To respond to your questions or support requests</li>
               <li>To improve our products and website</li>
             </ul>
@@ -46,10 +47,17 @@ export default function PrivacyPage() {
             </p>
           </Section>
 
+          <Section title="SMS messaging">
+            <p>
+              When you place a pop-up pickup order, we send transactional SMS messages to the phone number you provide. These messages include an order confirmation and a notification when your order is ready for pickup. We do not send marketing or promotional text messages. Message and data rates may apply. You can contact us at any time to opt out of SMS notifications.
+            </p>
+          </Section>
+
           <Section title="Third-party services">
             <p>We use the following services to operate:</p>
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li><strong>Stripe</strong> — payment processing</li>
+              <li><strong>Twilio</strong> — SMS delivery for order notifications</li>
               <li><strong>Resend</strong> — email delivery for contact form messages</li>
               <li><strong>Netlify</strong> — website hosting</li>
             </ul>
