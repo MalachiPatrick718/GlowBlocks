@@ -432,17 +432,10 @@ function PopupOrdersContent() {
 
             <div className="space-y-2 text-sm">
               <p className="text-gray-300">Colors by letter</p>
-              <div className="rounded-lg bg-black/40 border border-gray-800 p-3 text-xs text-gray-300 space-y-2">
+              <div className="rounded-lg bg-black/40 border border-gray-800 p-3 text-xs text-gray-300 space-y-1">
                 {colorLines.length > 0 ? (
                   colorLines.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-3">
-                      <div
-                        className="w-8 h-8 rounded border-2 border-gray-600 flex-shrink-0"
-                        style={{ backgroundColor: item.colorHex }}
-                        title={item.colorHex}
-                      />
-                      <p className="flex-1">{item.displayText}</p>
-                    </div>
+                    <p key={idx}>{item.displayText}</p>
                   ))
                 ) : (
                   <p>No Color Set</p>
