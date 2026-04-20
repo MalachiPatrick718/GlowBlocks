@@ -128,11 +128,12 @@ function InventoryContent() {
         </div>
         <input
           type="number"
+          min={0}
           value={qty}
           onChange={(e) =>
             setInventory((prev) => ({
               ...prev,
-              [item]: Number(e.target.value || 0),
+              [item]: Math.max(0, Number(e.target.value || 0)),
             }))
           }
           className={`mt-2 w-full px-3 py-2 rounded-md bg-black/50 border text-white ${isLowStock ? 'border-red-500' : 'border-gray-700'}`}
