@@ -109,8 +109,11 @@ export default function PopupPage() {
   const canSubmit = useMemo(() => {
     const hasContact = customerName.trim().length > 1 && phoneNumber.trim().length > 6;
     const hasRequiredAddress = deliveryMethod === 'ship' ? address.trim().length > 5 : true;
-    return nonSpaceLetters.length > 0 && hasContact && hasRequiredAddress;
-  }, [nonSpaceLetters.length, customerName, phoneNumber, deliveryMethod, address]);
+    const hasColors = colorMode === 'presets'
+      ? selectedPresetName !== null
+      : text.split('').every((ch, i) => ch === ' ' || colorNumbers[i] != null);
+    return nonSpaceLetters.length > 0 && hasContact && hasRequiredAddress && hasColors;
+  }, [nonSpaceLetters.length, customerName, phoneNumber, deliveryMethod, address, colorMode, selectedPresetName, text, colorNumbers]);
 
   useEffect(() => {
     if (!orderConfirmed) return;
