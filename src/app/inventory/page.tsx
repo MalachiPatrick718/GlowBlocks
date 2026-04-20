@@ -1,10 +1,10 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-const MAIN_ITEMS = ['P6 Bases', 'P2 Diffuser', 'PCB'];
+const MAIN_ITEMS = ['P6 Bases', 'PCB'];
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 export default function InventoryPage() {
@@ -23,6 +23,39 @@ function InventoryContent() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [checkerText, setCheckerText] = useState('');
+
+  const stockCheck = useMemo(() => {
+    const letters = checkerText.toUpperCase().replace(/[^A-Z]/g, '');
+    if (!letters) return null;
+
+    const counts: Record<string, number> = {};
+    for (const ch of letters) {
+      counts[ch] = (counts[ch] || 0) + 1;
+    }
+    const totalLetters = letters.length;
+
+    const shortages: { item: string; needed: number; available: number }[] = [];
+
+    for (const [letter, needed] of Object.entries(counts)) {
+      const available = Number(inventory[letter] || 0);
+      if (available < needed) {
+        shortages.push({ item: letter, needed, available });
+      }
+    }
+
+    const basesAvailable = Number(inventory['P6 Bases'] || 0);
+    if (basesAvailable < totalLetters) {
+      shortages.push({ item: 'P6 Bases', needed: totalLetters, available: basesAvailable });
+    }
+
+    const pcbAvailable = Number(inventory['PCB'] || 0);
+    if (pcbAvailable < totalLetters) {
+      shortages.push({ item: 'PCBs', needed: totalLetters, available: pcbAvailable });
+    }
+
+    return { eligible: shortages.length === 0, shortages, totalLetters };
+  }, [checkerText, inventory]);
 
   useEffect(() => {
     if (!key) {
@@ -128,6 +161,38 @@ function InventoryContent() {
 
         {!loading && key && (
           <>
+            <div className="space-y-3">
+              <h2 className="text-xl font-semibold text-white">Stock Checker</h2>
+              <input
+                type="text"
+                value={checkerText}
+                onChange={(e) => setCheckerText(e.target.value)}
+                placeholder="Type a word or name to check stock..."
+                className="w-full max-w-md px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-lg tracking-widest placeholder-gray-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+              />
+              {stockCheck && (
+                stockCheck.eligible ? (
+                  <div className="inline-flex items-center gap-2 px-4 py-2.5 bg-green-950/40 border border-green-600/40 rounded-lg">
+                    <span className="text-green-400 font-semibold">In Stock</span>
+                    <span className="text-gray-400 text-sm">— can be made on-site ({stockCheck.totalLetters} letter{stockCheck.totalLetters !== 1 ? 's' : ''})</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-950/40 border border-red-600/40 rounded-lg">
+                      <span className="text-red-400 font-semibold">Not Available On-Site</span>
+                    </div>
+                    <div className="text-sm text-gray-400 space-y-1 ml-1">
+                      {stockCheck.shortages.map((s) => (
+                        <p key={s.item}>
+                          <span className="text-red-400">{s.item}</span>: need {s.needed}, have {s.available}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+
             <div className="space-y-3">
               <h2 className="text-xl font-semibold text-white">Main Items</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

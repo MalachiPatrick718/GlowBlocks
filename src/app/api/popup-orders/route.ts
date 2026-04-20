@@ -82,7 +82,6 @@ async function deductInventoryForOrder(orderText: string): Promise<boolean> {
   const deductions: Record<string, number> = {
     ...letterCounts,
     'P6 Bases': totalLetters,
-    'P2 Diffuser': totalLetters,
     'PCB': totalLetters,
   };
 
@@ -125,6 +124,35 @@ async function deductInventoryForOrder(orderText: string): Promise<boolean> {
     });
     if (!createRes.ok) return false;
   }
+
+  return true;
+}
+
+async function checkStockEligibility(orderText: string): Promise<boolean> {
+  if (!apiKey || !baseId) return false;
+
+  const inventoryRes = await fetch(getInventoryAirtableUrl(), {
+    headers: getHeaders(),
+    next: { revalidate: 0 },
+  });
+  if (!inventoryRes.ok) return false;
+
+  const inventoryData = await inventoryRes.json();
+  const records: InventoryRecord[] = inventoryData.records || [];
+  const stock = new Map<string, number>();
+  records.forEach((record) => {
+    const key = (record.fields.Item || '').trim();
+    if (key) stock.set(key, Number(record.fields.Quantity) || 0);
+  });
+
+  const letterCounts = getLetterCounts(orderText);
+  const totalLetters = Object.values(letterCounts).reduce((sum, n) => sum + n, 0);
+
+  for (const [letter, needed] of Object.entries(letterCounts)) {
+    if ((stock.get(letter) || 0) < needed) return false;
+  }
+  if ((stock.get('P6 Bases') || 0) < totalLetters) return false;
+  if ((stock.get('PCB') || 0) < totalLetters) return false;
 
   return true;
 }
@@ -178,6 +206,8 @@ export async function POST(req: NextRequest) {
       };
     });
 
+    const onSiteEligible = await checkStockEligibility(text);
+
     const fields: Record<string, string | boolean | number> = {
       Name: String(customerName).slice(0, 100),
       'Phone Number': String(phoneNumber).slice(0, 40),
@@ -193,6 +223,7 @@ export async function POST(req: NextRequest) {
         deliveryMethod: normalizedDeliveryMethod,
       }),
       'Inventory Deducted': false,
+      'On-Site Eligible': onSiteEligible,
       'Letter Count': letterCount,
       'Custom Color Fee': customColorFee,
       'Subtotal': subtotal,
@@ -338,6 +369,7 @@ export async function GET(req: NextRequest) {
       pickupStatus: record.fields['Pickup Status'] || '',
       orderNumber: record.fields['Order Number'] || '',
       inventoryDeducted: record.fields['Inventory Deducted'] || false,
+      onSiteEligible: record.fields['On-Site Eligible'] ?? null,
       deliveryMethod: delivery,
       letterCount: record.fields['Letter Count'] || 0,
       customColorFee: record.fields['Custom Color Fee'] || 0,

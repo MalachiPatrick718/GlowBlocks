@@ -22,6 +22,7 @@ interface PopupOrder {
   subtotal?: number;
   tax?: number;
   total?: number;
+  onSiteEligible?: boolean | null;
 }
 
 interface ParsedColorByLetter {
@@ -332,7 +333,19 @@ function PopupOrdersContent() {
           <div key={order.id} className="rounded-2xl border border-gray-800 bg-gray-950 p-5 space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
               <div>
-                <p className="text-3xl font-black text-white mb-1">{order.orderNumber || '--'}</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-3xl font-black text-white">{order.orderNumber || '--'}</p>
+                  {order.onSiteEligible === true && (
+                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-900/50 text-green-400 border border-green-600/40">
+                      On-Site Eligible
+                    </span>
+                  )}
+                  {order.onSiteEligible === false && (
+                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-900/50 text-red-400 border border-red-600/40">
+                      Not Available On-Site
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-gray-500">Order Number</p>
               </div>
               {order.total !== undefined && (
