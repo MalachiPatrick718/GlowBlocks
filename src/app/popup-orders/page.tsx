@@ -158,7 +158,6 @@ function PopupOrdersContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
-  const [statusDrafts, setStatusDrafts] = useState<Record<string, string>>({});
   const [pickupDrafts, setPickupDrafts] = useState<Record<string, string>>({});
   const [orderFilter, setOrderFilter] = useState('');
   const baseStatusOptions = ['Not Started', 'In Progress', 'Done'];
@@ -184,12 +183,6 @@ function PopupOrdersContent() {
         }
         const nextOrders = data.orders || [];
         setOrders(nextOrders);
-        setStatusDrafts(
-          nextOrders.reduce((acc: Record<string, string>, item: PopupOrder) => {
-            acc[item.id] = item.status || 'New';
-            return acc;
-          }, {})
-        );
         setPickupDrafts(
           nextOrders.reduce((acc: Record<string, string>, item: PopupOrder) => {
             acc[item.id] = item.pickupStatus || '';
@@ -206,8 +199,8 @@ function PopupOrdersContent() {
     run();
   }, [key]);
 
-  const saveStatus = async (orderId: string) => {
-    if (!key || !statusDrafts[orderId]) return;
+  const saveStatus = async (orderId: string, newStatus: string) => {
+    if (!key || !newStatus) return;
     setSavingOrderId(orderId);
     try {
       const res = await fetch('/api/popup-orders', {
@@ -218,7 +211,7 @@ function PopupOrdersContent() {
         },
         body: JSON.stringify({
           id: orderId,
-          status: statusDrafts[orderId],
+          status: newStatus,
         }),
       });
       const data = await res.json();
@@ -232,9 +225,9 @@ function PopupOrdersContent() {
           order.id === orderId
             ? {
                 ...order,
-                status: statusDrafts[orderId],
+                status: newStatus,
                 pickupStatus:
-                  statusDrafts[orderId].toLowerCase() === 'done' && (order.orderType || '').toLowerCase() === 'pickup'
+                  newStatus.toLowerCase() === 'done' && (order.orderType || '').toLowerCase() === 'pickup'
                     ? 'Ready for Pickup'
                     : order.pickupStatus,
               }
@@ -362,12 +355,6 @@ function PopupOrdersContent() {
               <p><span className="text-gray-400">Number:</span> {order.phoneNumber}</p>
               <p><span className="text-gray-400">Delivery:</span> {order.deliveryMethod === 'ship' ? 'Ship to Me' : 'Pick Up'}</p>
               <p><span className="text-gray-400">Address:</span> {order.address || '-'}</p>
-              <p className="flex items-center gap-2">
-                <span className="text-gray-400">Status:</span>
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusPillClasses(order.status || 'Not Started')}`}>
-                  {order.status || 'Not Started'}
-                </span>
-              </p>
             </div>
 
             {order.subtotal !== undefined && (
@@ -399,49 +386,43 @@ function PopupOrdersContent() {
                 const statusOptions = isShipOrder
                   ? [...baseStatusOptions, 'Ready to Ship']
                   : baseStatusOptions;
-                return (
-              <select
-                value={statusDrafts[order.id] || order.status || 'New'}
-                onChange={(e) =>
-                  setStatusDrafts((prev) => ({
-                    ...prev,
-                    [order.id]: e.target.value,
-                  }))
-                }
-                className="px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-sm text-white"
-              >
-                {statusOptions.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-                );
+                const currentStatus = (order.status || 'Not Started').toLowerCase();
+                const isCompleted = (pickupDrafts[order.id] || order.pickupStatus) === 'Picked Up';
+                return statusOptions.map((opt) => {
+                  const isActive = opt.toLowerCase() === currentStatus;
+                  const isSaving = savingOrderId === order.id;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => !isActive && saveStatus(order.id, opt)}
+                      disabled={isSaving || isCompleted}
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                        isActive
+                          ? getStatusPillClasses(opt)
+                          : 'bg-gray-800 text-gray-500 border border-gray-700 hover:text-white hover:border-gray-500'
+                      } ${(isSaving || isCompleted) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                      {isSaving && isActive ? 'Saving...' : opt}
+                    </button>
+                  );
+                });
               })()}
-              <button
-                type="button"
-                onClick={() => saveStatus(order.id)}
-                disabled={savingOrderId === order.id || (pickupDrafts[order.id] || order.pickupStatus) === 'Picked Up'}
-                className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-60 text-sm font-semibold text-white"
-              >
-                {savingOrderId === order.id ? 'Saving...' : 'Update Status'}
-              </button>
               {(order.orderType || '').toLowerCase() === 'pickup' && (
                 <button
                   type="button"
                   onClick={() => markPickedUp(order.id)}
                   disabled={savingOrderId === order.id || (pickupDrafts[order.id] || order.pickupStatus) === 'Picked Up'}
-                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-sm font-semibold text-white ml-auto"
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold ml-auto transition-colors ${
+                    (pickupDrafts[order.id] || order.pickupStatus) === 'Picked Up'
+                      ? getStatusPillClasses('Picked Up')
+                      : 'bg-gray-800 text-gray-500 border border-gray-700 hover:text-white hover:border-emerald-500'
+                  } ${savingOrderId === order.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                   {(pickupDrafts[order.id] || order.pickupStatus) === 'Picked Up' ? 'Picked Up' : 'Mark Picked Up'}
                 </button>
               )}
             </div>
-            {(order.orderType || '').toLowerCase() === 'pickup' && (
-              <p className="text-sm text-gray-300">
-                <span className="text-gray-400">Pickup Status:</span> {pickupDrafts[order.id] || order.pickupStatus || 'Not Ready'}
-              </p>
-            )}
 
             <div className="space-y-2 text-sm">
               <p className="text-gray-300">Colors by letter</p>

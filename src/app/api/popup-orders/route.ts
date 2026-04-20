@@ -94,11 +94,11 @@ async function deductInventoryForOrder(orderText: string): Promise<boolean> {
       const currentQty = Number(existing.fields.Quantity) || 0;
       updateRecords.push({
         id: existing.id,
-        fields: { Quantity: currentQty - amount },
+        fields: { Quantity: Math.max(0, currentQty - amount) },
       });
     } else {
       createRecords.push({
-        fields: { Item: item, Quantity: -amount },
+        fields: { Item: item, Quantity: 0 },
       });
     }
   });
@@ -256,36 +256,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to save popup order' }, { status: 500 });
     }
 
-    const airtableData = await airtableRes.json();
-    const createdRecordId = airtableData.records?.[0]?.id;
-
-    // Deduct inventory immediately upon order submission
-    if (createdRecordId) {
-      const inventoryDeducted = await deductInventoryForOrder(text);
-
-      if (inventoryDeducted) {
-        // Update the order record to mark inventory as deducted
-        const updateRes = await fetch(getAirtableUrl(), {
-          method: 'PATCH',
-          headers: getHeaders(),
-          body: JSON.stringify({
-            records: [
-              {
-                id: createdRecordId,
-                fields: { 'Inventory Deducted': true },
-              },
-            ],
-          }),
-        });
-
-        if (!updateRes.ok) {
-          console.error('Failed to update Inventory Deducted flag, but order was created successfully');
-        }
-      } else {
-        console.warn('Failed to deduct inventory for order, but order was created successfully');
-      }
-    }
-
     // Send confirmation SMS for pickup orders
     if (mappedOrderType === 'Pickup' && phoneNumber) {
       const msg = `Hey, ${String(customerName).trim()}, Thanks for your Glowblocks Set Order! Your order number is ${orderNumber}. We will message you once your set is ready for pickup! It will take between 10-15 minutes! See you again soon!`;
@@ -438,11 +408,15 @@ export async function PATCH(req: NextRequest) {
 
     const nextStatus = String(fields['Order Status'] || existingStatus || '');
     const nextPickupStatus = String(fields['Pickup Status'] || existingPickupStatus || '');
+
+    // Deduct inventory when status moves to "In Progress"
+    const isNewInProgress = nextStatus.toLowerCase() === 'in progress' && existingStatus.toLowerCase() !== 'in progress';
+    // Fallback: also deduct at fulfillment if somehow missed
     const pickupComplete = orderType.toLowerCase() === 'pickup' && nextPickupStatus.toLowerCase() === 'picked up';
     const shipComplete = orderType.toLowerCase() === 'ship to customer' && nextStatus.toLowerCase() === 'ready to ship';
-    const isFulfilled = pickupComplete || shipComplete;
+    const shouldDeduct = isNewInProgress || pickupComplete || shipComplete;
 
-    if (isFulfilled && !inventoryAlreadyDeducted) {
+    if (shouldDeduct && !inventoryAlreadyDeducted) {
       const deducted = await deductInventoryForOrder(orderText);
       if (deducted) {
         fields['Inventory Deducted'] = true;
