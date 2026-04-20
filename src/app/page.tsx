@@ -69,7 +69,7 @@ export default function Home() {
       <section className="py-10 sm:py-14 px-4">
         <div className="max-w-4xl mx-auto text-center space-y-6">
           <h2 className="text-2xl sm:text-3xl font-bold gradient-text">Simple pricing</h2>
-          <p className="text-gray-400">More letters, better price. Custom colours are a one-time $5 fee.</p>
+          <p className="text-gray-400">More letters, better price. Custom colours are a one-time $2 fee.</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <PricingCard letters="1-3" price="$12.00" />
             <PricingCard letters="4-6" price="$11.00" highlight />

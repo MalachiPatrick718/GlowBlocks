@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
             name: 'Custom Colours',
             description: 'One-time fee for custom colour selection',
           },
-          unit_amount: 500,
+          unit_amount: 200,
         },
         quantity: 1,
       });

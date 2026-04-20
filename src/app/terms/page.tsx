@@ -27,7 +27,7 @@ export default function TermsPage() {
               <li>4-6 letters: $11.00 per letter</li>
               <li>7-9 letters: $10.00 per letter</li>
               <li>10+ letters: $9.00 per letter</li>
-              <li>Custom colours: one-time $5.00 fee</li>
+              <li>Custom colours: one-time $2.00 fee</li>
               <li>Shipping costs are calculated at checkout</li>
             </ul>
             <p className="mt-2">

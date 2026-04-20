@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
     const letterCount = text.length;
     const pricePerLetter = getPricePerLetter(letterCount);
     const letterSubtotal = letterCount * pricePerLetter;
-    const customColorFee = colorMode === 'custom' ? 5.00 : 0;
+    const customColorFee = colorMode === 'custom' ? 2.00 : 0;
     const subtotal = letterSubtotal + customColorFee;
     const tax = subtotal * taxRate;
     const total = subtotal + tax;

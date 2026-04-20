@@ -11,7 +11,7 @@ export default function CartPage() {
 
   const pricePerBlock = getPricePerBlock(totalBlocks);
   const hasCustomColors = items.some(item => item.customColors);
-  const customFee = hasCustomColors ? 5.00 : 0;
+  const customFee = hasCustomColors ? 2.00 : 0;
   const subtotal = totalBlocks * pricePerBlock + customFee;
 
   if (items.length === 0) {
@@ -107,7 +107,7 @@ export default function CartPage() {
           {hasCustomColors && (
             <div className="flex justify-between text-gray-400">
               <span>Custom colours</span>
-              <span>$5.00</span>
+              <span>$2.00</span>
             </div>
           )}
           <div className="flex justify-between text-gray-400">

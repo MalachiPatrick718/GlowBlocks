@@ -40,7 +40,7 @@ export default function FaqPage() {
           />
           <FaqItem
             q="How much do they cost?"
-            a="$12.00 per letter for 1-3 letters, $11.00 for 4-6, $10.00 for 7-9, and $9.00 for 10+. The longer the word, the better the deal. Custom colours are a one-time $5 fee."
+            a="$12.00 per letter for 1-3 letters, $11.00 for 4-6, $10.00 for 7-9, and $9.00 for 10+. The longer the word, the better the deal. Custom colours are a one-time $2 fee."
           />
           <FaqItem
             q="How long does shipping take?"

@@ -49,7 +49,7 @@ export default function CheckoutPage() {
 
   const pricePerBlock = getPricePerBlock(totalBlocks);
   const hasCustomColors = items.some(item => item.customColors);
-  const customFee = hasCustomColors ? 5.00 : 0;
+  const customFee = hasCustomColors ? 2.00 : 0;
   const subtotal = totalBlocks * pricePerBlock + customFee;
 
   return (
@@ -74,7 +74,7 @@ export default function CheckoutPage() {
           {hasCustomColors && (
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="text-sm text-gray-400">Custom colours</div>
-              <div className="text-sm text-gray-400">$5.00</div>
+              <div className="text-sm text-gray-400">$2.00</div>
             </div>
           )}
           <div className="border-t border-gray-700 pt-2 flex flex-wrap items-center justify-between gap-4">

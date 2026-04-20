@@ -142,7 +142,7 @@ function CustomizeContent() {
                 ) : (
                   <div className="space-y-3">
                     <p className="text-sm text-gray-400">
-                      Tap a letter to pick its color. <span className="text-purple-400">+$5.00 one-time fee</span>
+                      Tap a letter to pick its color. <span className="text-purple-400">+$2.00 one-time fee</span>
                     </p>
                     {/* Inline clickable tiles */}
                     <div className="bg-gray-950 border border-gray-800 rounded-xl p-4">

@@ -49,7 +49,7 @@ export default function PopupPage() {
     else if (count >= 4) pricePerLetter = 11;
 
     const letterSubtotal = count * pricePerLetter;
-    const customColorFee = colorMode === 'custom' ? 5.00 : 0;
+    const customColorFee = colorMode === 'custom' ? 2.00 : 0;
     const subtotal = letterSubtotal + customColorFee;
     const tax = subtotal * 0.08875;
     const total = subtotal + tax;
