@@ -3,6 +3,7 @@
 interface ColorPresetsProps {
   onApplyPreset: (colors: string[], presetLabel?: string) => void;
   letterCount: number;
+  selectedPresetName?: string | null;
 }
 
 const PRESETS: { name: string; colors: string[]; label: string }[] = [
@@ -38,7 +39,7 @@ const PRESETS: { name: string; colors: string[]; label: string }[] = [
   },
 ];
 
-export default function ColorPresets({ onApplyPreset, letterCount }: ColorPresetsProps) {
+export default function ColorPresets({ onApplyPreset, letterCount, selectedPresetName }: ColorPresetsProps) {
   const handlePreset = (presetColors: string[], presetLabel: string) => {
     const applied = Array.from({ length: letterCount }, (_, i) => presetColors[i % presetColors.length]);
     onApplyPreset(applied, presetLabel);
@@ -52,7 +53,11 @@ export default function ColorPresets({ onApplyPreset, letterCount }: ColorPreset
           <button
             key={preset.name}
             onClick={() => handlePreset(preset.colors, preset.label)}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg hover:border-purple-500 transition-colors text-sm"
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm ${
+              selectedPresetName === preset.label
+                ? 'bg-purple-900/40 border-2 border-purple-500 ring-1 ring-purple-500/50'
+                : 'bg-gray-900 border border-gray-700 hover:border-purple-500'
+            }`}
           >
             <div className="flex gap-0.5">
               {preset.colors.slice(0, 4).map((color, i) => (

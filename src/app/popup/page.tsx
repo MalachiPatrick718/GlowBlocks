@@ -428,6 +428,7 @@ export default function PopupPage() {
                       <ColorPresets
                         onApplyPreset={handlePresetApply}
                         letterCount={nonSpaceLetters.length}
+                        selectedPresetName={selectedPresetName}
                       />
                       {!selectedPresetName && (
                         <p className="text-sm text-amber-300/80">Select a theme above</p>
