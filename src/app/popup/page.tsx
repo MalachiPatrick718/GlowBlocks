@@ -340,18 +340,32 @@ export default function PopupPage() {
               </div>
             </div>
 
-            <button
-              onClick={() => {
-                setOrderConfirmed(false);
-                setSubmitMessage(null);
-                setConfirmedWord('');
-                setConfirmedOrderNumber('');
-                setConfirmedPricing(null);
-              }}
-              className="w-full py-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold transition-all"
-            >
-              Place Another Order
-            </button>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                  setOrderConfirmed(false);
+                  setSubmitMessage(null);
+                  setConfirmedWord('');
+                  setConfirmedOrderNumber('');
+                  setConfirmedPricing(null);
+                }}
+                className="py-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold transition-all"
+              >
+                Place Another Order
+              </button>
+              <button
+                onClick={() => {
+                  setOrderConfirmed(false);
+                  setSubmitMessage(null);
+                  setConfirmedWord('');
+                  setConfirmedOrderNumber('');
+                  setConfirmedPricing(null);
+                }}
+                className="py-3 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-all"
+              >
+                Done
+              </button>
+            </div>
           </div>
         ) : (
           <>

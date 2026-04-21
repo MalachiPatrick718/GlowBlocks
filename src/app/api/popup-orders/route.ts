@@ -314,11 +314,13 @@ export async function GET(req: NextRequest) {
       const customColorsRaw = record.fields['Custom Colors'] || '[]';
       let delivery = '';
       let eligible: boolean | null = null;
+      let boardId: string | null = null;
       try {
         const parsed = JSON.parse(customColorsRaw);
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           if (parsed.deliveryMethod) delivery = String(parsed.deliveryMethod);
           if (typeof parsed.onSiteEligible === 'boolean') eligible = parsed.onSiteEligible;
+          if (parsed.boardId) boardId = String(parsed.boardId);
         }
       } catch {
         delivery = '';
@@ -342,6 +344,7 @@ export async function GET(req: NextRequest) {
       orderNumber: record.fields['Order Number'] || '',
       inventoryDeducted: record.fields['Inventory Deducted'] || false,
       onSiteEligible: eligible,
+      boardId,
       deliveryMethod: delivery,
       letterCount: record.fields['Letter Count'] || 0,
       customColorFee: record.fields['Custom Color Fee'] || 0,
@@ -377,9 +380,14 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, status, pickupStatus } = await req.json();
-    if (!id || (!status && !pickupStatus)) {
+    const { id, status, pickupStatus, boardId } = await req.json();
+    if (!id || (!status && !pickupStatus && !boardId)) {
       return NextResponse.json({ error: 'Missing record id and update fields' }, { status: 400 });
+    }
+
+    // Validate boardId format if provided
+    if (boardId && !/^GB_\d{3}$/.test(String(boardId))) {
+      return NextResponse.json({ error: 'Invalid board ID format. Expected GB_XXX (e.g. GB_001)' }, { status: 400 });
     }
 
     const existingRes = await fetch(`${getAirtableUrl()}/${encodeURIComponent(String(id))}`, {
@@ -397,7 +405,45 @@ export async function PATCH(req: NextRequest) {
     const existingPickupStatus = String(existingFields['Pickup Status'] || '');
     const inventoryAlreadyDeducted = isTruthy(existingFields['Inventory Deducted']);
 
+    // If boardId provided, check for duplicates and merge into Custom Colors
+    if (boardId) {
+      const allRes = await fetch(getAirtableUrl(), {
+        headers: getHeaders(),
+        next: { revalidate: 0 },
+      });
+      if (allRes.ok) {
+        const allData = await allRes.json();
+        const duplicate = (allData.records || []).find((r: { id: string; fields: Record<string, string> }) => {
+          if (r.id === id) return false;
+          try {
+            const cc = JSON.parse(r.fields['Custom Colors'] || '{}');
+            return cc.boardId === String(boardId);
+          } catch { return false; }
+        });
+        if (duplicate) {
+          return NextResponse.json({
+            error: `Board ${boardId} is already linked to order #${duplicate.fields['Order Number'] || duplicate.id}`,
+          }, { status: 409 });
+        }
+      }
+    }
+
     const fields: Record<string, string | boolean> = {};
+
+    // Merge boardId into Custom Colors JSON if provided
+    if (boardId) {
+      let customColors: Record<string, unknown> = {};
+      try {
+        const parsed = JSON.parse(existingFields['Custom Colors'] || '{}');
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          customColors = parsed;
+        }
+      } catch { /* keep empty */ }
+      customColors.boardId = String(boardId);
+      customColors.boardLinkedAt = new Date().toISOString();
+      fields['Custom Colors'] = JSON.stringify(customColors);
+    }
+
     if (status) {
       fields['Order Status'] = String(status);
       if (String(status).toLowerCase() === 'done' && orderType.toLowerCase() === 'pickup') {
