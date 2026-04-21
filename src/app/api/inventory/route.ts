@@ -43,12 +43,16 @@ export async function GET(req: NextRequest) {
     const data = await res.json();
     const records = data.records || [];
     const inventory: Record<string, number> = {};
+    const targets: Record<string, number> = {};
+    const needed: Record<string, number> = {};
     const recordIds: Record<string, string> = {};
 
     records.forEach((record: { id: string; fields: Record<string, unknown> }) => {
       const item = String(record.fields.Item || '').trim();
       if (!item) return;
       inventory[item] = Number(record.fields.Quantity) || 0;
+      if (record.fields.Target != null) targets[item] = Number(record.fields.Target) || 0;
+      if (record.fields.Needed != null) needed[item] = Number(record.fields.Needed) || 0;
       recordIds[item] = record.id;
     });
 
@@ -60,7 +64,7 @@ export async function GET(req: NextRequest) {
       .filter(([, qty]) => qty <= 6)
       .map(([item]) => item);
 
-    return NextResponse.json({ inventory, recordIds, lowStock });
+    return NextResponse.json({ inventory, targets, needed, recordIds, lowStock });
   } catch (error) {
     console.error('Inventory API error:', error);
     return NextResponse.json({ error: 'Failed to fetch inventory' }, { status: 500 });

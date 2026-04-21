@@ -19,6 +19,8 @@ function InventoryContent() {
   const searchParams = useSearchParams();
   const key = searchParams.get('key') || '';
   const [inventory, setInventory] = useState<Record<string, number | string>>({});
+  const [targets, setTargets] = useState<Record<string, number>>({});
+  const [needed, setNeeded] = useState<Record<string, number>>({});
   const [lowStock, setLowStock] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -76,6 +78,8 @@ function InventoryContent() {
           return;
         }
         setInventory(data.inventory || {});
+        setTargets(data.targets || {});
+        setNeeded(data.needed || {});
         setLowStock(data.lowStock || []);
       } catch {
         setMessage('Failed to load inventory.');
@@ -117,15 +121,27 @@ function InventoryContent() {
     const raw = inventory[item];
     const display = raw === undefined || raw === null ? '0' : String(raw);
     const isLowStock = lowStock.includes(item);
+    const target = targets[item];
+    const need = needed[item];
     return (
       <div key={item} className={`rounded-lg border p-3 ${isLowStock ? 'border-red-500 bg-red-950/20' : 'border-gray-800 bg-gray-950'}`}>
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-300">{item}</p>
-          {isLowStock && (
-            <span className="text-xs font-semibold text-red-400 flex items-center gap-1">
-              ⚠ Low
-            </span>
-          )}
+          <div className="text-right">
+            {isLowStock && (
+              <span className="text-xs font-semibold text-red-400 flex items-center gap-1">
+                ⚠ Low
+              </span>
+            )}
+            {target != null && (
+              <p className="text-xs text-gray-500">Target: <span className="text-gray-300 font-medium">{target}</span></p>
+            )}
+            {need != null && (
+              <p className={`text-xs ${need > 0 ? 'text-amber-400' : 'text-green-500'}`}>
+                Needed: <span className="font-medium">{need}</span>
+              </p>
+            )}
+          </div>
         </div>
         <input
           type="number"
