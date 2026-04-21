@@ -111,7 +111,7 @@ export default function PopupPage() {
   }, [modalIndex]);
 
   const canSubmit = useMemo(() => {
-    const hasContact = customerName.trim().length > 1 && phoneNumber.trim().length > 6;
+    const hasContact = customerName.trim().length > 1 && phoneNumber.replace(/\D/g, '').length === 10;
     const hasRequiredAddress = deliveryMethod === 'ship' ? address.trim().length > 5 : true;
     const hasColors = colorMode === 'presets'
       ? selectedPresetName !== null
@@ -128,7 +128,7 @@ export default function PopupPage() {
   }, [textComplete, colorMode, selectedPresetName, text, colorNumbers]);
 
   const contactComplete = useMemo(() => {
-    const hasContact = customerName.trim().length > 1 && phoneNumber.trim().length > 6;
+    const hasContact = customerName.trim().length > 1 && phoneNumber.replace(/\D/g, '').length === 10;
     const hasRequiredAddress = deliveryMethod === 'ship' ? address.trim().length > 5 : true;
     return hasContact && hasRequiredAddress;
   }, [customerName, phoneNumber, deliveryMethod, address]);
@@ -479,8 +479,17 @@ export default function PopupPage() {
                 <input
                   type="tel"
                   value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="Phone number"
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    if (digits.length >= 7) {
+                      setPhoneNumber(`(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`);
+                    } else if (digits.length >= 4) {
+                      setPhoneNumber(`(${digits.slice(0, 3)}) ${digits.slice(3)}`);
+                    } else {
+                      setPhoneNumber(digits);
+                    }
+                  }}
+                  placeholder="(555) 555-5555"
                   className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                 />
                 <div className="space-y-2">
