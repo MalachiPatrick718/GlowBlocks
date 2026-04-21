@@ -216,6 +216,7 @@ export default function PopupPage() {
       setConfirmedOrderNumber(data.orderNumber || '');
       setConfirmedPricing(data.pricing || null);
       setOrderConfirmed(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       setSubmitMessage('Pop-up order submitted successfully.');
       setText('');
       setLetterColors([]);
