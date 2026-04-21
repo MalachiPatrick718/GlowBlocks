@@ -61,7 +61,11 @@ export async function GET(req: NextRequest) {
     });
 
     const lowStock = Object.entries(inventory)
-      .filter(([, qty]) => qty <= 6)
+      .filter(([item, qty]) => {
+        const target = targets[item];
+        if (target != null && target > 0) return qty < target / 2;
+        return false;
+      })
       .map(([item]) => item);
 
     return NextResponse.json({ inventory, targets, needed, recordIds, lowStock });
