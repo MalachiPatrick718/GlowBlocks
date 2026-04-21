@@ -109,7 +109,8 @@ function InventoryContent() {
         setMessage(data.error || 'Failed to save inventory.');
         return;
       }
-      setMessage('Inventory saved.');
+      setMessage('Inventory saved. Reloading...');
+      window.location.reload();
     } catch {
       setMessage('Failed to save inventory.');
     } finally {
