@@ -18,7 +18,7 @@ export default function InventoryPage() {
 function InventoryContent() {
   const searchParams = useSearchParams();
   const key = searchParams.get('key') || '';
-  const [inventory, setInventory] = useState<Record<string, number>>({});
+  const [inventory, setInventory] = useState<Record<string, number | string>>({});
   const [lowStock, setLowStock] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -114,7 +114,8 @@ function InventoryContent() {
   };
 
   const renderInput = (item: string) => {
-    const qty = Number(inventory[item] || 0);
+    const raw = inventory[item];
+    const display = raw === undefined || raw === null ? '0' : String(raw);
     const isLowStock = lowStock.includes(item);
     return (
       <div key={item} className={`rounded-lg border p-3 ${isLowStock ? 'border-red-500 bg-red-950/20' : 'border-gray-800 bg-gray-950'}`}>
@@ -129,13 +130,21 @@ function InventoryContent() {
         <input
           type="number"
           min={0}
-          value={qty}
-          onChange={(e) =>
+          value={display}
+          onFocus={(e) => e.target.select()}
+          onChange={(e) => {
+            const val = e.target.value;
             setInventory((prev) => ({
               ...prev,
-              [item]: Math.max(0, Number(e.target.value || 0)),
-            }))
-          }
+              [item]: val === '' ? '' : Math.max(0, Number(val)),
+            }));
+          }}
+          onBlur={() => {
+            setInventory((prev) => ({
+              ...prev,
+              [item]: Math.max(0, Number(prev[item] || 0)),
+            }));
+          }}
           className={`mt-2 w-full px-3 py-2 rounded-md bg-black/50 border text-white ${isLowStock ? 'border-red-500' : 'border-gray-700'}`}
         />
       </div>
