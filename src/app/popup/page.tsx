@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import BlockPreview from '@/components/BlockPreview';
 import TextInput from '@/components/TextInput';
 import ColorPresets from '@/components/ColorPresets';
@@ -14,7 +14,11 @@ export default function PopupPage() {
   const [modalIndex, setModalIndex] = useState<number | null>(null);
   const [colorMode, setColorMode] = useState<'presets' | 'custom'>('presets');
   const [selectedPresetName, setSelectedPresetName] = useState<string | null>(null);
-  const [showContact, setShowContact] = useState(false);
+  const [highlightSection, setHighlightSection] = useState<'text' | 'colors' | 'contact' | null>(null);
+
+  const textRef = useRef<HTMLDivElement>(null);
+  const colorsRef = useRef<HTMLDivElement>(null);
+  const contactRef = useRef<HTMLDivElement>(null);
   const [customerName, setCustomerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
@@ -115,6 +119,31 @@ export default function PopupPage() {
     return nonSpaceLetters.length > 0 && hasContact && hasRequiredAddress && hasColors;
   }, [nonSpaceLetters.length, customerName, phoneNumber, deliveryMethod, address, colorMode, selectedPresetName, text, colorNumbers]);
 
+  const textComplete = nonSpaceLetters.length > 0;
+
+  const colorsComplete = useMemo(() => {
+    if (!textComplete) return false;
+    if (colorMode === 'presets') return selectedPresetName !== null;
+    return text.split('').every((ch, i) => ch === ' ' || colorNumbers[i] != null);
+  }, [textComplete, colorMode, selectedPresetName, text, colorNumbers]);
+
+  const contactComplete = useMemo(() => {
+    const hasContact = customerName.trim().length > 1 && phoneNumber.trim().length > 6;
+    const hasRequiredAddress = deliveryMethod === 'ship' ? address.trim().length > 5 : true;
+    return hasContact && hasRequiredAddress;
+  }, [customerName, phoneNumber, deliveryMethod, address]);
+
+  const uncoloredCount = useMemo(() => {
+    if (colorMode !== 'custom' || !textComplete) return 0;
+    return text.split('').filter((ch, i) => ch !== ' ' && colorNumbers[i] == null).length;
+  }, [text, colorNumbers, colorMode, textComplete]);
+
+  useEffect(() => {
+    if (!highlightSection) return;
+    const timeout = setTimeout(() => setHighlightSection(null), 2000);
+    return () => clearTimeout(timeout);
+  }, [highlightSection]);
+
   useEffect(() => {
     if (!orderConfirmed) return;
     const timeout = setTimeout(() => {
@@ -196,7 +225,6 @@ export default function PopupPage() {
       setAddress('');
       setDeliveryMethod('pick-up');
       setAddressSuggestions([]);
-      setShowContact(false);
       setSelectedPresetName(null);
       setModalIndex(null);
     } catch {
@@ -204,6 +232,35 @@ export default function PopupPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSubmitClick = () => {
+    if (!textComplete) {
+      setHighlightSection('text');
+      textRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (!colorsComplete) {
+      setHighlightSection('colors');
+      colorsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (!contactComplete) {
+      setHighlightSection('contact');
+      contactRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    submitOrder();
+  };
+
+  const getSectionClass = (section: 'text' | 'colors' | 'contact') => {
+    const isHighlighted = highlightSection === section;
+    const isLocked = (section === 'colors' && !textComplete) || (section === 'contact' && !colorsComplete);
+    return [
+      'rounded-xl border p-4 sm:p-5 transition-all duration-300',
+      isHighlighted ? 'border-amber-500 ring-2 ring-amber-500/60' : 'border-gray-800',
+      isLocked ? 'opacity-40' : '',
+    ].filter(Boolean).join(' ');
   };
 
   return (
@@ -303,158 +360,196 @@ export default function PopupPage() {
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-          <div className="space-y-6">
-            <TextInput text={text} onChange={handleTextChange} />
+          <div className="space-y-4">
+            {/* Section 1: Enter your word */}
+            <div ref={textRef} className={getSectionClass('text')}>
+              <div className="flex items-center gap-2 mb-3">
+                {textComplete
+                  ? <span className="flex items-center justify-center w-5 h-5 rounded-full bg-green-600 text-white text-xs font-bold">✓</span>
+                  : <span className="flex items-center justify-center w-5 h-5 rounded-full border border-gray-600 text-gray-500 text-xs font-bold">1</span>
+                }
+                <span className={`text-sm font-medium ${textComplete ? 'text-green-400' : 'text-gray-300'}`}>Enter your word</span>
+              </div>
+              <TextInput text={text} onChange={handleTextChange} />
+            </div>
 
-            {nonSpaceLetters.length > 0 && (
-              <>
-                <div className="flex rounded-lg border border-gray-700 overflow-hidden">
-                  <button
-                    onClick={() => setColorMode('presets')}
-                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                      colorMode === 'presets'
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-900 text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    Preset Themes
-                  </button>
-                  <button
-                    onClick={() => setColorMode('custom')}
-                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                      colorMode === 'custom'
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-900 text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    Custom Colors
-                  </button>
-                </div>
-
-                {colorMode === 'presets' ? (
-                  <ColorPresets
-                    onApplyPreset={handlePresetApply}
-                    letterCount={nonSpaceLetters.length}
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    <p className="text-sm text-gray-400">
-                      Tap each letter and enter a saved color number (1-200).
-                    </p>
-                    <div className="bg-gray-950 border border-gray-800 rounded-xl p-4">
-                      <BlockPreview
-                        text={text}
-                        letterColors={letterColors}
-                        onSelectBlock={(i) => {
-                          if (text[i] !== ' ') setModalIndex(i);
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="pt-4 border-t border-gray-800 space-y-3">
-                  {!showContact ? (
+            {/* Section 2: Choose your colors */}
+            <div ref={colorsRef} className={getSectionClass('colors')}>
+              <div className="flex items-center gap-2 mb-3">
+                {colorsComplete
+                  ? <span className="flex items-center justify-center w-5 h-5 rounded-full bg-green-600 text-white text-xs font-bold">✓</span>
+                  : <span className="flex items-center justify-center w-5 h-5 rounded-full border border-gray-600 text-gray-500 text-xs font-bold">2</span>
+                }
+                <span className={`text-sm font-medium ${colorsComplete ? 'text-green-400' : 'text-gray-300'}`}>Choose your colors</span>
+              </div>
+              {!textComplete ? (
+                <p className="text-sm text-gray-500">Enter your word above to continue</p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex rounded-lg border border-gray-700 overflow-hidden">
                     <button
-                      onClick={() => setShowContact(true)}
-                      className="w-full py-3 rounded-lg font-semibold text-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all duration-300"
+                      onClick={() => setColorMode('presets')}
+                      className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                        colorMode === 'presets'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-900 text-gray-400 hover:text-white'
+                      }`}
                     >
-                      Submit Pop-Up Order
+                      Preset Themes
                     </button>
+                    <button
+                      onClick={() => setColorMode('custom')}
+                      className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                        colorMode === 'custom'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-900 text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      Custom Colors
+                    </button>
+                  </div>
+
+                  {colorMode === 'presets' ? (
+                    <div className="space-y-2">
+                      <ColorPresets
+                        onApplyPreset={handlePresetApply}
+                        letterCount={nonSpaceLetters.length}
+                      />
+                      {!selectedPresetName && (
+                        <p className="text-sm text-amber-300/80">Select a theme above</p>
+                      )}
+                    </div>
                   ) : (
                     <div className="space-y-3">
-                      <input
-                        type="text"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="First Name"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-                      />
-                      <input
-                        type="tel"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        placeholder="Phone number"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-                      />
-                      <div className="space-y-2">
-                        <p className="text-sm text-gray-300">Delivery Method</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setDeliveryMethod('pick-up')}
-                            className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
-                              deliveryMethod === 'pick-up'
-                                ? 'bg-purple-600 border-purple-500 text-white'
-                                : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
-                            }`}
-                          >
-                            Pick Up
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeliveryMethod('ship')}
-                            className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
-                              deliveryMethod === 'ship'
-                                ? 'bg-purple-600 border-purple-500 text-white'
-                                : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
-                            }`}
-                          >
-                            Ship to Me
-                          </button>
-                        </div>
+                      <p className="text-sm text-gray-400">
+                        Tap each letter and enter a saved color number (1-200).
+                      </p>
+                      <div className="bg-gray-950 border border-gray-800 rounded-xl p-4">
+                        <BlockPreview
+                          text={text}
+                          letterColors={letterColors}
+                          onSelectBlock={(i) => {
+                            if (text[i] !== ' ') setModalIndex(i);
+                          }}
+                        />
                       </div>
-                      {deliveryMethod === 'ship' && (
-                        <>
-                          <input
-                            type="text"
-                            value={address}
-                            onChange={(e) => setAddress(e.target.value)}
-                            placeholder="Shipping address (required)"
-                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-                          />
-                          {addressSuggestions.length > 0 && (
-                            <div className="rounded-lg border border-gray-800 bg-gray-950/90 max-h-44 overflow-y-auto">
-                              {addressSuggestions.map((suggestion) => (
-                                <button
-                                  key={suggestion}
-                                  type="button"
-                                  onClick={() => {
-                                    setAddress(suggestion);
-                                    setAddressSuggestions([]);
-                                  }}
-                                  className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-800/80"
-                                >
-                                  {suggestion}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                          {address.trim().length <= 5 && (
-                            <p className="text-xs text-amber-300">Shipping requires a complete address.</p>
-                          )}
-                        </>
-                      )}
-                      {deliveryMethod === 'pick-up' && (
-                        <p className="text-xs text-gray-500">
-                          By submitting, you agree to receive SMS order updates at the number provided. Msg &amp; data rates may apply. View our{' '}
-                          <a href="/privacy" className="text-purple-400 hover:text-purple-300 underline">Privacy Policy</a> and{' '}
-                          <a href="/terms" className="text-purple-400 hover:text-purple-300 underline">Terms</a>.
+                      {uncoloredCount > 0 && (
+                        <p className="text-sm text-amber-300/80">
+                          {uncoloredCount === 1 ? '1 letter still needs a color' : `${uncoloredCount} letters still need a color`}
                         </p>
                       )}
-                      <button
-                        onClick={submitOrder}
-                        disabled={!canSubmit || submitting}
-                        className="w-full py-3 rounded-lg font-semibold text-lg bg-gradient-to-r from-green-600 to-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed hover:from-green-500 hover:to-emerald-500 text-white transition-all duration-300"
-                      >
-                        {submitting ? 'Submitting...' : 'Confirm Pop-Up Order'}
-                      </button>
                     </div>
                   )}
-                  {submitMessage && <p className="text-sm text-gray-300">{submitMessage}</p>}
                 </div>
-              </>
-            )}
+              )}
+            </div>
+
+            {/* Section 3: Your details */}
+            <div ref={contactRef} className={getSectionClass('contact')}>
+              <div className="flex items-center gap-2 mb-3">
+                {contactComplete
+                  ? <span className="flex items-center justify-center w-5 h-5 rounded-full bg-green-600 text-white text-xs font-bold">✓</span>
+                  : <span className="flex items-center justify-center w-5 h-5 rounded-full border border-gray-600 text-gray-500 text-xs font-bold">3</span>
+                }
+                <span className={`text-sm font-medium ${contactComplete ? 'text-green-400' : 'text-gray-300'}`}>Your details</span>
+              </div>
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="First Name"
+                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                />
+                <input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="Phone number"
+                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                />
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-300">Delivery Method</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryMethod('pick-up')}
+                      className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        deliveryMethod === 'pick-up'
+                          ? 'bg-purple-600 border-purple-500 text-white'
+                          : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      Pick Up
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryMethod('ship')}
+                      className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        deliveryMethod === 'ship'
+                          ? 'bg-purple-600 border-purple-500 text-white'
+                          : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      Ship to Me
+                    </button>
+                  </div>
+                </div>
+                {deliveryMethod === 'ship' && (
+                  <>
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Shipping address (required)"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                    />
+                    {addressSuggestions.length > 0 && (
+                      <div className="rounded-lg border border-gray-800 bg-gray-950/90 max-h-44 overflow-y-auto">
+                        {addressSuggestions.map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            onClick={() => {
+                              setAddress(suggestion);
+                              setAddressSuggestions([]);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-800/80"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {address.trim().length <= 5 && (
+                      <p className="text-xs text-amber-300">Shipping requires a complete address.</p>
+                    )}
+                  </>
+                )}
+                {deliveryMethod === 'pick-up' && (
+                  <p className="text-xs text-gray-500">
+                    By submitting, you agree to receive SMS order updates at the number provided. Msg &amp; data rates may apply. View our{' '}
+                    <a href="/privacy" className="text-purple-400 hover:text-purple-300 underline">Privacy Policy</a> and{' '}
+                    <a href="/terms" className="text-purple-400 hover:text-purple-300 underline">Terms</a>.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Submit */}
+            <div className="pt-2">
+              <button
+                onClick={handleSubmitClick}
+                disabled={submitting}
+                className="w-full py-3 rounded-lg font-semibold text-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white transition-all duration-300"
+              >
+                {submitting ? 'Submitting...' : 'Confirm Pop-Up Order'}
+              </button>
+              {highlightSection && (
+                <p className="text-sm text-amber-300 mt-2 text-center">Please complete the highlighted section above</p>
+              )}
+              {submitMessage && <p className="text-sm text-gray-300 mt-2">{submitMessage}</p>}
+            </div>
           </div>
 
           <div className="lg:sticky lg:top-24 h-fit space-y-4">
