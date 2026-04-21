@@ -23,7 +23,7 @@ interface PopupOrder {
   tax?: number;
   total?: number;
   onSiteEligible?: boolean | null;
-  boardId?: string | null;
+  boardIds?: (string | null)[];
 }
 
 interface ParsedColorByLetter {
@@ -347,11 +347,26 @@ function PopupOrdersContent() {
                       Not Available On-Site
                     </span>
                   )}
-                  {order.boardId && (
-                    <span className="px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-blue-900/50 text-blue-400 border border-blue-600/40">
-                      {order.boardId}
-                    </span>
-                  )}
+                  {(() => {
+                    const ids = order.boardIds || [];
+                    const nonSpaceCount = (order.text || '').split('').filter(c => c !== ' ').length;
+                    const scanned = ids.filter(b => b != null).length;
+                    if (scanned > 0 && scanned >= nonSpaceCount) {
+                      return (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-900/50 text-green-400 border border-green-600/40">
+                          PCBs ✓
+                        </span>
+                      );
+                    }
+                    if (scanned > 0) {
+                      return (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-900/50 text-blue-400 border border-blue-600/40">
+                          PCBs {scanned}/{nonSpaceCount}
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 <p className="text-xs text-gray-500">Order Number</p>
               </div>
@@ -435,6 +450,38 @@ function PopupOrdersContent() {
                 >
                   {(pickupDrafts[order.id] || order.pickupStatus) === 'Picked Up' ? 'Picked Up' : 'Mark Picked Up'}
                 </button>
+              )}
+            </div>
+
+            {/* Scan PCBs */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href={`/scan?key=${encodeURIComponent(key)}&order=${encodeURIComponent(order.id)}`}
+                className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-purple-800 text-purple-200 border border-purple-600 hover:bg-purple-700 transition-colors"
+              >
+                {(() => {
+                  const ids = order.boardIds || [];
+                  const nonSpaceCount = (order.text || '').split('').filter(c => c !== ' ').length;
+                  const scanned = ids.filter(b => b != null).length;
+                  if (scanned >= nonSpaceCount && nonSpaceCount > 0) return 'PCBs Scanned ✓';
+                  if (scanned > 0) return `Scan PCBs (${scanned}/${nonSpaceCount})`;
+                  return 'Scan PCBs';
+                })()}
+              </Link>
+              {(order.boardIds || []).some(b => b != null) && (
+                <div className="flex flex-wrap gap-1.5">
+                  {(order.text || '').split('').map((ch, i) => {
+                    if (ch === ' ') return null;
+                    const bid = (order.boardIds || [])[i];
+                    return (
+                      <span key={i} className={`px-2 py-0.5 rounded text-xs font-mono ${
+                        bid ? 'bg-green-900/40 text-green-400 border border-green-700/40' : 'bg-gray-800 text-gray-500 border border-gray-700'
+                      }`}>
+                        {ch.toUpperCase()}{bid ? ` ${bid}` : ''}
+                      </span>
+                    );
+                  })}
+                </div>
               )}
             </div>
 

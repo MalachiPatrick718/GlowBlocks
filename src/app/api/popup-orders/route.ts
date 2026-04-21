@@ -314,13 +314,13 @@ export async function GET(req: NextRequest) {
       const customColorsRaw = record.fields['Custom Colors'] || '[]';
       let delivery = '';
       let eligible: boolean | null = null;
-      let boardId: string | null = null;
+      let boardIds: (string | null)[] = [];
       try {
         const parsed = JSON.parse(customColorsRaw);
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           if (parsed.deliveryMethod) delivery = String(parsed.deliveryMethod);
           if (typeof parsed.onSiteEligible === 'boolean') eligible = parsed.onSiteEligible;
-          if (parsed.boardId) boardId = String(parsed.boardId);
+          if (Array.isArray(parsed.boardIds)) boardIds = parsed.boardIds;
         }
       } catch {
         delivery = '';
@@ -344,7 +344,7 @@ export async function GET(req: NextRequest) {
       orderNumber: record.fields['Order Number'] || '',
       inventoryDeducted: record.fields['Inventory Deducted'] || false,
       onSiteEligible: eligible,
-      boardId,
+      boardIds,
       deliveryMethod: delivery,
       letterCount: record.fields['Letter Count'] || 0,
       customColorFee: record.fields['Custom Color Fee'] || 0,
@@ -380,14 +380,20 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, status, pickupStatus, boardId } = await req.json();
-    if (!id || (!status && !pickupStatus && !boardId)) {
+    const { id, status, pickupStatus, scanBoard } = await req.json();
+    if (!id || (!status && !pickupStatus && !scanBoard)) {
       return NextResponse.json({ error: 'Missing record id and update fields' }, { status: 400 });
     }
 
-    // Validate boardId format if provided
-    if (boardId && !/^GB_\d{3}$/.test(String(boardId))) {
-      return NextResponse.json({ error: 'Invalid board ID format. Expected GB_XXX (e.g. GB_001)' }, { status: 400 });
+    // Validate scanBoard if provided
+    if (scanBoard) {
+      const { letterIndex, boardId: bid } = scanBoard;
+      if (typeof letterIndex !== 'number' || letterIndex < 0) {
+        return NextResponse.json({ error: 'Invalid letterIndex' }, { status: 400 });
+      }
+      if (!bid || !/^GB_\d{3}$/.test(String(bid))) {
+        return NextResponse.json({ error: 'Invalid board ID format. Expected GB_XXX (e.g. GB_001)' }, { status: 400 });
+      }
     }
 
     const existingRes = await fetch(`${getAirtableUrl()}/${encodeURIComponent(String(id))}`, {
@@ -405,33 +411,38 @@ export async function PATCH(req: NextRequest) {
     const existingPickupStatus = String(existingFields['Pickup Status'] || '');
     const inventoryAlreadyDeducted = isTruthy(existingFields['Inventory Deducted']);
 
-    // If boardId provided, check for duplicates and merge into Custom Colors
-    if (boardId) {
+    // Handle per-letter board scanning
+    if (scanBoard) {
+      const { letterIndex, boardId: bid } = scanBoard;
+      const boardIdStr = String(bid);
+
+      // Validate letterIndex is within the word length
+      if (letterIndex >= orderText.length || orderText[letterIndex] === ' ') {
+        return NextResponse.json({ error: 'Invalid letter index for this order' }, { status: 400 });
+      }
+
+      // Check for duplicates across ALL orders
       const allRes = await fetch(getAirtableUrl(), {
         headers: getHeaders(),
         next: { revalidate: 0 },
       });
       if (allRes.ok) {
         const allData = await allRes.json();
-        const duplicate = (allData.records || []).find((r: { id: string; fields: Record<string, string> }) => {
-          if (r.id === id) return false;
+        for (const r of (allData.records || []) as { id: string; fields: Record<string, string> }[]) {
           try {
             const cc = JSON.parse(r.fields['Custom Colors'] || '{}');
-            return cc.boardId === String(boardId);
-          } catch { return false; }
-        });
-        if (duplicate) {
-          return NextResponse.json({
-            error: `Board ${boardId} is already linked to order #${duplicate.fields['Order Number'] || duplicate.id}`,
-          }, { status: 409 });
+            const ids: (string | null)[] = Array.isArray(cc.boardIds) ? cc.boardIds : [];
+            if (ids.includes(boardIdStr)) {
+              const orderNum = r.fields['Order Number'] || r.id;
+              return NextResponse.json({
+                error: `${boardIdStr} is already linked to Order #${orderNum}`,
+              }, { status: 409 });
+            }
+          } catch { /* skip */ }
         }
       }
-    }
 
-    const fields: Record<string, string | boolean> = {};
-
-    // Merge boardId into Custom Colors JSON if provided
-    if (boardId) {
+      // Parse existing Custom Colors and update boardIds array
       let customColors: Record<string, unknown> = {};
       try {
         const parsed = JSON.parse(existingFields['Custom Colors'] || '{}');
@@ -439,10 +450,33 @@ export async function PATCH(req: NextRequest) {
           customColors = parsed;
         }
       } catch { /* keep empty */ }
-      customColors.boardId = String(boardId);
-      customColors.boardLinkedAt = new Date().toISOString();
-      fields['Custom Colors'] = JSON.stringify(customColors);
+
+      // Initialize boardIds array if not present
+      const boardIds: (string | null)[] = Array.isArray(customColors.boardIds)
+        ? [...(customColors.boardIds as (string | null)[])]
+        : Array.from({ length: orderText.length }, () => null);
+      // Ensure array is long enough
+      while (boardIds.length < orderText.length) boardIds.push(null);
+
+      boardIds[letterIndex] = boardIdStr;
+      customColors.boardIds = boardIds;
+
+      // Save just the Custom Colors update — no status change
+      const scanRes = await fetch(getAirtableUrl(), {
+        method: 'PATCH',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          records: [{ id: String(id), fields: { 'Custom Colors': JSON.stringify(customColors) } }],
+        }),
+      });
+      if (!scanRes.ok) {
+        return NextResponse.json({ error: 'Failed to save board scan' }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true, boardIds });
     }
+
+    const fields: Record<string, string | boolean> = {};
 
     if (status) {
       fields['Order Status'] = String(status);
