@@ -35,6 +35,8 @@ function ScanContent() {
   const [saving, setSaving] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [allDone, setAllDone] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [lastScanned, setLastScanned] = useState<string | null>(null);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerId = 'barcode-scanner';
@@ -94,11 +96,15 @@ function ScanContent() {
   const handleScan = useCallback(
     async (decodedText: string) => {
       if (!BOARD_ID_PATTERN.test(decodedText)) return;
-      if (!order || saving) return;
+      if (!order || saving || paused) return;
 
       // Find the next unscanned non-space letter
       const idx = nonSpaceIndices.find((i) => boardIds[i] == null);
       if (idx == null) return; // all done
+
+      // Pause camera immediately so it stops scanning while we save
+      try { scannerRef.current?.pause(); } catch { /* ok */ }
+      setPaused(true);
 
       if (navigator.vibrate) navigator.vibrate(100);
       setSaving(true);
@@ -125,12 +131,12 @@ function ScanContent() {
         const updated: (string | null)[] = Array.isArray(data.boardIds) ? data.boardIds : [...boardIds];
         updated[idx] = decodedText;
         setBoardIds(updated);
+        setLastScanned(decodedText);
 
         // Check if all done
         const nowScanned = nonSpaceIndices.filter((i) => updated[i] != null).length;
         if (nowScanned >= totalNeeded) {
           setAllDone(true);
-          try { scannerRef.current?.pause(); } catch { /* ok */ }
         }
       } catch {
         setError('Failed to save scan');
@@ -138,8 +144,15 @@ function ScanContent() {
         setSaving(false);
       }
     },
-    [order, boardIds, nonSpaceIndices, totalNeeded, key, saving]
+    [order, boardIds, nonSpaceIndices, totalNeeded, key, saving, paused]
   );
+
+  const resumeScanning = useCallback(() => {
+    setPaused(false);
+    setLastScanned(null);
+    setError(null);
+    try { scannerRef.current?.resume(); } catch { /* ok */ }
+  }, []);
 
   // Use ref so the scanner callback always calls the latest handleScan
   const handleScanRef = useRef(handleScan);
@@ -264,7 +277,7 @@ function ScanContent() {
             {/* Camera viewfinder */}
             {!allDone && (
               <>
-                <div className="rounded-xl overflow-hidden border border-gray-800 bg-black">
+                <div className="rounded-xl overflow-hidden border border-gray-800 bg-black relative">
                   <div id={scannerContainerId} className="w-full" style={{ minHeight: 280 }} />
                   {cameraError && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/80 p-4">
@@ -272,14 +285,35 @@ function ScanContent() {
                     </div>
                   )}
                 </div>
-                {nextUnscannedIndex != null && (
-                  <p className="text-center text-sm text-gray-400">
-                    {saving ? (
-                      <span className="text-purple-400">Saving...</span>
-                    ) : (
-                      <>Scan next: <span className="text-white font-bold">{letters[nextUnscannedIndex]?.toUpperCase()}</span></>
+
+                {paused && !saving ? (
+                  <div className="space-y-3">
+                    {lastScanned && (
+                      <div className="rounded-xl border border-green-600/40 bg-green-950/20 p-3 text-center">
+                        <p className="text-green-400 font-semibold">
+                          {lastScanned} assigned!
+                        </p>
+                      </div>
                     )}
-                  </p>
+                    {nextUnscannedIndex != null && (
+                      <button
+                        onClick={resumeScanning}
+                        className="w-full py-3 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-lg transition-colors"
+                      >
+                        Scan Next: {letters[nextUnscannedIndex]?.toUpperCase()}
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  nextUnscannedIndex != null && (
+                    <p className="text-center text-sm text-gray-400">
+                      {saving ? (
+                        <span className="text-purple-400">Saving...</span>
+                      ) : (
+                        <>Scanning for: <span className="text-white font-bold">{letters[nextUnscannedIndex]?.toUpperCase()}</span></>
+                      )}
+                    </p>
+                  )
                 )}
               </>
             )}
