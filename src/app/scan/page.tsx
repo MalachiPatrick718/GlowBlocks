@@ -84,6 +84,19 @@ function ScanContent() {
           boardIds: ids,
         });
         setBoardIds(ids);
+
+        // Auto-set to In Progress if not already
+        const status = (found.status || '').toLowerCase();
+        if (status === 'not started' || status === '') {
+          fetch('/api/popup-orders', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-popup-admin-key': key,
+            },
+            body: JSON.stringify({ id: found.id, status: 'In Progress' }),
+          }).catch(() => {});
+        }
       } catch {
         setError('Failed to load order');
       } finally {
