@@ -297,6 +297,12 @@ function PopupOrdersContent() {
           <h1 className="text-3xl md:text-4xl font-bold gradient-text">Pop-Up Orders (Private)</h1>
           <div className="flex gap-2">
             <Link
+              href={`/orders?key=${encodeURIComponent(key)}`}
+              className="px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-600 text-sm font-semibold text-white"
+            >
+              Online Orders
+            </Link>
+            <Link
               href={`/scan?key=${encodeURIComponent(key)}`}
               className="px-4 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 text-sm font-semibold text-white"
             >
