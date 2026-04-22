@@ -14,14 +14,11 @@ export default function TextInput({ text, onChange }: TextInputProps) {
 
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium text-gray-300">
-        Enter your text
-      </label>
       <input
         type="text"
         value={text}
         onChange={(e) => onChange(e.target.value.toUpperCase())}
-        placeholder="TYPE YOUR TEXT..."
+        placeholder="YOUR CUSTOM WORD OR NAME..."
         maxLength={30}
         className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-lg tracking-widest placeholder-gray-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
       />

@@ -15,6 +15,7 @@ export default function PopupPage() {
   const [colorMode, setColorMode] = useState<'presets' | 'custom'>('presets');
   const [selectedPresetName, setSelectedPresetName] = useState<string | null>(null);
   const [highlightSection, setHighlightSection] = useState<'text' | 'colors' | 'contact' | null>(null);
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
 
   const textRef = useRef<HTMLDivElement>(null);
   const colorsRef = useRef<HTMLDivElement>(null);
@@ -144,7 +145,10 @@ export default function PopupPage() {
 
   useEffect(() => {
     if (!highlightSection) return;
-    const timeout = setTimeout(() => setHighlightSection(null), 2000);
+    const timeout = setTimeout(() => {
+      setHighlightSection(null);
+      setValidationMessage(null);
+    }, 3000);
     return () => clearTimeout(timeout);
   }, [highlightSection]);
 
@@ -243,18 +247,36 @@ export default function PopupPage() {
   };
 
   const handleSubmitClick = () => {
+    setValidationMessage(null);
     if (!textComplete) {
       setHighlightSection('text');
+      setValidationMessage('Enter your custom word or name');
       textRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     if (!colorsComplete) {
       setHighlightSection('colors');
+      if (colorMode === 'presets') {
+        setValidationMessage('Select a color theme');
+      } else {
+        setValidationMessage(`${uncoloredCount} letter${uncoloredCount !== 1 ? 's' : ''} still need${uncoloredCount === 1 ? 's' : ''} a color`);
+      }
       colorsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     if (!contactComplete) {
       setHighlightSection('contact');
+      if (customerName.trim().length <= 1) {
+        setValidationMessage('Enter your first name');
+      } else if (deliveryMethod === 'ship' && lastName.trim().length === 0) {
+        setValidationMessage('Enter your last name');
+      } else if (phoneNumber.replace(/\D/g, '').length !== 10) {
+        setValidationMessage('Enter a valid 10-digit phone number');
+      } else if (deliveryMethod === 'ship' && address.trim().length <= 5) {
+        setValidationMessage('Enter a shipping address');
+      } else {
+        setValidationMessage('Complete your details above');
+      }
       contactRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
@@ -394,14 +416,14 @@ export default function PopupPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           <div className="space-y-4">
-            {/* Section 1: Enter your word */}
+            {/* Section 1: Enter custom word or name */}
             <div ref={textRef} className={getSectionClass('text')}>
               <div className="flex items-center gap-2 mb-3">
                 {textComplete
                   ? <span className="flex items-center justify-center w-5 h-5 rounded-full bg-green-600 text-white text-xs font-bold">✓</span>
                   : <span className="flex items-center justify-center w-5 h-5 rounded-full border border-gray-600 text-gray-500 text-xs font-bold">1</span>
                 }
-                <span className={`text-sm font-medium ${textComplete ? 'text-green-400' : 'text-gray-300'}`}>Enter your word</span>
+                <span className={`text-sm font-medium ${textComplete ? 'text-green-400' : 'text-gray-300'}`}>Enter your custom word or name</span>
               </div>
               <TextInput text={text} onChange={handleTextChange} />
             </div>
@@ -416,7 +438,7 @@ export default function PopupPage() {
                 <span className={`text-sm font-medium ${colorsComplete ? 'text-green-400' : 'text-gray-300'}`}>Choose your colors</span>
               </div>
               {!textComplete ? (
-                <p className="text-sm text-gray-500">Enter your word above to continue</p>
+                <p className="text-sm text-gray-500">Enter your custom word or name above to continue</p>
               ) : (
                 <div className="space-y-4">
                   <div className="flex rounded-lg border border-gray-700 overflow-hidden">
@@ -493,7 +515,9 @@ export default function PopupPage() {
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="First Name"
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                  className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 ${
+                    highlightSection === 'contact' && customerName.trim().length <= 1 ? 'border-amber-500' : 'border-gray-700'
+                  }`}
                 />
                 {deliveryMethod === 'ship' && (
                   <input
@@ -501,7 +525,9 @@ export default function PopupPage() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder="Last Name"
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                    className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 ${
+                      highlightSection === 'contact' && lastName.trim().length === 0 ? 'border-amber-500' : 'border-gray-700'
+                    }`}
                   />
                 )}
                 <input
@@ -518,7 +544,9 @@ export default function PopupPage() {
                     }
                   }}
                   placeholder="(555) 555-5555"
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                  className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 ${
+                    highlightSection === 'contact' && phoneNumber.replace(/\D/g, '').length !== 10 ? 'border-amber-500' : 'border-gray-700'
+                  }`}
                 />
                 <div className="space-y-2">
                   <p className="text-sm text-gray-300">Delivery Method</p>
@@ -554,7 +582,9 @@ export default function PopupPage() {
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       placeholder="Shipping address (required)"
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                      className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 ${
+                        highlightSection === 'contact' && address.trim().length <= 5 ? 'border-amber-500' : 'border-gray-700'
+                      }`}
                     />
                     {addressSuggestions.length > 0 && (
                       <div className="rounded-lg border border-gray-800 bg-gray-950/90 max-h-44 overflow-y-auto">
@@ -595,8 +625,8 @@ export default function PopupPage() {
               >
                 {submitting ? 'Submitting...' : 'Confirm Pop-Up Order'}
               </button>
-              {highlightSection && (
-                <p className="text-sm text-amber-300 mt-2 text-center">Please complete the highlighted section above</p>
+              {(highlightSection || validationMessage) && (
+                <p className="text-sm text-amber-300 mt-2 text-center">{validationMessage || 'Please complete the highlighted section above'}</p>
               )}
               {submitMessage && <p className="text-sm text-gray-300 mt-2">{submitMessage}</p>}
             </div>
