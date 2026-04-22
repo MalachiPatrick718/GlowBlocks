@@ -20,6 +20,7 @@ export default function PopupPage() {
   const colorsRef = useRef<HTMLDivElement>(null);
   const contactRef = useRef<HTMLDivElement>(null);
   const [customerName, setCustomerName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
   const [deliveryMethod, setDeliveryMethod] = useState<'pick-up' | 'ship'>('pick-up');
@@ -39,6 +40,7 @@ export default function PopupPage() {
     taxRate: number;
     total: number;
   } | null>(null);
+  const [confirmedDeliveryMethod, setConfirmedDeliveryMethod] = useState<'pick-up' | 'ship'>('pick-up');
 
   const nonSpaceLetters = text.replace(/\s/g, '');
 
@@ -113,11 +115,12 @@ export default function PopupPage() {
   const canSubmit = useMemo(() => {
     const hasContact = customerName.trim().length > 1 && phoneNumber.replace(/\D/g, '').length === 10;
     const hasRequiredAddress = deliveryMethod === 'ship' ? address.trim().length > 5 : true;
+    const hasLastName = deliveryMethod === 'ship' ? lastName.trim().length > 0 : true;
     const hasColors = colorMode === 'presets'
       ? selectedPresetName !== null
       : text.split('').every((ch, i) => ch === ' ' || colorNumbers[i] != null);
-    return nonSpaceLetters.length > 0 && hasContact && hasRequiredAddress && hasColors;
-  }, [nonSpaceLetters.length, customerName, phoneNumber, deliveryMethod, address, colorMode, selectedPresetName, text, colorNumbers]);
+    return nonSpaceLetters.length > 0 && hasContact && hasRequiredAddress && hasLastName && hasColors;
+  }, [nonSpaceLetters.length, customerName, lastName, phoneNumber, deliveryMethod, address, colorMode, selectedPresetName, text, colorNumbers]);
 
   const textComplete = nonSpaceLetters.length > 0;
 
@@ -130,8 +133,9 @@ export default function PopupPage() {
   const contactComplete = useMemo(() => {
     const hasContact = customerName.trim().length > 1 && phoneNumber.replace(/\D/g, '').length === 10;
     const hasRequiredAddress = deliveryMethod === 'ship' ? address.trim().length > 5 : true;
-    return hasContact && hasRequiredAddress;
-  }, [customerName, phoneNumber, deliveryMethod, address]);
+    const hasLastName = deliveryMethod === 'ship' ? lastName.trim().length > 0 : true;
+    return hasContact && hasRequiredAddress && hasLastName;
+  }, [customerName, lastName, phoneNumber, deliveryMethod, address]);
 
   const uncoloredCount = useMemo(() => {
     if (colorMode !== 'custom' || !textComplete) return 0;
@@ -152,6 +156,7 @@ export default function PopupPage() {
       setConfirmedWord('');
       setConfirmedOrderNumber('');
       setConfirmedPricing(null);
+      setConfirmedDeliveryMethod('pick-up');
     }, 15000);
     return () => clearTimeout(timeout);
   }, [orderConfirmed]);
@@ -199,7 +204,7 @@ export default function PopupPage() {
           colorNumbers,
           colorMode,
           presetName: selectedPresetName,
-          customerName: customerName.trim(),
+          customerName: deliveryMethod === 'ship' ? `${customerName.trim()} ${lastName.trim()}` : customerName.trim(),
           phoneNumber: phoneNumber.trim(),
           address: address.trim(),
           deliveryMethod,
@@ -215,6 +220,7 @@ export default function PopupPage() {
       setConfirmedWord(text);
       setConfirmedOrderNumber(data.orderNumber || '');
       setConfirmedPricing(data.pricing || null);
+      setConfirmedDeliveryMethod(deliveryMethod);
       setOrderConfirmed(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       setSubmitMessage('Pop-up order submitted successfully.');
@@ -222,6 +228,7 @@ export default function PopupPage() {
       setLetterColors([]);
       setColorNumbers([]);
       setCustomerName('');
+      setLastName('');
       setPhoneNumber('');
       setAddress('');
       setDeliveryMethod('pick-up');
@@ -276,13 +283,15 @@ export default function PopupPage() {
               </p>
             </div>
 
-            {/* Order Number - Large and Bold */}
-            <div className="bg-gray-950/50 border-2 border-green-500 rounded-xl p-6 text-center">
-              <p className="text-sm text-gray-400 mb-2">Tell this number at the kiosk to checkout</p>
-              <p className="text-7xl sm:text-8xl font-black text-white tracking-wider">
-                {confirmedOrderNumber || '--'}
-              </p>
-            </div>
+            {/* Order Number - Only for pickup */}
+            {confirmedDeliveryMethod === 'pick-up' && (
+              <div className="bg-gray-950/50 border-2 border-green-500 rounded-xl p-6 text-center">
+                <p className="text-sm text-gray-400 mb-2">Tell this number at the kiosk to checkout</p>
+                <p className="text-7xl sm:text-8xl font-black text-white tracking-wider">
+                  {confirmedOrderNumber || '--'}
+                </p>
+              </div>
+            )}
 
             {/* Pricing Breakdown */}
             {confirmedPricing && (
@@ -335,10 +344,17 @@ export default function PopupPage() {
               <p className="text-white font-bold text-lg">
                 Please complete payment at the kiosk
               </p>
-              <div className="space-y-1 text-sm text-gray-400">
-                <p>Your GlowBlocks should be ready in about 10-15 minutes</p>
-                <p>We&apos;ll text you when they&apos;re ready for pickup!</p>
-              </div>
+              {confirmedDeliveryMethod === 'ship' ? (
+                <div className="space-y-1 text-sm text-gray-400">
+                  <p>We&apos;ve sent you a confirmation text</p>
+                  <p>Be on the lookout for your GlowBlocks set in 5-7 business days!</p>
+                </div>
+              ) : (
+                <div className="space-y-1 text-sm text-gray-400">
+                  <p>Your GlowBlocks should be ready in about 10-15 minutes</p>
+                  <p>We&apos;ll text you when they&apos;re ready for pickup!</p>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -349,6 +365,7 @@ export default function PopupPage() {
                   setConfirmedWord('');
                   setConfirmedOrderNumber('');
                   setConfirmedPricing(null);
+                  setConfirmedDeliveryMethod('pick-up');
                 }}
                 className="py-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold transition-all"
               >
@@ -361,6 +378,7 @@ export default function PopupPage() {
                   setConfirmedWord('');
                   setConfirmedOrderNumber('');
                   setConfirmedPricing(null);
+                  setConfirmedDeliveryMethod('pick-up');
                 }}
                 className="py-3 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-all"
               >
@@ -477,6 +495,15 @@ export default function PopupPage() {
                   placeholder="First Name"
                   className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                 />
+                {deliveryMethod === 'ship' && (
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Last Name"
+                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                  />
+                )}
                 <input
                   type="tel"
                   value={phoneNumber}
@@ -551,13 +578,11 @@ export default function PopupPage() {
                     )}
                   </>
                 )}
-                {deliveryMethod === 'pick-up' && (
-                  <p className="text-xs text-gray-500">
-                    By submitting, you agree to receive SMS order updates at the number provided. Msg &amp; data rates may apply. View our{' '}
-                    <a href="/privacy" className="text-purple-400 hover:text-purple-300 underline">Privacy Policy</a> and{' '}
-                    <a href="/terms" className="text-purple-400 hover:text-purple-300 underline">Terms</a>.
-                  </p>
-                )}
+                <p className="text-xs text-gray-500">
+                  By submitting, you agree to receive SMS order updates at the number provided. Msg &amp; data rates may apply. View our{' '}
+                  <a href="/privacy" className="text-purple-400 hover:text-purple-300 underline">Privacy Policy</a> and{' '}
+                  <a href="/terms" className="text-purple-400 hover:text-purple-300 underline">Terms</a>.
+                </p>
               </div>
             </div>
 

@@ -43,7 +43,7 @@ export default function PopupColorNumberModal({
         </div>
 
         <label className="block text-sm font-medium text-gray-300 mb-2">
-          Enter color number (1-200)
+          Enter Color Guide Color Number (1-200)
         </label>
         <input
           type="number"
@@ -71,7 +71,7 @@ export default function PopupColorNumberModal({
             </div>
           ) : (
             <p className="text-sm text-gray-400">
-              Enter a valid number to preview and apply the saved color.
+              Enter the number bold number in the Color Guide.
             </p>
           )}
         </div>

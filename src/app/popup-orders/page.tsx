@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -161,6 +161,7 @@ function PopupOrdersContent() {
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
   const [pickupDrafts, setPickupDrafts] = useState<Record<string, string>>({});
   const [orderFilter, setOrderFilter] = useState('');
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const baseStatusOptions = ['Not Started', 'In Progress', 'Done'];
 
   useEffect(() => {
@@ -455,33 +456,67 @@ function PopupOrdersContent() {
 
             {/* Scan PCBs */}
             <div className="flex flex-wrap items-center gap-2">
-              <Link
-                href={`/scan?key=${encodeURIComponent(key)}&order=${encodeURIComponent(order.id)}`}
-                className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-purple-800 text-purple-200 border border-purple-600 hover:bg-purple-700 transition-colors"
-              >
-                {(() => {
-                  const ids = order.boardIds || [];
-                  const nonSpaceCount = (order.text || '').split('').filter(c => c !== ' ').length;
-                  const scanned = ids.filter(b => b != null).length;
-                  if (scanned >= nonSpaceCount && nonSpaceCount > 0) return 'PCBs Scanned ✓';
-                  if (scanned > 0) return `Scan PCBs (${scanned}/${nonSpaceCount})`;
-                  return 'Scan PCBs';
-                })()}
-              </Link>
+              {(() => {
+                const ids = order.boardIds || [];
+                const nonSpaceCount = (order.text || '').split('').filter(c => c !== ' ').length;
+                const scanned = ids.filter(b => b != null).length;
+                const allScanned = scanned >= nonSpaceCount && nonSpaceCount > 0;
+                if (allScanned) {
+                  return (
+                    <span className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-green-900/50 text-green-400 border border-green-600/40 opacity-60 cursor-not-allowed">
+                      PCBs Scanned ✓
+                    </span>
+                  );
+                }
+                return (
+                  <Link
+                    href={`/scan?key=${encodeURIComponent(key)}&order=${encodeURIComponent(order.id)}`}
+                    className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-purple-800 text-purple-200 border border-purple-600 hover:bg-purple-700 transition-colors"
+                  >
+                    {scanned > 0 ? `Scan PCBs (${scanned}/${nonSpaceCount})` : 'Scan PCBs'}
+                  </Link>
+                );
+              })()}
               {(order.boardIds || []).some(b => b != null) && (
-                <div className="flex flex-wrap gap-1.5">
-                  {(order.text || '').split('').map((ch, i) => {
-                    if (ch === ' ') return null;
-                    const bid = (order.boardIds || [])[i];
-                    return (
-                      <span key={i} className={`px-2 py-0.5 rounded text-xs font-mono ${
-                        bid ? 'bg-green-900/40 text-green-400 border border-green-700/40' : 'bg-gray-800 text-gray-500 border border-gray-700'
-                      }`}>
-                        {ch.toUpperCase()}{bid ? ` ${bid}` : ''}
-                      </span>
-                    );
-                  })}
-                </div>
+                <>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(order.text || '').split('').map((ch, i) => {
+                      if (ch === ' ') return null;
+                      const bid = (order.boardIds || [])[i];
+                      return (
+                        <span
+                          key={i}
+                          className={`px-2 py-0.5 rounded text-xs font-mono select-none ${
+                            bid ? 'bg-green-900/40 text-green-400 border border-green-700/40' : 'bg-gray-800 text-gray-500 border border-gray-700'
+                          }`}
+                          onTouchStart={() => {
+                            if (!bid) return;
+                            longPressTimerRef.current = setTimeout(() => {
+                              longPressTimerRef.current = null;
+                              window.location.href = `/scan?key=${encodeURIComponent(key)}&order=${encodeURIComponent(order.id)}&letter=${i}`;
+                            }, 600);
+                          }}
+                          onTouchEnd={() => {
+                            if (longPressTimerRef.current) {
+                              clearTimeout(longPressTimerRef.current);
+                              longPressTimerRef.current = null;
+                            }
+                          }}
+                          onTouchCancel={() => {
+                            if (longPressTimerRef.current) {
+                              clearTimeout(longPressTimerRef.current);
+                              longPressTimerRef.current = null;
+                            }
+                          }}
+                          onContextMenu={(e) => { if (bid) e.preventDefault(); }}
+                        >
+                          {ch.toUpperCase()}{bid ? ` ${bid}` : ''}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <span className="text-xs text-gray-600 italic">Hold to replace</span>
+                </>
               )}
             </div>
 

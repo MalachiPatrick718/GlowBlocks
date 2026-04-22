@@ -264,6 +264,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Send confirmation SMS for ship orders
+    if (mappedOrderType === 'Ship to Customer' && phoneNumber) {
+      const firstName = String(customerName).trim().split(' ')[0];
+      const msg = `Hey ${firstName}, thanks for your GlowBlocks order! Your order has been received. Be on the lookout for your GlowBlocks set in 5-7 business days!`;
+      sendSMS(String(phoneNumber), msg).catch((err) =>
+        console.error('Failed to send ship order confirmation SMS:', err)
+      );
+    }
+
     return NextResponse.json({
       success: true,
       orderNumber,
@@ -432,7 +441,10 @@ export async function PATCH(req: NextRequest) {
           try {
             const cc = JSON.parse(r.fields['Custom Colors'] || '{}');
             const ids: (string | null)[] = Array.isArray(cc.boardIds) ? cc.boardIds : [];
-            if (ids.includes(boardIdStr)) {
+            const foundIdx = ids.indexOf(boardIdStr);
+            if (foundIdx !== -1) {
+              // Skip if it's the same order and same letter position (replacing)
+              if (r.id === String(id) && foundIdx === letterIndex) continue;
               const orderNum = r.fields['Order Number'] || r.id;
               return NextResponse.json({
                 error: `${boardIdStr} is already linked to Order #${orderNum}`,

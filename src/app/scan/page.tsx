@@ -27,6 +27,8 @@ function ScanContent() {
   const searchParams = useSearchParams();
   const key = searchParams.get('key') || '';
   const orderId = searchParams.get('order') || '';
+  const letterParam = searchParams.get('letter');
+  const replaceIndex = letterParam != null && !isNaN(parseInt(letterParam, 10)) ? parseInt(letterParam, 10) : null;
 
   const [order, setOrder] = useState<OrderData | null>(null);
   const [boardIds, setBoardIds] = useState<(string | null)[]>([]);
@@ -50,6 +52,7 @@ function ScanContent() {
   const scannedCount = nonSpaceIndices.filter((i) => boardIds[i] != null).length;
   const totalNeeded = nonSpaceIndices.length;
   const nextUnscannedIndex = nonSpaceIndices.find((i) => boardIds[i] == null) ?? null;
+  const targetIndex = replaceIndex != null ? replaceIndex : nextUnscannedIndex;
 
   // Fetch the specific order
   useEffect(() => {
@@ -111,8 +114,8 @@ function ScanContent() {
       if (!BOARD_ID_PATTERN.test(decodedText)) return;
       if (!order || saving || paused) return;
 
-      // Find the next unscanned non-space letter
-      const idx = nonSpaceIndices.find((i) => boardIds[i] == null);
+      // In replace mode, target specific letter; otherwise find next unscanned
+      const idx = replaceIndex != null ? replaceIndex : nonSpaceIndices.find((i) => boardIds[i] == null);
       if (idx == null) return; // all done
 
       // Pause camera immediately so it stops scanning while we save
@@ -147,9 +150,13 @@ function ScanContent() {
         setLastScanned(decodedText);
 
         // Check if all done
-        const nowScanned = nonSpaceIndices.filter((i) => updated[i] != null).length;
-        if (nowScanned >= totalNeeded) {
+        if (replaceIndex != null) {
           setAllDone(true);
+        } else {
+          const nowScanned = nonSpaceIndices.filter((i) => updated[i] != null).length;
+          if (nowScanned >= totalNeeded) {
+            setAllDone(true);
+          }
         }
       } catch {
         setError('Failed to save scan');
@@ -157,7 +164,7 @@ function ScanContent() {
         setSaving(false);
       }
     },
-    [order, boardIds, nonSpaceIndices, totalNeeded, key, saving, paused]
+    [order, boardIds, nonSpaceIndices, totalNeeded, key, saving, paused, replaceIndex]
   );
 
   const resumeScanning = useCallback(() => {
@@ -263,16 +270,19 @@ function ScanContent() {
                 {letters.map((ch, i) => {
                   if (ch === ' ') return <div key={i} className="w-3" />;
                   const bid = boardIds[i];
-                  const isNext = i === nextUnscannedIndex && !allDone;
+                  const isNext = i === targetIndex && !allDone;
+                  const isReplaceTarget = replaceIndex != null && i === replaceIndex && !allDone;
                   return (
                     <div
                       key={i}
                       className={`flex flex-col items-center rounded-lg border px-3 py-2 min-w-[60px] transition-all ${
-                        bid
-                          ? 'border-green-600/50 bg-green-950/30'
-                          : isNext
-                            ? 'border-purple-500 bg-purple-950/20 ring-1 ring-purple-500/50'
-                            : 'border-gray-700 bg-gray-900'
+                        isReplaceTarget
+                          ? 'border-amber-500 bg-amber-950/20 ring-1 ring-amber-500/50'
+                          : bid
+                            ? 'border-green-600/50 bg-green-950/30'
+                            : isNext
+                              ? 'border-purple-500 bg-purple-950/20 ring-1 ring-purple-500/50'
+                              : 'border-gray-700 bg-gray-900'
                       }`}
                     >
                       <span className="text-lg font-bold text-white">{ch.toUpperCase()}</span>
@@ -286,6 +296,15 @@ function ScanContent() {
                 })}
               </div>
             </div>
+
+            {/* Replace mode banner */}
+            {replaceIndex != null && !allDone && (
+              <div className="rounded-lg border border-amber-600/40 bg-amber-950/20 p-3 text-center">
+                <p className="text-amber-400 text-sm font-semibold">
+                  Replacing PCB for letter: {letters[replaceIndex]?.toUpperCase()}
+                </p>
+              </div>
+            )}
 
             {/* Camera viewfinder */}
             {!allDone && (
@@ -308,22 +327,24 @@ function ScanContent() {
                         </p>
                       </div>
                     )}
-                    {nextUnscannedIndex != null && (
+                    {targetIndex != null && (
                       <button
                         onClick={resumeScanning}
                         className="w-full py-3 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-lg transition-colors"
                       >
-                        Scan Next: {letters[nextUnscannedIndex]?.toUpperCase()}
+                        {replaceIndex != null ? `Retry: ${letters[targetIndex]?.toUpperCase()}` : `Scan Next: ${letters[targetIndex]?.toUpperCase()}`}
                       </button>
                     )}
                   </div>
                 ) : (
-                  nextUnscannedIndex != null && (
+                  targetIndex != null && (
                     <p className="text-center text-sm text-gray-400">
                       {saving ? (
                         <span className="text-purple-400">Saving...</span>
+                      ) : replaceIndex != null ? (
+                        <>Replacing PCB for: <span className="text-white font-bold">{letters[targetIndex]?.toUpperCase()}</span></>
                       ) : (
-                        <>Scanning for: <span className="text-white font-bold">{letters[nextUnscannedIndex]?.toUpperCase()}</span></>
+                        <>Scanning for: <span className="text-white font-bold">{letters[targetIndex]?.toUpperCase()}</span></>
                       )}
                     </p>
                   )
@@ -334,9 +355,14 @@ function ScanContent() {
             {/* Completion state */}
             {allDone && (
               <div className="rounded-xl border border-green-600/50 bg-green-950/30 p-5 text-center space-y-2">
-                <p className="text-green-400 text-lg font-bold">All PCBs scanned!</p>
+                <p className="text-green-400 text-lg font-bold">
+                  {replaceIndex != null ? 'PCB replaced!' : 'All PCBs scanned!'}
+                </p>
                 <p className="text-sm text-gray-400">
-                  {totalNeeded} board{totalNeeded !== 1 ? 's' : ''} linked to Order #{order.orderNumber}
+                  {replaceIndex != null
+                    ? <>{letters[replaceIndex]?.toUpperCase()} updated to {boardIds[replaceIndex]} on Order #{order.orderNumber}</>
+                    : <>{totalNeeded} board{totalNeeded !== 1 ? 's' : ''} linked to Order #{order.orderNumber}</>
+                  }
                 </p>
               </div>
             )}
