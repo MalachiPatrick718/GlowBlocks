@@ -161,8 +161,6 @@ export default function PopupPage() {
 
   useEffect(() => {
     if (!orderConfirmed) return;
-    // Don't auto-reset if they paid via Pay Here (let them close manually)
-    if (confirmedPaymentMethod === 'pay-here') return;
     const timeout = setTimeout(() => {
       setOrderConfirmed(false);
       setSubmitMessage(null);
@@ -176,7 +174,7 @@ export default function PopupPage() {
       setPaymentStatus(null);
     }, 15000);
     return () => clearTimeout(timeout);
-  }, [orderConfirmed, confirmedPaymentMethod]);
+  }, [orderConfirmed]);
 
   useEffect(() => {
     if (deliveryMethod !== 'ship' || address.trim().length < 5) {
@@ -438,6 +436,7 @@ export default function PopupPage() {
                 setCheckoutUrl(null);
                 setSessionId(null);
                 setPaymentStatus(null);
+                setConfirmedPaymentMethod('kiosk');
                 setOrderConfirmed(true);
               }}
               className="w-full py-3 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-all"
