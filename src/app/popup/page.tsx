@@ -314,7 +314,7 @@ export default function PopupPage() {
             setCheckoutUrl(checkoutData.url);
             setSessionId(checkoutData.sessionId);
             setPaymentStatus('pending');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo(0, 0);
           } else {
             // Fallback: still show confirmation even if checkout creation fails
             setOrderConfirmed(true);
