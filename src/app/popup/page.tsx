@@ -401,19 +401,6 @@ export default function PopupPage() {
       <div className="max-w-6xl mx-auto">
         {checkoutUrl && paymentStatus === 'pending' ? (
           <div className="max-w-lg mx-auto mt-6 sm:mt-10 rounded-2xl border border-purple-700 bg-purple-950/20 p-6 sm:p-8 space-y-6">
-            <div className="text-center space-y-2">
-              <h1 className="text-3xl sm:text-4xl font-bold text-purple-300">Scan to Pay</h1>
-              <p className="text-gray-300">
-                Scan the QR code below with your phone
-              </p>
-            </div>
-
-            <div className="flex justify-center">
-              <div className="bg-white p-4 rounded-2xl">
-                <QRCodeSVG value={checkoutUrl} size={240} level="M" />
-              </div>
-            </div>
-
             {confirmedPricing && (
               <div className="text-center">
                 <p className="text-3xl font-bold text-white">${confirmedPricing.total.toFixed(2)}</p>
@@ -423,12 +410,51 @@ export default function PopupPage() {
               </div>
             )}
 
-            <div className="text-center space-y-2">
-              <div className="flex items-center justify-center gap-2 text-gray-400">
-                <span className="inline-block w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
-                <span className="text-sm">Waiting for payment...</span>
+            {/* Mobile: show Tap to Pay button */}
+            <div className="sm:hidden space-y-4">
+              <div className="text-center space-y-2">
+                <h1 className="text-3xl font-bold text-purple-300">Ready to Pay</h1>
+                <p className="text-gray-300 text-sm">
+                  Tap below to complete your payment
+                </p>
               </div>
-              <p className="text-xs text-gray-500">Apple Pay, Google Pay, or card accepted</p>
+              <a
+                href={checkoutUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full py-4 rounded-lg font-semibold text-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-center transition-all"
+              >
+                Tap to Pay
+              </a>
+              <div className="text-center space-y-2">
+                <div className="flex items-center justify-center gap-2 text-gray-400">
+                  <span className="inline-block w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                  <span className="text-sm">Waiting for payment...</span>
+                </div>
+                <p className="text-xs text-gray-500">Apple Pay, Google Pay, or card accepted</p>
+              </div>
+            </div>
+
+            {/* Desktop/iPad: show QR code */}
+            <div className="hidden sm:block space-y-4">
+              <div className="text-center space-y-2">
+                <h1 className="text-3xl sm:text-4xl font-bold text-purple-300">Scan to Pay</h1>
+                <p className="text-gray-300">
+                  Scan the QR code below with your phone
+                </p>
+              </div>
+              <div className="flex justify-center">
+                <div className="bg-white p-4 rounded-2xl">
+                  <QRCodeSVG value={checkoutUrl} size={240} level="M" />
+                </div>
+              </div>
+              <div className="text-center space-y-2">
+                <div className="flex items-center justify-center gap-2 text-gray-400">
+                  <span className="inline-block w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                  <span className="text-sm">Waiting for payment...</span>
+                </div>
+                <p className="text-xs text-gray-500">Apple Pay, Google Pay, or card accepted</p>
+              </div>
             </div>
 
             <button
