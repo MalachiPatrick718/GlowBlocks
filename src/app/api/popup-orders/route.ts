@@ -256,6 +256,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to save popup order' }, { status: 500 });
     }
 
+    const airtableData = await airtableRes.json();
+    const recordId = airtableData.records?.[0]?.id || '';
+
     // Send confirmation SMS for pickup orders
     if (mappedOrderType === 'Pickup' && phoneNumber) {
       const msg = `Hey, ${String(customerName).trim()}, Thanks for your Glowblocks Set Order! Your order number is ${orderNumber}. We will message you once your set is ready for pickup! It will take between 10-15 minutes! See you again soon!`;
@@ -276,6 +279,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       orderNumber,
+      recordId,
       pricing: {
         letterCount,
         pricePerLetter,
@@ -297,6 +301,13 @@ export async function GET(req: NextRequest) {
   try {
     if (!apiKey || !baseId) {
       return NextResponse.json({ error: 'Airtable is not configured' }, { status: 500 });
+    }
+
+    // Public inventory eligibility check (no admin key needed)
+    const checkWord = req.nextUrl.searchParams.get('check');
+    if (checkWord) {
+      const eligible = await checkStockEligibility(checkWord);
+      return NextResponse.json({ eligible });
     }
 
     if (!adminKey) {

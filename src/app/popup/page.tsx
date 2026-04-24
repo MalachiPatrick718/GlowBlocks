@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import BlockPreview from '@/components/BlockPreview';
 import TextInput from '@/components/TextInput';
 import ColorPresets from '@/components/ColorPresets';
@@ -42,6 +43,12 @@ export default function PopupPage() {
     total: number;
   } | null>(null);
   const [confirmedDeliveryMethod, setConfirmedDeliveryMethod] = useState<'pick-up' | 'ship'>('pick-up');
+  const [pickupEligible, setPickupEligible] = useState<boolean | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'kiosk' | 'pay-here'>('kiosk');
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'expired' | null>(null);
+  const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState<'kiosk' | 'pay-here'>('kiosk');
 
   const nonSpaceLetters = text.replace(/\s/g, '');
 
@@ -154,6 +161,8 @@ export default function PopupPage() {
 
   useEffect(() => {
     if (!orderConfirmed) return;
+    // Don't auto-reset if they paid via Pay Here (let them close manually)
+    if (confirmedPaymentMethod === 'pay-here') return;
     const timeout = setTimeout(() => {
       setOrderConfirmed(false);
       setSubmitMessage(null);
@@ -161,9 +170,13 @@ export default function PopupPage() {
       setConfirmedOrderNumber('');
       setConfirmedPricing(null);
       setConfirmedDeliveryMethod('pick-up');
+      setConfirmedPaymentMethod('kiosk');
+      setCheckoutUrl(null);
+      setSessionId(null);
+      setPaymentStatus(null);
     }, 15000);
     return () => clearTimeout(timeout);
-  }, [orderConfirmed]);
+  }, [orderConfirmed, confirmedPaymentMethod]);
 
   useEffect(() => {
     if (deliveryMethod !== 'ship' || address.trim().length < 5) {
@@ -193,6 +206,61 @@ export default function PopupPage() {
       controller.abort();
     };
   }, [address, deliveryMethod]);
+
+  // Debounced inventory eligibility check
+  useEffect(() => {
+    if (nonSpaceLetters.length === 0) {
+      setPickupEligible(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/popup-orders?check=${encodeURIComponent(text)}`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setPickupEligible(data.eligible === true);
+        if (data.eligible === false && deliveryMethod === 'pick-up') {
+          setDeliveryMethod('ship');
+        }
+      } catch {
+        // Ignore fetch errors (aborted, network issues)
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [text, nonSpaceLetters.length, deliveryMethod]);
+
+  // Poll for payment status when waiting for QR code payment
+  useEffect(() => {
+    if (!sessionId || paymentStatus === 'paid' || paymentStatus === 'expired') return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/popup-checkout?session_id=${encodeURIComponent(sessionId)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.status === 'paid') {
+          setPaymentStatus('paid');
+          setCheckoutUrl(null);
+          setOrderConfirmed(true);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (data.status === 'expired') {
+          setPaymentStatus('expired');
+        }
+      } catch {
+        // Ignore poll errors
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [sessionId, paymentStatus]);
 
   const submitOrder = async () => {
     if (!canSubmit) return;
@@ -225,8 +293,44 @@ export default function PopupPage() {
       setConfirmedOrderNumber(data.orderNumber || '');
       setConfirmedPricing(data.pricing || null);
       setConfirmedDeliveryMethod(deliveryMethod);
-      setOrderConfirmed(true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setConfirmedPaymentMethod(paymentMethod);
+
+      // If Pay Here, create Stripe Checkout session and show QR code
+      if (paymentMethod === 'pay-here' && data.recordId && data.pricing) {
+        try {
+          const checkoutRes = await fetch('/api/popup-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              recordId: data.recordId,
+              orderText: text,
+              letterCount: data.pricing.letterCount,
+              pricePerLetter: data.pricing.pricePerLetter,
+              customColorFee: data.pricing.customColorFee,
+              tax: data.pricing.tax,
+              total: data.pricing.total,
+            }),
+          });
+          const checkoutData = await checkoutRes.json();
+          if (checkoutRes.ok && checkoutData.url) {
+            setCheckoutUrl(checkoutData.url);
+            setSessionId(checkoutData.sessionId);
+            setPaymentStatus('pending');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } else {
+            // Fallback: still show confirmation even if checkout creation fails
+            setOrderConfirmed(true);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        } catch {
+          setOrderConfirmed(true);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } else {
+        setOrderConfirmed(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
       setSubmitMessage('Pop-up order submitted successfully.');
       setText('');
       setLetterColors([]);
@@ -239,6 +343,7 @@ export default function PopupPage() {
       setAddressSuggestions([]);
       setSelectedPresetName(null);
       setModalIndex(null);
+      setPaymentMethod('kiosk');
     } catch {
       setSubmitMessage('Failed to submit popup order.');
     } finally {
@@ -296,7 +401,51 @@ export default function PopupPage() {
   return (
     <div className="min-h-screen py-6 sm:py-8 px-3 sm:px-4">
       <div className="max-w-6xl mx-auto">
-        {orderConfirmed ? (
+        {checkoutUrl && paymentStatus === 'pending' ? (
+          <div className="max-w-lg mx-auto mt-6 sm:mt-10 rounded-2xl border border-purple-700 bg-purple-950/20 p-6 sm:p-8 space-y-6">
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl sm:text-4xl font-bold text-purple-300">Scan to Pay</h1>
+              <p className="text-gray-300">
+                Scan the QR code below with your phone
+              </p>
+            </div>
+
+            <div className="flex justify-center">
+              <div className="bg-white p-4 rounded-2xl">
+                <QRCodeSVG value={checkoutUrl} size={240} level="M" />
+              </div>
+            </div>
+
+            {confirmedPricing && (
+              <div className="text-center">
+                <p className="text-3xl font-bold text-white">${confirmedPricing.total.toFixed(2)}</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  {confirmedPricing.letterCount} letter{confirmedPricing.letterCount !== 1 ? 's' : ''} for &ldquo;{confirmedWord}&rdquo;
+                </p>
+              </div>
+            )}
+
+            <div className="text-center space-y-2">
+              <div className="flex items-center justify-center gap-2 text-gray-400">
+                <span className="inline-block w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                <span className="text-sm">Waiting for payment...</span>
+              </div>
+              <p className="text-xs text-gray-500">Apple Pay, Google Pay, or card accepted</p>
+            </div>
+
+            <button
+              onClick={() => {
+                setCheckoutUrl(null);
+                setSessionId(null);
+                setPaymentStatus(null);
+                setOrderConfirmed(true);
+              }}
+              className="w-full py-3 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-all"
+            >
+              Cancel &amp; Pay at Kiosk Instead
+            </button>
+          </div>
+        ) : orderConfirmed ? (
           <div className="max-w-2xl mx-auto mt-6 sm:mt-10 rounded-2xl border border-green-700 bg-green-950/30 p-6 sm:p-8 space-y-6">
             <div className="text-center space-y-2">
               <h1 className="text-3xl sm:text-4xl font-bold text-green-300">Order Received!</h1>
@@ -363,9 +512,15 @@ export default function PopupPage() {
             )}
 
             <div className="bg-gray-900/60 border border-gray-700 rounded-xl p-5 text-center space-y-3">
-              <p className="text-white font-bold text-lg">
-                Please complete payment at the kiosk
-              </p>
+              {confirmedPaymentMethod === 'pay-here' ? (
+                <p className="text-green-400 font-bold text-lg">
+                  Payment complete!
+                </p>
+              ) : (
+                <p className="text-white font-bold text-lg">
+                  Please complete payment at the kiosk
+                </p>
+              )}
               {confirmedDeliveryMethod === 'ship' ? (
                 <div className="space-y-1 text-sm text-gray-400">
                   <p>We&apos;ve sent you a confirmation text</p>
@@ -388,6 +543,10 @@ export default function PopupPage() {
                   setConfirmedOrderNumber('');
                   setConfirmedPricing(null);
                   setConfirmedDeliveryMethod('pick-up');
+                  setConfirmedPaymentMethod('kiosk');
+                  setCheckoutUrl(null);
+                  setSessionId(null);
+                  setPaymentStatus(null);
                 }}
                 className="py-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold transition-all"
               >
@@ -401,6 +560,10 @@ export default function PopupPage() {
                   setConfirmedOrderNumber('');
                   setConfirmedPricing(null);
                   setConfirmedDeliveryMethod('pick-up');
+                  setConfirmedPaymentMethod('kiosk');
+                  setCheckoutUrl(null);
+                  setSessionId(null);
+                  setPaymentStatus(null);
                 }}
                 className="py-3 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-all"
               >
@@ -426,6 +589,17 @@ export default function PopupPage() {
                 <span className={`text-sm font-medium ${textComplete ? 'text-green-400' : 'text-gray-300'}`}>Enter your custom word or name</span>
               </div>
               <TextInput text={text} onChange={handleTextChange} />
+              {textComplete && pickupEligible === true && (
+                <p className="text-sm text-green-400 mt-2 flex items-center gap-1">
+                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-600 text-white text-[10px] font-bold">✓</span>
+                  Pickup eligible
+                </p>
+              )}
+              {textComplete && pickupEligible === false && (
+                <p className="text-sm text-amber-300 mt-2">
+                  On-hand inventory is low — this order will need to be shipped
+                </p>
+              )}
             </div>
 
             {/* Section 2: Choose your colors */}
@@ -553,11 +727,14 @@ export default function PopupPage() {
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setDeliveryMethod('pick-up')}
+                      onClick={() => { if (pickupEligible !== false) setDeliveryMethod('pick-up'); }}
+                      disabled={pickupEligible === false}
                       className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
-                        deliveryMethod === 'pick-up'
-                          ? 'bg-purple-600 border-purple-500 text-white'
-                          : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
+                        pickupEligible === false
+                          ? 'bg-gray-900 border-gray-800 text-gray-600 cursor-not-allowed'
+                          : deliveryMethod === 'pick-up'
+                            ? 'bg-purple-600 border-purple-500 text-white'
+                            : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
                       }`}
                     >
                       Pick Up
@@ -574,6 +751,9 @@ export default function PopupPage() {
                       Ship to Me
                     </button>
                   </div>
+                  {pickupEligible === false && (
+                    <p className="text-xs text-amber-300">Pickup is unavailable — inventory is too low to make this order on site.</p>
+                  )}
                 </div>
                 {deliveryMethod === 'ship' && (
                   <>
@@ -608,6 +788,36 @@ export default function PopupPage() {
                     )}
                   </>
                 )}
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-300">Payment</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('pay-here')}
+                      className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        paymentMethod === 'pay-here'
+                          ? 'bg-purple-600 border-purple-500 text-white'
+                          : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      Pay Here
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('kiosk')}
+                      className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        paymentMethod === 'kiosk'
+                          ? 'bg-purple-600 border-purple-500 text-white'
+                          : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      Pay at Kiosk
+                    </button>
+                  </div>
+                  {paymentMethod === 'pay-here' && (
+                    <p className="text-xs text-gray-400">A QR code will appear after you confirm — scan with your phone to pay via Apple Pay, Google Pay, or card.</p>
+                  )}
+                </div>
                 <p className="text-xs text-gray-500">
                   By submitting, you agree to receive SMS order updates at the number provided. Msg &amp; data rates may apply. View our{' '}
                   <a href="/privacy" className="text-purple-400 hover:text-purple-300 underline">Privacy Policy</a> and{' '}
