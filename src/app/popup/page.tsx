@@ -44,11 +44,11 @@ export default function PopupPage() {
   } | null>(null);
   const [confirmedDeliveryMethod, setConfirmedDeliveryMethod] = useState<'pick-up' | 'ship'>('pick-up');
   const [pickupEligible, setPickupEligible] = useState<boolean | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'kiosk' | 'pay-here'>('kiosk');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'expired' | null>(null);
-  const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState<'kiosk' | 'pay-here'>('kiosk');
+  const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState<'cash' | 'card'>('cash');
 
   const nonSpaceLetters = text.replace(/\s/g, '');
 
@@ -65,11 +65,11 @@ export default function PopupPage() {
     const letterSubtotal = count * pricePerLetter;
     const customColorFee = colorMode === 'custom' ? 2.00 : 0;
     const subtotal = letterSubtotal + customColorFee;
-    const tax = subtotal * 0.08875;
+    const tax = paymentMethod === 'cash' ? 0 : subtotal * 0.08875;
     const total = subtotal + tax;
 
     return { count, pricePerLetter, letterSubtotal, customColorFee, subtotal, tax, total };
-  }, [nonSpaceLetters, colorMode]);
+  }, [nonSpaceLetters, colorMode, paymentMethod]);
 
   const handleTextChange = useCallback((newText: string) => {
     setText(newText);
@@ -168,7 +168,7 @@ export default function PopupPage() {
       setConfirmedOrderNumber('');
       setConfirmedPricing(null);
       setConfirmedDeliveryMethod('pick-up');
-      setConfirmedPaymentMethod('kiosk');
+      setConfirmedPaymentMethod('cash');
       setCheckoutUrl(null);
       setSessionId(null);
       setPaymentStatus(null);
@@ -278,6 +278,7 @@ export default function PopupPage() {
           phoneNumber: phoneNumber.trim(),
           address: address.trim(),
           deliveryMethod,
+          paymentMethod,
         }),
       });
 
@@ -294,7 +295,7 @@ export default function PopupPage() {
       setConfirmedPaymentMethod(paymentMethod);
 
       // If Pay Here, create Stripe Checkout session and show QR code
-      if (paymentMethod === 'pay-here' && data.recordId && data.pricing) {
+      if (paymentMethod === 'card' && data.recordId && data.pricing) {
         try {
           const checkoutRes = await fetch('/api/popup-checkout', {
             method: 'POST',
@@ -341,7 +342,7 @@ export default function PopupPage() {
       setAddressSuggestions([]);
       setSelectedPresetName(null);
       setModalIndex(null);
-      setPaymentMethod('kiosk');
+      setPaymentMethod('cash');
     } catch {
       setSubmitMessage('Failed to submit popup order.');
     } finally {
@@ -462,12 +463,12 @@ export default function PopupPage() {
                 setCheckoutUrl(null);
                 setSessionId(null);
                 setPaymentStatus(null);
-                setConfirmedPaymentMethod('kiosk');
+                setConfirmedPaymentMethod('cash');
                 setOrderConfirmed(true);
               }}
               className="w-full py-3 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-all"
             >
-              Cancel &amp; Pay at Kiosk Instead
+              Cancel &amp; Pay with Cash Instead
             </button>
           </div>
         ) : orderConfirmed ? (
@@ -537,7 +538,7 @@ export default function PopupPage() {
             )}
 
             <div className="bg-gray-900/60 border border-gray-700 rounded-xl p-5 text-center space-y-3">
-              {confirmedPaymentMethod === 'pay-here' ? (
+              {confirmedPaymentMethod === 'card' ? (
                 <p className="text-green-400 font-bold text-lg">
                   Payment complete!
                 </p>
@@ -568,7 +569,7 @@ export default function PopupPage() {
                   setConfirmedOrderNumber('');
                   setConfirmedPricing(null);
                   setConfirmedDeliveryMethod('pick-up');
-                  setConfirmedPaymentMethod('kiosk');
+                  setConfirmedPaymentMethod('cash');
                   setCheckoutUrl(null);
                   setSessionId(null);
                   setPaymentStatus(null);
@@ -585,7 +586,7 @@ export default function PopupPage() {
                   setConfirmedOrderNumber('');
                   setConfirmedPricing(null);
                   setConfirmedDeliveryMethod('pick-up');
-                  setConfirmedPaymentMethod('kiosk');
+                  setConfirmedPaymentMethod('cash');
                   setCheckoutUrl(null);
                   setSessionId(null);
                   setPaymentStatus(null);
@@ -814,33 +815,36 @@ export default function PopupPage() {
                   </>
                 )}
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-300">Payment</p>
+                  <p className="text-sm text-gray-300">Payment Method</p>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setPaymentMethod('pay-here')}
+                      onClick={() => setPaymentMethod('card')}
                       className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
-                        paymentMethod === 'pay-here'
+                        paymentMethod === 'card'
                           ? 'bg-purple-600 border-purple-500 text-white'
                           : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
                       }`}
                     >
-                      Pay Here
+                      Card / Mobile Wallet
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPaymentMethod('kiosk')}
+                      onClick={() => setPaymentMethod('cash')}
                       className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
-                        paymentMethod === 'kiosk'
+                        paymentMethod === 'cash'
                           ? 'bg-purple-600 border-purple-500 text-white'
                           : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
                       }`}
                     >
-                      Pay at Kiosk
+                      Cash
                     </button>
                   </div>
-                  {paymentMethod === 'pay-here' && (
-                    <p className="text-xs text-gray-400">A QR code will appear after you confirm — scan with your phone to pay via Apple Pay, Google Pay, or card.</p>
+                  {paymentMethod === 'card' && (
+                    <p className="text-xs text-gray-400">Pay via Apple Pay, Google Pay, or card after confirming your order.</p>
+                  )}
+                  {paymentMethod === 'cash' && (
+                    <p className="text-xs text-gray-400">No tax on cash orders. Pay at the checkout kiosk after confirming.</p>
                   )}
                 </div>
                 <p className="text-xs text-gray-500">

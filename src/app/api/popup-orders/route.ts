@@ -173,6 +173,7 @@ export async function POST(req: NextRequest) {
       phoneNumber,
       address,
       deliveryMethod,
+      paymentMethod,
     } = await req.json();
 
     if (!text || !customerName || !phoneNumber) {
@@ -187,12 +188,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Calculate pricing with tiered rates
+    const isCash = paymentMethod === 'cash';
     const letterCount = text.length;
     const pricePerLetter = getPricePerLetter(letterCount);
     const letterSubtotal = letterCount * pricePerLetter;
     const customColorFee = colorMode === 'custom' ? 2.00 : 0;
     const subtotal = letterSubtotal + customColorFee;
-    const tax = subtotal * taxRate;
+    const tax = isCash ? 0 : subtotal * taxRate;
     const total = subtotal + tax;
 
     const colorsByLetter = text.split('').map((char: string, idx: number) => {
