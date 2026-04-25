@@ -44,7 +44,7 @@ export default function PopupPage() {
   } | null>(null);
   const [confirmedDeliveryMethod, setConfirmedDeliveryMethod] = useState<'pick-up' | 'ship'>('pick-up');
   const [pickupEligible, setPickupEligible] = useState<boolean | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('card');
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'expired' | null>(null);
@@ -342,7 +342,7 @@ export default function PopupPage() {
       setAddressSuggestions([]);
       setSelectedPresetName(null);
       setModalIndex(null);
-      setPaymentMethod('cash');
+      setPaymentMethod('card');
     } catch {
       setSubmitMessage('Failed to submit popup order.');
     } finally {
