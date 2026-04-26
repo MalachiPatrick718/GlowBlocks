@@ -531,14 +531,14 @@ export default function PopupPage() {
                   </div>
                 )}
 
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">
-                    Tax
-                  </span>
-                  <span className="text-white font-medium">
-                    ${confirmedPricing.tax.toFixed(2)}
-                  </span>
-                </div>
+                {confirmedPricing.tax > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Tax</span>
+                    <span className="text-white font-medium">
+                      ${confirmedPricing.tax.toFixed(2)}
+                    </span>
+                  </div>
+                )}
 
                 <div className="border-t border-gray-700 pt-3 flex justify-between text-lg font-bold">
                   <span className="text-white">Total</span>
@@ -914,10 +914,12 @@ export default function PopupPage() {
                       <span>${livePrice.shippingFee.toFixed(2)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-gray-300">
-                    <span>Tax</span>
-                    <span>${livePrice.tax.toFixed(2)}</span>
-                  </div>
+                  {livePrice.tax > 0 && (
+                    <div className="flex justify-between text-gray-300">
+                      <span>Tax</span>
+                      <span>${livePrice.tax.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="border-t border-purple-700/50 pt-2 flex justify-between text-lg font-bold">
                     <span className="text-white">Total</span>
                     <span className="text-green-400">${livePrice.total.toFixed(2)}</span>
