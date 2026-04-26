@@ -65,7 +65,7 @@ export default function PopupPage() {
 
     const letterSubtotal = count * pricePerLetter;
     const customColorFee = colorMode === 'custom' ? 2.00 : 0;
-    const shippingFee = deliveryMethod === 'ship' ? 5.99 : 0;
+    const shippingFee = deliveryMethod === 'ship' ? (paymentMethod === 'cash' ? 6.00 : 5.99) : 0;
     const subtotal = letterSubtotal + customColorFee;
     const tax = paymentMethod === 'cash' ? 0 : subtotal * 0.08875;
     const total = subtotal + tax + shippingFee;

@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
     const pricePerLetter = getPricePerLetter(letterCount);
     const letterSubtotal = letterCount * pricePerLetter;
     const customColorFee = colorMode === 'custom' ? 2.00 : 0;
-    const shippingFee = normalizedDeliveryMethod === 'ship' ? 5.99 : 0;
+    const shippingFee = normalizedDeliveryMethod === 'ship' ? (isCash ? 6.00 : 5.99) : 0;
     const subtotal = letterSubtotal + customColorFee;
     const tax = isCash ? 0 : subtotal * taxRate;
     const total = subtotal + tax + shippingFee;
