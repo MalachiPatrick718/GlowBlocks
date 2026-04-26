@@ -193,9 +193,10 @@ export async function POST(req: NextRequest) {
     const pricePerLetter = getPricePerLetter(letterCount);
     const letterSubtotal = letterCount * pricePerLetter;
     const customColorFee = colorMode === 'custom' ? 2.00 : 0;
+    const shippingFee = normalizedDeliveryMethod === 'ship' ? 5.99 : 0;
     const subtotal = letterSubtotal + customColorFee;
     const tax = isCash ? 0 : subtotal * taxRate;
-    const total = subtotal + tax;
+    const total = subtotal + tax + shippingFee;
 
     const colorsByLetter = text.split('').map((char: string, idx: number) => {
       const colorNumber = Array.isArray(colorNumbers) ? colorNumbers[idx] : null;
@@ -228,6 +229,7 @@ export async function POST(req: NextRequest) {
       'Inventory Deducted': false,
       'Letter Count': letterCount,
       'Custom Color Fee': customColorFee,
+      'Shipping Fee': shippingFee,
       'Subtotal': subtotal,
       'Tax': tax,
       'Total': total,
@@ -287,6 +289,7 @@ export async function POST(req: NextRequest) {
         pricePerLetter,
         letterSubtotal,
         customColorFee,
+        shippingFee,
         subtotal,
         tax,
         taxRate,

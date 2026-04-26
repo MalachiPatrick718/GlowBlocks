@@ -37,6 +37,7 @@ export default function PopupPage() {
     pricePerLetter: number;
     letterSubtotal: number;
     customColorFee: number;
+    shippingFee: number;
     subtotal: number;
     tax: number;
     taxRate: number;
@@ -64,12 +65,13 @@ export default function PopupPage() {
 
     const letterSubtotal = count * pricePerLetter;
     const customColorFee = colorMode === 'custom' ? 2.00 : 0;
+    const shippingFee = deliveryMethod === 'ship' ? 5.99 : 0;
     const subtotal = letterSubtotal + customColorFee;
     const tax = paymentMethod === 'cash' ? 0 : subtotal * 0.08875;
-    const total = subtotal + tax;
+    const total = subtotal + tax + shippingFee;
 
-    return { count, pricePerLetter, letterSubtotal, customColorFee, subtotal, tax, total };
-  }, [nonSpaceLetters, colorMode, paymentMethod]);
+    return { count, pricePerLetter, letterSubtotal, customColorFee, shippingFee, subtotal, tax, total };
+  }, [nonSpaceLetters, colorMode, paymentMethod, deliveryMethod]);
 
   const handleTextChange = useCallback((newText: string) => {
     setText(newText);
@@ -306,6 +308,7 @@ export default function PopupPage() {
               letterCount: data.pricing.letterCount,
               pricePerLetter: data.pricing.pricePerLetter,
               customColorFee: data.pricing.customColorFee,
+              shippingFee: data.pricing.shippingFee,
               tax: data.pricing.tax,
               total: data.pricing.total,
             }),
@@ -515,6 +518,15 @@ export default function PopupPage() {
                     <span className="text-gray-400">Custom Color Fee</span>
                     <span className="text-white font-medium">
                       ${confirmedPricing.customColorFee.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
+                {confirmedPricing.shippingFee > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Shipping (5-7 business days)</span>
+                    <span className="text-white font-medium">
+                      ${confirmedPricing.shippingFee.toFixed(2)}
                     </span>
                   </div>
                 )}
@@ -894,6 +906,12 @@ export default function PopupPage() {
                     <div className="flex justify-between text-gray-300">
                       <span>Custom Color Fee</span>
                       <span>${livePrice.customColorFee.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {livePrice.shippingFee > 0 && (
+                    <div className="flex justify-between text-gray-300">
+                      <span>Shipping (5-7 business days)</span>
+                      <span>${livePrice.shippingFee.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-gray-300">

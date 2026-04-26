@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Stripe is not configured' }, { status: 500 });
     }
 
-    const { recordId, orderText, letterCount, pricePerLetter, customColorFee, tax, total } = await req.json();
+    const { recordId, orderText, letterCount, pricePerLetter, customColorFee, shippingFee, tax, total } = await req.json();
 
     if (!recordId || !orderText || !total) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -58,6 +58,21 @@ export async function POST(req: NextRequest) {
             description: 'One-time fee for custom colour selection',
           },
           unit_amount: Math.round(customColorFee * 100),
+        },
+        quantity: 1,
+      });
+    }
+
+    // Add shipping as a line item
+    if (shippingFee > 0) {
+      lineItems.push({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: 'Shipping',
+            description: 'Standard shipping (5-7 business days)',
+          },
+          unit_amount: Math.round(shippingFee * 100),
         },
         quantity: 1,
       });
