@@ -30,6 +30,32 @@ function isAuthorized(req: NextRequest): boolean {
   return req.headers.get('x-popup-admin-key') === adminKey;
 }
 
+const COUNTRY_CODES = new Set([
+  'US', 'CA', 'GB', 'AU', 'UK', 'United States', 'Canada',
+  'United Kingdom', 'Australia',
+]);
+
+const US_STATE_ABBREV: Record<string, string> = {
+  'alabama': 'AL', 'alaska': 'AK', 'arizona': 'AZ', 'arkansas': 'AR',
+  'california': 'CA', 'colorado': 'CO', 'connecticut': 'CT', 'delaware': 'DE',
+  'florida': 'FL', 'georgia': 'GA', 'hawaii': 'HI', 'idaho': 'ID',
+  'illinois': 'IL', 'indiana': 'IN', 'iowa': 'IA', 'kansas': 'KS',
+  'kentucky': 'KY', 'louisiana': 'LA', 'maine': 'ME', 'maryland': 'MD',
+  'massachusetts': 'MA', 'michigan': 'MI', 'minnesota': 'MN', 'mississippi': 'MS',
+  'missouri': 'MO', 'montana': 'MT', 'nebraska': 'NE', 'nevada': 'NV',
+  'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY',
+  'north carolina': 'NC', 'north dakota': 'ND', 'ohio': 'OH', 'oklahoma': 'OK',
+  'oregon': 'OR', 'pennsylvania': 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
+  'south dakota': 'SD', 'tennessee': 'TN', 'texas': 'TX', 'utah': 'UT',
+  'vermont': 'VT', 'virginia': 'VA', 'washington': 'WA', 'west virginia': 'WV',
+  'wisconsin': 'WI', 'wyoming': 'WY', 'district of columbia': 'DC',
+};
+
+function toStateAbbrev(s: string): string {
+  if (/^[A-Za-z]{2}$/.test(s)) return s.toUpperCase();
+  return US_STATE_ABBREV[s.toLowerCase()] || s;
+}
+
 function parseAddress(raw: string): {
   name: string;
   street1: string;
@@ -39,24 +65,72 @@ function parseAddress(raw: string): {
   zip: string;
   country: string;
 } | null {
-  // Stripe webhook format: "Line1, Line2?, City, State ZIP, Country"
-  // e.g. "123 Main St, Apt 4, Springfield, IL 62704, US"
-  // or   "123 Main St, Springfield, IL 62704, US"
+  // Formats:
+  //   "Line1, Line2?, City, State ZIP, Country"
+  //   "Line1, Line2?, City, State ZIP"  (no country)
+  //   "Line1, Line2?, City, County?, State, ZIP, Country"
   const parts = raw.split(',').map((s) => s.trim());
   if (parts.length < 3) return null;
 
-  const country = parts[parts.length - 1] || 'US';
-  const stateZip = parts[parts.length - 2] || '';
-  const city = parts[parts.length - 3] || '';
-  const street1 = parts[0] || '';
-  const street2 = parts.length >= 5 ? parts.slice(1, parts.length - 3).join(', ') : '';
+  // Detect if the last part is a country
+  const lastPart = parts[parts.length - 1];
+  const hasCountry = COUNTRY_CODES.has(lastPart);
 
-  // Split "IL 62704" into state and zip
-  const stateZipMatch = stateZip.match(/^([A-Z]{2})\s+(.+)$/);
-  const state = stateZipMatch ? stateZipMatch[1] : stateZip;
-  const zip = stateZipMatch ? stateZipMatch[2] : '';
+  let country = 'US';
+  let remaining = parts;
+  if (hasCountry) {
+    country = lastPart === 'United States' ? 'US'
+      : lastPart === 'Canada' ? 'CA'
+      : lastPart === 'United Kingdom' || lastPart === 'UK' ? 'GB'
+      : lastPart === 'Australia' ? 'AU'
+      : lastPart;
+    remaining = parts.slice(0, -1);
+  }
 
-  return { name: '', street1, street2, city, state, zip, country };
+  // Try "State ZIP" combined format first (e.g. "NJ 07631")
+  const stateZipRaw = remaining[remaining.length - 1] || '';
+  const stateZipMatch = stateZipRaw.match(/^([A-Za-z]{2})\s+(\d{5}(?:-\d{4})?)$/);
+
+  if (stateZipMatch) {
+    const state = stateZipMatch[1].toUpperCase();
+    const zip = stateZipMatch[2];
+    const city = remaining[remaining.length - 2] || '';
+    const street1 = remaining[0] || '';
+    const street2 = remaining.length >= 4
+      ? remaining.slice(1, remaining.length - 2).join(', ')
+      : '';
+    return { name: '', street1, street2, city, state, zip, country };
+  }
+
+  // Handle separate state and ZIP parts
+  // e.g. "171, Humphrey Street, Englewood, Bergen County, New Jersey, 07631"
+  const bareZip = stateZipRaw.match(/^\d{5}(?:-\d{4})?$/);
+  if (bareZip && remaining.length >= 4) {
+    const zip = stateZipRaw;
+    const stateRaw = remaining[remaining.length - 2] || '';
+    const state = toStateAbbrev(stateRaw);
+
+    // Find city index, skipping any "County" part
+    let cityIdx = remaining.length - 3;
+    if (cityIdx > 0 && /county/i.test(remaining[cityIdx])) {
+      cityIdx--;
+    }
+    const city = remaining[cityIdx] || '';
+    const street1 = remaining[0] || '';
+    const street2 = cityIdx > 1
+      ? remaining.slice(1, cityIdx).join(', ')
+      : '';
+    return { name: '', street1, street2, city, state, zip, country };
+  }
+
+  // Fallback
+  const city = remaining[remaining.length - 2] || '';
+  const street1 = remaining[0] || '';
+  const street2 = remaining.length >= 4
+    ? remaining.slice(1, remaining.length - 2).join(', ')
+    : '';
+  const state = toStateAbbrev(stateZipRaw);
+  return { name: '', street1, street2, city, state, zip: '', country };
 }
 
 export async function POST(req: NextRequest) {
@@ -141,7 +215,12 @@ export async function POST(req: NextRequest) {
     if (!shipmentRes.ok) {
       const err = await shipmentRes.text();
       console.error('EasyPost shipment error:', err);
-      return NextResponse.json({ error: 'Failed to create shipment' }, { status: 500 });
+      let detail = 'Failed to create shipment';
+      try {
+        const errJson = JSON.parse(err);
+        if (errJson?.error?.message) detail = errJson.error.message;
+      } catch {}
+      return NextResponse.json({ error: detail }, { status: 500 });
     }
 
     const shipment = await shipmentRes.json();
@@ -174,7 +253,12 @@ export async function POST(req: NextRequest) {
     if (!buyRes.ok) {
       const err = await buyRes.text();
       console.error('EasyPost buy error:', err);
-      return NextResponse.json({ error: 'Failed to purchase label' }, { status: 500 });
+      let detail = 'Failed to purchase label';
+      try {
+        const errJson = JSON.parse(err);
+        if (errJson?.error?.message) detail = errJson.error.message;
+      } catch {}
+      return NextResponse.json({ error: detail }, { status: 500 });
     }
 
     const purchased = await buyRes.json();
