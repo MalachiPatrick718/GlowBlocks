@@ -89,17 +89,6 @@ export async function POST(req: NextRequest) {
             },
           },
         },
-        {
-          shipping_rate_data: {
-            type: 'fixed_amount',
-            fixed_amount: { amount: 1299, currency: 'usd' },
-            display_name: 'Express Shipping (2-3 business days)',
-            delivery_estimate: {
-              minimum: { unit: 'business_day', value: 2 },
-              maximum: { unit: 'business_day', value: 3 },
-            },
-          },
-        },
       ],
       allow_promotion_codes: true,
       return_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,

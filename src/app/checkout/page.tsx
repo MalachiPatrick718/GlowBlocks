@@ -9,7 +9,7 @@ import Link from 'next/link';
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
 export default function CheckoutPage() {
-  const { items, totalBlocks, shippingMethod } = useCart();
+  const { items, totalBlocks } = useCart();
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -21,7 +21,7 @@ export default function CheckoutPage() {
     const res = await fetch('/api/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items, shippingMethod }),
+      body: JSON.stringify({ items }),
     });
     const data = await res.json();
     if (data.error) {
@@ -29,7 +29,7 @@ export default function CheckoutPage() {
       throw new Error(data.error);
     }
     return data.clientSecret;
-  }, [items, shippingMethod]);
+  }, [items]);
 
   if (!ready) return null;
 

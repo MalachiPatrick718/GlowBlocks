@@ -17,6 +17,8 @@ interface Order {
   stripeSessionId: string;
   date: string;
   status: string;
+  trackingNumber: string;
+  labelUrl: string;
 }
 
 const STATUS_OPTIONS = ['New', 'Processing', 'Shipped', 'Delivered'];
@@ -45,6 +47,7 @@ function OrdersContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
+  const [creatingLabelId, setCreatingLabelId] = useState<string | null>(null);
   const [orderFilter, setOrderFilter] = useState('');
 
   useEffect(() => {
@@ -103,6 +106,37 @@ function OrdersContent() {
       setError('Failed to update order status.');
     } finally {
       setSavingOrderId(null);
+    }
+  };
+
+  const createLabel = async (orderId: string) => {
+    if (!key) return;
+    setCreatingLabelId(orderId);
+    try {
+      const res = await fetch('/api/shipping-label', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-popup-admin-key': key,
+        },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to create shipping label.');
+        return;
+      }
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === orderId
+            ? { ...order, trackingNumber: data.trackingNumber, labelUrl: data.labelUrl }
+            : order
+        )
+      );
+    } catch {
+      setError('Failed to create shipping label.');
+    } finally {
+      setCreatingLabelId(null);
     }
   };
 
@@ -247,6 +281,36 @@ function OrdersContent() {
                 );
               })}
             </div>
+
+            {/* Shipping label section */}
+            {order.trackingNumber ? (
+              <div className="flex flex-wrap items-center gap-3 bg-cyan-950/30 border border-cyan-800/40 rounded-lg px-3 py-2 text-sm">
+                <span className="text-gray-400">Tracking:</span>
+                <span className="text-white font-mono">{order.trackingNumber}</span>
+                {order.labelUrl && (
+                  <a
+                    href={order.labelUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 hover:text-cyan-300 underline text-xs"
+                  >
+                    Download Label (PDF)
+                  </a>
+                )}
+              </div>
+            ) : (
+              order.address &&
+              ['new', 'processing'].includes(order.status.toLowerCase()) && (
+                <button
+                  type="button"
+                  onClick={() => createLabel(order.id)}
+                  disabled={creatingLabelId === order.id}
+                  className="px-4 py-2 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {creatingLabelId === order.id ? 'Creating Label...' : 'Create Shipping Label'}
+                </button>
+              )
+            )}
 
             <p className="text-xs text-gray-600 font-mono">
               {order.stripeSessionId}

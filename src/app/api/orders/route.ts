@@ -56,6 +56,8 @@ export async function GET(req: NextRequest) {
         stripeSessionId: record.fields['Stripe Session ID'] || '',
         date: record.fields['Date'] || record.createdTime?.split('T')[0] || '',
         status: record.fields['Status'] || 'New',
+        trackingNumber: record.fields['Tracking Number'] || '',
+        labelUrl: record.fields['Label URL'] || '',
       }))
       .sort((a: { date: string }, b: { date: string }) => {
         const aTime = a.date ? new Date(a.date).getTime() : 0;
@@ -79,16 +81,25 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, status } = await req.json();
-    if (!id || !status) {
-      return NextResponse.json({ error: 'Missing record id or status' }, { status: 400 });
+    const { id, status, trackingNumber, labelUrl } = await req.json();
+    if (!id) {
+      return NextResponse.json({ error: 'Missing record id' }, { status: 400 });
+    }
+
+    const fields: Record<string, string> = {};
+    if (status) fields['Status'] = String(status);
+    if (trackingNumber !== undefined) fields['Tracking Number'] = String(trackingNumber);
+    if (labelUrl !== undefined) fields['Label URL'] = String(labelUrl);
+
+    if (Object.keys(fields).length === 0) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
     }
 
     const res = await fetch(getAirtableUrl(), {
       method: 'PATCH',
       headers: getHeaders(),
       body: JSON.stringify({
-        records: [{ id: String(id), fields: { Status: String(status) } }],
+        records: [{ id: String(id), fields }],
       }),
     });
 

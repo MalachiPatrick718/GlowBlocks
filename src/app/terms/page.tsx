@@ -43,7 +43,7 @@ export default function TermsPage() {
 
           <Section title="Shipping">
             <p>
-              We offer Standard (5–7 business days, $5.99) and Express (2–3 business days, $12.99) shipping. Delivery times are estimates and not guaranteed. We are not responsible for delays caused by shipping carriers.
+              We offer standard shipping (5-7 business days, $5.99). Delivery times are estimates and not guaranteed. We are not responsible for delays caused by shipping carriers.
             </p>
           </Section>
 

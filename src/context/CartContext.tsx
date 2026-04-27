@@ -18,8 +18,6 @@ interface CartContextType {
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   totalBlocks: number;
-  shippingMethod: 'standard' | 'express';
-  setShippingMethod: (method: 'standard' | 'express') => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -31,13 +29,8 @@ export function getPricePerBlock(totalBlocks: number): number {
   return 12.00;
 }
 
-export function getShippingCost(method: 'standard' | 'express'): number {
-  return method === 'express' ? 12.99 : 5.99;
-}
-
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [shippingMethod, setShippingMethod] = useState<'standard' | 'express'>('standard');
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -46,7 +39,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       try {
         const parsed = JSON.parse(saved);
         setItems(parsed.items || []);
-        setShippingMethod(parsed.shippingMethod || 'standard');
       } catch {}
     }
     setLoaded(true);
@@ -54,9 +46,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (loaded) {
-      localStorage.setItem('glowblocks-cart', JSON.stringify({ items, shippingMethod }));
+      localStorage.setItem('glowblocks-cart', JSON.stringify({ items }));
     }
-  }, [items, shippingMethod, loaded]);
+  }, [items, loaded]);
 
   const totalBlocks = useMemo(() =>
     items.reduce((sum, item) => sum + item.text.replace(/\s/g, '').length * item.quantity, 0),
@@ -87,8 +79,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({
     items, addItem, updateItem, removeItem, updateQuantity, clearCart,
-    totalBlocks, shippingMethod, setShippingMethod,
-  }), [items, addItem, updateItem, removeItem, updateQuantity, clearCart, totalBlocks, shippingMethod]);
+    totalBlocks,
+  }), [items, addItem, updateItem, removeItem, updateQuantity, clearCart, totalBlocks]);
 
   return (
     <CartContext.Provider value={value}>

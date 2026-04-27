@@ -44,7 +44,7 @@ export default function FaqPage() {
           />
           <FaqItem
             q="How long does shipping take?"
-            a="Standard shipping is 5-7 business days ($5.99). Express is 2-3 business days ($12.99). You pick at checkout."
+            a="Standard shipping is 5-7 business days ($5.99)."
           />
           <FaqItem
             q="Where do you ship?"
