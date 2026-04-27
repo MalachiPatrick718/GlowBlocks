@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const apiKey = process.env.AIRTABLE_API_KEY;
 const baseId = process.env.AIRTABLE_BASE_ID;
-const tableName = process.env.AIRTABLE_ORDERS_TABLE || 'Orders';
+const ordersTableName = process.env.AIRTABLE_ORDERS_TABLE || 'Orders';
+const popupTableName = process.env.AIRTABLE_POPUP_ORDERS || process.env.AIRTABLE_POPUP_ORDERS_TABLE || 'Popup';
 const adminKey = process.env.POPUP_ORDERS_ADMIN_KEY;
 const easypostKey = process.env.EASYPOST_API_KEY;
 
-function getAirtableUrl() {
-  return `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`;
+function getAirtableUrl(table: string) {
+  return `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}`;
 }
 
 function getAirtableHeaders() {
@@ -70,13 +71,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { orderId } = await req.json();
+    const { orderId, source } = await req.json();
     if (!orderId) {
       return NextResponse.json({ error: 'Missing orderId' }, { status: 400 });
     }
 
+    const isPopup = source === 'popup';
+    const table = isPopup ? popupTableName : ordersTableName;
+
     // Fetch the order from Airtable
-    const orderRes = await fetch(`${getAirtableUrl()}/${orderId}`, {
+    const orderRes = await fetch(`${getAirtableUrl(table)}/${orderId}`, {
       headers: getAirtableHeaders(),
     });
     if (!orderRes.ok) {
@@ -95,7 +99,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Could not parse shipping address' }, { status: 400 });
     }
 
-    parsed.name = fields['Customer Name'] || 'Customer';
+    parsed.name = (isPopup ? fields['Name'] : fields['Customer Name']) || 'Customer';
 
     // Step 1: Create shipment to get rates
     const shipmentRes = await fetch('https://api.easypost.com/v2/shipments', {
@@ -180,7 +184,7 @@ export async function POST(req: NextRequest) {
     const cost = cheapest.rate;
 
     // Update Airtable with tracking info
-    await fetch(getAirtableUrl(), {
+    await fetch(getAirtableUrl(table), {
       method: 'PATCH',
       headers: getAirtableHeaders(),
       body: JSON.stringify({

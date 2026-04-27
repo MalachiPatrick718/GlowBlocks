@@ -24,6 +24,8 @@ interface PopupOrder {
   total?: number;
   onSiteEligible?: boolean | null;
   boardIds?: (string | null)[];
+  trackingNumber?: string;
+  labelUrl?: string;
 }
 
 interface ParsedColorByLetter {
@@ -159,6 +161,7 @@ function PopupOrdersContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
+  const [creatingLabelId, setCreatingLabelId] = useState<string | null>(null);
   const [pickupDrafts, setPickupDrafts] = useState<Record<string, string>>({});
   const [orderFilter, setOrderFilter] = useState('');
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -271,6 +274,37 @@ function PopupOrdersContent() {
       setError('Failed to update pickup status.');
     } finally {
       setSavingOrderId(null);
+    }
+  };
+
+  const createLabel = async (orderId: string) => {
+    if (!key) return;
+    setCreatingLabelId(orderId);
+    try {
+      const res = await fetch('/api/shipping-label', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-popup-admin-key': key,
+        },
+        body: JSON.stringify({ orderId, source: 'popup' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to create shipping label.');
+        return;
+      }
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === orderId
+            ? { ...order, trackingNumber: data.trackingNumber, labelUrl: data.labelUrl }
+            : order
+        )
+      );
+    } catch {
+      setError('Failed to create shipping label.');
+    } finally {
+      setCreatingLabelId(null);
     }
   };
 
@@ -525,6 +559,37 @@ function PopupOrdersContent() {
                 </>
               )}
             </div>
+
+            {/* Shipping label section for Ship to Me orders */}
+            {(order.deliveryMethod || '').toLowerCase() === 'ship' && (
+              order.trackingNumber ? (
+                <div className="flex flex-wrap items-center gap-3 bg-cyan-950/30 border border-cyan-800/40 rounded-lg px-3 py-2 text-sm">
+                  <span className="text-gray-400">Tracking:</span>
+                  <span className="text-white font-mono">{order.trackingNumber}</span>
+                  {order.labelUrl && (
+                    <a
+                      href={order.labelUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 underline text-xs"
+                    >
+                      Download Label (PDF)
+                    </a>
+                  )}
+                </div>
+              ) : (
+                order.address && !isCompletedOrder(order) && (
+                  <button
+                    type="button"
+                    onClick={() => createLabel(order.id)}
+                    disabled={creatingLabelId === order.id}
+                    className="px-4 py-2 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {creatingLabelId === order.id ? 'Creating Label...' : 'Create Shipping Label'}
+                  </button>
+                )
+              )
+            )}
 
             <div className="space-y-2 text-sm">
               <p className="text-gray-300">Colors by letter</p>

@@ -376,6 +376,8 @@ export async function GET(req: NextRequest) {
       subtotal: record.fields['Subtotal'] || 0,
       tax: record.fields['Tax'] || 0,
       total: record.fields['Total'] || 0,
+      trackingNumber: record.fields['Tracking Number'] || '',
+      labelUrl: record.fields['Label URL'] || '',
     });
     })
       .sort((a: { date: string }, b: { date: string }) => {
