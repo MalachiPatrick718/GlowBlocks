@@ -861,14 +861,20 @@ export default function PopupPage() {
                       Pay at Kiosk
                     </button>
                   </div>
-                  {paymentLocation === 'kiosk' && (
+                  {paymentMethod === 'mobile' && (
+                    <p className="text-xs text-gray-400">Pay via Apple Pay, Google Pay, or card on your phone after confirming.</p>
+                  )}
+                </div>
+                {paymentLocation === 'kiosk' && (
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-300">Kiosk Payment Type</p>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('kiosk-card')}
                         className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
                           paymentMethod === 'kiosk-card'
-                            ? 'bg-gray-700 border-gray-500 text-white'
+                            ? 'bg-purple-600 border-purple-500 text-white'
                             : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
                         }`}
                       >
@@ -879,24 +885,21 @@ export default function PopupPage() {
                         onClick={() => setPaymentMethod('cash')}
                         className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
                           paymentMethod === 'cash'
-                            ? 'bg-gray-700 border-gray-500 text-white'
+                            ? 'bg-purple-600 border-purple-500 text-white'
                             : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
                         }`}
                       >
                         Cash
                       </button>
                     </div>
-                  )}
-                  {paymentMethod === 'mobile' && (
-                    <p className="text-xs text-gray-400">Pay via Apple Pay, Google Pay, or card on your phone after confirming.</p>
-                  )}
-                  {paymentMethod === 'kiosk-card' && (
-                    <p className="text-xs text-gray-400">Pay with card or mobile wallet at the kiosk after confirming.</p>
-                  )}
-                  {paymentMethod === 'cash' && (
-                    <p className="text-xs text-gray-400">No tax on cash orders. Pay at the checkout kiosk after confirming.</p>
-                  )}
-                </div>
+                    {paymentMethod === 'kiosk-card' && (
+                      <p className="text-xs text-gray-400">Pay with card or mobile wallet at the kiosk after confirming.</p>
+                    )}
+                    {paymentMethod === 'cash' && (
+                      <p className="text-xs text-gray-400">No tax on cash orders. Pay at the checkout kiosk after confirming.</p>
+                    )}
+                  </div>
+                )}
                 <p className="text-xs text-gray-500">
                   By submitting, you agree to receive SMS order updates at the number provided. Msg &amp; data rates may apply. View our{' '}
                   <a href="/privacy" className="text-purple-400 hover:text-purple-300 underline">Privacy Policy</a> and{' '}
