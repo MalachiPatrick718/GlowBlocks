@@ -5,7 +5,7 @@ const baseId = process.env.AIRTABLE_BASE_ID;
 const ordersTableName = process.env.AIRTABLE_ORDERS_TABLE || 'Orders';
 const popupTableName = process.env.AIRTABLE_POPUP_ORDERS || process.env.AIRTABLE_POPUP_ORDERS_TABLE || 'Popup';
 const adminKey = process.env.POPUP_ORDERS_ADMIN_KEY;
-const easypostKey = process.env.EASYPOST_API_KEY;
+const shipStationKey = process.env.SHIPSTATION_API_KEY;
 
 function getAirtableUrl(table: string) {
   return `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}`;
@@ -18,9 +18,11 @@ function getAirtableHeaders() {
   };
 }
 
-function getEasyPostHeaders() {
+const SHIPSTATION_BASE = 'https://api.shipstation.com/v2';
+
+function getShipStationHeaders() {
   return {
-    Authorization: `Basic ${Buffer.from(`${easypostKey}:`).toString('base64')}`,
+    'API-Key': shipStationKey!,
     'Content-Type': 'application/json',
   };
 }
@@ -138,8 +140,8 @@ export async function POST(req: NextRequest) {
     if (!apiKey || !baseId) {
       return NextResponse.json({ error: 'Airtable is not configured' }, { status: 500 });
     }
-    if (!easypostKey) {
-      return NextResponse.json({ error: 'EasyPost is not configured' }, { status: 500 });
+    if (!shipStationKey) {
+      return NextResponse.json({ error: 'ShipStation is not configured' }, { status: 500 });
     }
     if (!isAuthorized(req)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -175,97 +177,115 @@ export async function POST(req: NextRequest) {
 
     parsed.name = (isPopup ? fields['Name'] : fields['Customer Name']) || 'Customer';
 
-    // Step 1: Create shipment to get rates
-    const shipmentRes = await fetch('https://api.easypost.com/v2/shipments', {
+    // Step 1: Discover USPS carrier on the ShipStation account
+    const carriersRes = await fetch(`${SHIPSTATION_BASE}/carriers`, {
+      headers: getShipStationHeaders(),
+    });
+    if (!carriersRes.ok) {
+      const err = await carriersRes.text();
+      console.error('ShipStation carriers error:', err);
+      return NextResponse.json({ error: 'Failed to fetch carriers from ShipStation' }, { status: 500 });
+    }
+    const carriersData = await carriersRes.json();
+    const carriers = carriersData.carriers || [];
+    const uspsCarrier = carriers.find(
+      (c: { carrier_code?: string; friendly_name?: string }) =>
+        c.carrier_code?.toLowerCase().includes('usps') ||
+        c.friendly_name?.toLowerCase().includes('usps')
+    );
+    if (!uspsCarrier) {
+      return NextResponse.json({ error: 'No USPS carrier found on ShipStation account' }, { status: 400 });
+    }
+
+    // Step 2: Get shipping rates
+    const ratesRes = await fetch(`${SHIPSTATION_BASE}/rates`, {
       method: 'POST',
-      headers: getEasyPostHeaders(),
+      headers: getShipStationHeaders(),
       body: JSON.stringify({
+        rate_options: {
+          carrier_ids: [uspsCarrier.carrier_id],
+        },
         shipment: {
-          from_address: {
+          ship_from: {
             name: process.env.GLOWBLOCKS_FROM_NAME || 'GlowBlocks',
-            street1: process.env.GLOWBLOCKS_FROM_STREET || '',
-            city: process.env.GLOWBLOCKS_FROM_CITY || '',
-            state: process.env.GLOWBLOCKS_FROM_STATE || '',
-            zip: process.env.GLOWBLOCKS_FROM_ZIP || '',
-            country: process.env.GLOWBLOCKS_FROM_COUNTRY || 'US',
-            email: process.env.GLOWBLOCKS_FROM_EMAIL || '',
+            address_line1: process.env.GLOWBLOCKS_FROM_STREET || '',
+            city_locality: process.env.GLOWBLOCKS_FROM_CITY || '',
+            state_province: process.env.GLOWBLOCKS_FROM_STATE || '',
+            postal_code: process.env.GLOWBLOCKS_FROM_ZIP || '',
+            country_code: process.env.GLOWBLOCKS_FROM_COUNTRY || 'US',
           },
-          to_address: {
+          ship_to: {
             name: parsed.name,
-            street1: parsed.street1,
-            street2: parsed.street2,
-            city: parsed.city,
-            state: parsed.state,
-            zip: parsed.zip,
-            country: parsed.country,
+            address_line1: parsed.street1,
+            address_line2: parsed.street2 || undefined,
+            city_locality: parsed.city,
+            state_province: parsed.state,
+            postal_code: parsed.zip,
+            country_code: parsed.country,
           },
-          parcel: {
-            length: 8,
-            width: 6,
-            height: 4,
-            weight: 12,
-          },
-          options: {
-            label_format: 'PDF',
-          },
+          packages: [
+            {
+              weight: { value: 12, unit: 'ounce' },
+              dimensions: { length: 8, width: 6, height: 4, unit: 'inch' },
+            },
+          ],
         },
       }),
     });
 
-    if (!shipmentRes.ok) {
-      const err = await shipmentRes.text();
-      console.error('EasyPost shipment error:', err);
-      let detail = 'Failed to create shipment';
+    if (!ratesRes.ok) {
+      const err = await ratesRes.text();
+      console.error('ShipStation rates error:', err);
+      let detail = 'Failed to get shipping rates';
       try {
         const errJson = JSON.parse(err);
-        if (errJson?.error?.message) detail = errJson.error.message;
+        if (errJson?.errors?.[0]?.message) detail = errJson.errors[0].message;
+        else if (errJson?.error?.message) detail = errJson.error.message;
       } catch {}
       return NextResponse.json({ error: detail }, { status: 500 });
     }
 
-    const shipment = await shipmentRes.json();
-    const rates = shipment.rates || [];
+    const ratesData = await ratesRes.json();
+    const rates = ratesData.rate_response?.rates || ratesData.rates || [];
 
     if (rates.length === 0) {
       return NextResponse.json({ error: 'No shipping rates available' }, { status: 400 });
     }
 
-    // Find cheapest USPS rate, fall back to cheapest overall
-    const uspsRates = rates.filter((r: { carrier: string }) =>
-      r.carrier?.toUpperCase() === 'USPS'
-    );
-    const pool = uspsRates.length > 0 ? uspsRates : rates;
-    const cheapest = pool.reduce(
-      (min: { rate: string }, r: { rate: string }) =>
-        parseFloat(r.rate) < parseFloat(min.rate) ? r : min,
-      pool[0]
+    // Pick the cheapest rate
+    const cheapest = rates.reduce(
+      (min: { shipping_amount: { amount: number } }, r: { shipping_amount: { amount: number } }) =>
+        r.shipping_amount.amount < min.shipping_amount.amount ? r : min,
+      rates[0]
     );
 
-    // Step 2: Purchase label
-    const buyRes = await fetch(`https://api.easypost.com/v2/shipments/${shipment.id}/buy`, {
+    // Step 3: Purchase label from the chosen rate
+    const labelRes = await fetch(`${SHIPSTATION_BASE}/labels/rates/${cheapest.rate_id}`, {
       method: 'POST',
-      headers: getEasyPostHeaders(),
+      headers: getShipStationHeaders(),
       body: JSON.stringify({
-        rate: { id: cheapest.id },
+        label_format: 'pdf',
+        label_layout: '4x6',
       }),
     });
 
-    if (!buyRes.ok) {
-      const err = await buyRes.text();
-      console.error('EasyPost buy error:', err);
+    if (!labelRes.ok) {
+      const err = await labelRes.text();
+      console.error('ShipStation label error:', err);
       let detail = 'Failed to purchase label';
       try {
         const errJson = JSON.parse(err);
-        if (errJson?.error?.message) detail = errJson.error.message;
+        if (errJson?.errors?.[0]?.message) detail = errJson.errors[0].message;
+        else if (errJson?.error?.message) detail = errJson.error.message;
       } catch {}
       return NextResponse.json({ error: detail }, { status: 500 });
     }
 
-    const purchased = await buyRes.json();
+    const label = await labelRes.json();
 
-    const trackingNumber = purchased.tracking_code || '';
-    const labelUrl = purchased.postage_label?.label_url || '';
-    const cost = cheapest.rate;
+    const trackingNumber = label.tracking_number || '';
+    const labelUrl = label.label_download?.pdf || '';
+    const cost = label.shipment_cost?.amount?.toString() || cheapest.shipping_amount?.amount?.toString() || '';
 
     // Update Airtable with tracking info
     await fetch(getAirtableUrl(table), {
