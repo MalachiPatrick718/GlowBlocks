@@ -71,8 +71,14 @@ function parseAddress(raw: string): {
   //   "Line1, Line2?, City, State ZIP, Country"
   //   "Line1, Line2?, City, State ZIP"  (no country)
   //   "Line1, Line2?, City, County?, State, ZIP, Country"
-  const parts = raw.split(',').map((s) => s.trim());
+  let parts = raw.split(',').map((s) => s.trim());
   if (parts.length < 3) return null;
+
+  // Merge bare house number with the next part
+  // e.g. "171, Humphrey Street, ..." → "171 Humphrey Street, ..."
+  if (/^\d+[A-Za-z]?$/.test(parts[0]) && parts.length >= 4) {
+    parts = [`${parts[0]} ${parts[1]}`, ...parts.slice(2)];
+  }
 
   // Detect if the last part is a country
   const lastPart = parts[parts.length - 1];
@@ -164,6 +170,17 @@ export async function POST(req: NextRequest) {
     }
     const orderData = await orderRes.json();
     const fields = orderData.fields || {};
+
+    // Prevent duplicate labels
+    const existingTracking = fields['Tracking Number'] || '';
+    if (existingTracking) {
+      return NextResponse.json({
+        trackingNumber: existingTracking,
+        labelUrl: fields['Label URL'] || '',
+        cost: '',
+        existing: true,
+      });
+    }
 
     const addressRaw = fields['Address'] || '';
     if (!addressRaw) {
@@ -291,7 +308,7 @@ export async function POST(req: NextRequest) {
     const cost = label.shipment_cost?.amount?.toString() || cheapest.shipping_amount?.amount?.toString() || '';
 
     // Update Airtable with tracking info
-    await fetch(getAirtableUrl(table), {
+    const patchRes = await fetch(getAirtableUrl(table), {
       method: 'PATCH',
       headers: getAirtableHeaders(),
       body: JSON.stringify({
@@ -305,7 +322,11 @@ export async function POST(req: NextRequest) {
           },
         ],
       }),
-    }).catch((err) => console.error('Failed to update Airtable with tracking:', err));
+    });
+    if (!patchRes.ok) {
+      const patchErr = await patchRes.text();
+      console.error('Failed to update Airtable with tracking:', patchErr);
+    }
 
     return NextResponse.json({ trackingNumber, labelUrl, cost });
   } catch (error) {
