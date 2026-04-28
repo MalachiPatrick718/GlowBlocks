@@ -176,6 +176,7 @@ export async function POST(req: NextRequest) {
     }
 
     parsed.name = (isPopup ? fields['Name'] : fields['Customer Name']) || 'Customer';
+    const customerPhone = fields['Phone Number'] || fields['Phone'] || '555-555-5555';
 
     // Step 1: Discover USPS carrier on the ShipStation account
     const carriersRes = await fetch(`${SHIPSTATION_BASE}/carriers`, {
@@ -208,6 +209,7 @@ export async function POST(req: NextRequest) {
         shipment: {
           ship_from: {
             name: process.env.GLOWBLOCKS_FROM_NAME || 'GlowBlocks',
+            phone: process.env.GLOWBLOCKS_FROM_PHONE || '555-555-5555',
             address_line1: process.env.GLOWBLOCKS_FROM_STREET || '',
             city_locality: process.env.GLOWBLOCKS_FROM_CITY || '',
             state_province: process.env.GLOWBLOCKS_FROM_STATE || '',
@@ -216,6 +218,7 @@ export async function POST(req: NextRequest) {
           },
           ship_to: {
             name: parsed.name,
+            phone: customerPhone,
             address_line1: parsed.street1,
             address_line2: parsed.street2 || undefined,
             city_locality: parsed.city,
