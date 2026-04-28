@@ -19,7 +19,7 @@ function getAirtableHeaders() {
   };
 }
 
-async function hasDoneTextAlreadySent(recordId: string): Promise<boolean> {
+async function hasTextAlreadySent(recordId: string, field: string): Promise<boolean> {
   if (!airtableApiKey || !airtableBaseId || !recordId) return false;
 
   const res = await fetch(getAirtableUrl(recordId), {
@@ -29,11 +29,11 @@ async function hasDoneTextAlreadySent(recordId: string): Promise<boolean> {
   if (!res.ok) return false;
 
   const record = await res.json();
-  const field = record?.fields?.['Done Text Sent'];
-  return field === true || field === 'true' || field === 'Yes';
+  const value = record?.fields?.[field];
+  return value === true || value === 'true' || value === 'Yes';
 }
 
-async function markDoneTextSent(recordId: string): Promise<void> {
+async function markTextSent(recordId: string, field: string): Promise<void> {
   if (!airtableApiKey || !airtableBaseId || !recordId) return;
 
   await fetch(getAirtableUrl(recordId), {
@@ -41,7 +41,7 @@ async function markDoneTextSent(recordId: string): Promise<void> {
     headers: getAirtableHeaders(),
     body: JSON.stringify({
       fields: {
-        'Done Text Sent': true,
+        [field]: true,
       },
     }),
   });
@@ -63,11 +63,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required payload fields' }, { status: 400 });
     }
 
-    if (String(status).toLowerCase() !== 'done') {
-      return NextResponse.json({ skipped: true, reason: 'Status is not Done' });
+    const statusLower = String(status).toLowerCase();
+
+    if (statusLower === 'in progress') {
+      const sentField = 'In Progress Text Sent';
+      if (recordId && await hasTextAlreadySent(String(recordId), sentField)) {
+        return NextResponse.json({ skipped: true, reason: 'In Progress SMS already sent for this order' });
+      }
+
+      const firstName = String(customerName).trim().split(' ')[0];
+      const message = `Hey ${firstName}, we're working on your GlowBlocks order now! We'll let you know when it's ready.`;
+      const sent = await sendSMS(String(phoneNumber), message);
+
+      if (!sent) {
+        return NextResponse.json({ error: 'Failed to send SMS' }, { status: 500 });
+      }
+
+      if (recordId) {
+        await markTextSent(String(recordId), sentField);
+      }
+
+      return NextResponse.json({ success: true });
     }
 
-    if (recordId && await hasDoneTextAlreadySent(String(recordId))) {
+    if (statusLower !== 'done') {
+      return NextResponse.json({ skipped: true, reason: 'Status is not Done or In Progress' });
+    }
+
+    if (recordId && await hasTextAlreadySent(String(recordId), 'Done Text Sent')) {
       return NextResponse.json({ skipped: true, reason: 'Done SMS already sent for this order' });
     }
 
@@ -79,7 +102,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (recordId) {
-      await markDoneTextSent(String(recordId));
+      await markTextSent(String(recordId), 'Done Text Sent');
     }
 
     return NextResponse.json({ success: true });

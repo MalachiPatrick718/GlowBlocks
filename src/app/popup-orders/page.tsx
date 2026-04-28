@@ -26,6 +26,8 @@ interface PopupOrder {
   boardIds?: (string | null)[];
   trackingNumber?: string;
   labelUrl?: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
 }
 
 interface ParsedColorByLetter {
@@ -164,6 +166,8 @@ function PopupOrdersContent() {
   const [creatingLabelId, setCreatingLabelId] = useState<string | null>(null);
   const [pickupDrafts, setPickupDrafts] = useState<Record<string, string>>({});
   const [orderFilter, setOrderFilter] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'awaiting' | 'paid'>('all');
+  const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const baseStatusOptions = ['Not Started', 'In Progress', 'Done'];
 
@@ -308,21 +312,55 @@ function PopupOrdersContent() {
     }
   };
 
+  const markAsPaid = async (orderId: string) => {
+    if (!key) return;
+    setMarkingPaidId(orderId);
+    try {
+      const res = await fetch('/api/popup-orders', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-popup-admin-key': key,
+        },
+        body: JSON.stringify({ id: orderId, paymentStatus: 'Paid' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to mark as paid.');
+        return;
+      }
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === orderId ? { ...order, paymentStatus: 'Paid' } : order
+        )
+      );
+    } catch {
+      setError('Failed to mark as paid.');
+    } finally {
+      setMarkingPaidId(null);
+    }
+  };
+
   const emptyState = useMemo(() => !loading && !error && orders.length === 0, [loading, error, orders.length]);
   const filteredOrders = useMemo(() => {
     const q = orderFilter.trim().toLowerCase();
-    const filtered = !q ? orders : orders.filter((order) =>
+    let filtered = !q ? orders : orders.filter((order) =>
       (order.orderNumber || '').toLowerCase().includes(q) ||
       (order.text || '').toLowerCase().includes(q) ||
       (order.customerName || '').toLowerCase().includes(q)
     );
+    if (paymentFilter === 'awaiting') {
+      filtered = filtered.filter((order) => (order.paymentStatus || 'Awaiting Payment').toLowerCase() !== 'paid');
+    } else if (paymentFilter === 'paid') {
+      filtered = filtered.filter((order) => (order.paymentStatus || '').toLowerCase() === 'paid');
+    }
     return [...filtered].sort((a, b) => {
       const aDone = isCompletedOrder(a) ? 1 : 0;
       const bDone = isCompletedOrder(b) ? 1 : 0;
       if (aDone !== bDone) return aDone - bDone;
       return 0;
     });
-  }, [orders, orderFilter]);
+  }, [orders, orderFilter, paymentFilter]);
 
   return (
     <div className="min-h-screen py-8 px-4">
@@ -361,13 +399,31 @@ function PopupOrdersContent() {
         {error && <p className="text-red-300">{error}</p>}
         {emptyState && <p className="text-gray-400">No popup orders yet.</p>}
         {!loading && (
-          <input
-            type="text"
-            value={orderFilter}
-            onChange={(e) => setOrderFilter(e.target.value)}
-            placeholder="Find by order number, name, or letters..."
-            className="w-full max-w-md px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500"
-          />
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="text"
+              value={orderFilter}
+              onChange={(e) => setOrderFilter(e.target.value)}
+              placeholder="Find by order number, name, or letters..."
+              className="w-full max-w-md px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500"
+            />
+            <div className="flex rounded-lg border border-gray-700 overflow-hidden">
+              {([['all', 'All'], ['awaiting', 'Unpaid'], ['paid', 'Paid']] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setPaymentFilter(value)}
+                  className={`px-3 py-2 text-xs font-semibold transition-colors ${
+                    paymentFilter === value
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-900 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
 
         {filteredOrders.map((order) => {
@@ -449,6 +505,32 @@ function PopupOrdersContent() {
                 </div>
               </div>
             )}
+
+            {/* Payment status */}
+            <div className="flex flex-wrap items-center gap-2">
+              {(order.paymentStatus || 'Awaiting Payment').toLowerCase() === 'paid' ? (
+                <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-green-900/50 text-green-400 border border-green-600/40">
+                  Paid
+                </span>
+              ) : (
+                <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-yellow-900/50 text-yellow-400 border border-yellow-600/40">
+                  Awaiting Payment
+                </span>
+              )}
+              {order.paymentMethod && (
+                <span className="text-xs text-gray-500">{order.paymentMethod}</span>
+              )}
+              {(order.paymentStatus || 'Awaiting Payment').toLowerCase() !== 'paid' && (
+                <button
+                  type="button"
+                  onClick={() => markAsPaid(order.id)}
+                  disabled={markingPaidId === order.id}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-green-800 text-green-200 border border-green-600 hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ml-auto"
+                >
+                  {markingPaidId === order.id ? 'Saving...' : 'Mark as Paid'}
+                </button>
+              )}
+            </div>
 
             <div className="flex flex-wrap items-center gap-2">
               {(() => {

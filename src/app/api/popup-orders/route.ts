@@ -188,7 +188,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Calculate pricing with tiered rates
-    const isCash = paymentMethod === 'cash';
+    // paymentMethod: 'mobile' | 'kiosk-card' | 'cash' (legacy 'card' treated as 'mobile')
+    const normalizedPayment = paymentMethod === 'card' ? 'mobile' : (paymentMethod || 'mobile');
+    const isCash = normalizedPayment === 'cash';
     const letterCount = text.length;
     const pricePerLetter = getPricePerLetter(letterCount);
     const letterSubtotal = letterCount * pricePerLetter;
@@ -197,6 +199,11 @@ export async function POST(req: NextRequest) {
     const subtotal = letterSubtotal + customColorFee;
     const tax = isCash ? 0 : subtotal * taxRate;
     const total = subtotal + tax + shippingFee;
+
+    // Map payment method label for Airtable
+    const paymentMethodLabel = normalizedPayment === 'mobile' ? 'Mobile'
+      : normalizedPayment === 'kiosk-card' ? 'Kiosk Card'
+      : 'Cash';
 
     const colorsByLetter = text.split('').map((char: string, idx: number) => {
       const colorNumber = Array.isArray(colorNumbers) ? colorNumbers[idx] : null;
@@ -233,6 +240,8 @@ export async function POST(req: NextRequest) {
       'Subtotal': subtotal,
       'Tax': tax,
       'Total': total,
+      'Payment Method': paymentMethodLabel,
+      'Payment': 'Awaiting Payment',
     };
 
     if (popupOrderStatusValue) {
@@ -378,6 +387,8 @@ export async function GET(req: NextRequest) {
       total: record.fields['Total'] || 0,
       trackingNumber: record.fields['Tracking Number'] || '',
       labelUrl: record.fields['Label URL'] || '',
+      paymentStatus: record.fields['Payment'] || 'Awaiting Payment',
+      paymentMethod: record.fields['Payment Method'] || '',
     });
     })
       .sort((a: { date: string }, b: { date: string }) => {
@@ -407,8 +418,8 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, status, pickupStatus, scanBoard } = await req.json();
-    if (!id || (!status && !pickupStatus && !scanBoard)) {
+    const { id, status, pickupStatus, scanBoard, paymentStatus: newPaymentStatus } = await req.json();
+    if (!id || (!status && !pickupStatus && !scanBoard && !newPaymentStatus)) {
       return NextResponse.json({ error: 'Missing record id and update fields' }, { status: 400 });
     }
 
@@ -517,6 +528,9 @@ export async function PATCH(req: NextRequest) {
     if (pickupStatus) {
       fields['Pickup Status'] = String(pickupStatus);
     }
+    if (newPaymentStatus) {
+      fields['Payment'] = String(newPaymentStatus);
+    }
 
     const nextStatus = String(fields['Order Status'] || existingStatus || '');
     const nextPickupStatus = String(fields['Pickup Status'] || existingPickupStatus || '');
@@ -552,6 +566,31 @@ export async function PATCH(req: NextRequest) {
       const err = await res.json();
       console.error('Popup order status update error:', err);
       return NextResponse.json({ error: 'Failed to update status' }, { status: 500 });
+    }
+
+    // Send "in progress" SMS when status → In Progress for pickup orders
+    const isNewInProgressSMS = String(status).toLowerCase() === 'in progress'
+      && existingStatus.toLowerCase() !== 'in progress'
+      && orderType.toLowerCase() === 'pickup';
+    const inProgressTextAlreadySent = isTruthy(existingFields['In Progress Text Sent']);
+
+    if (isNewInProgressSMS && !inProgressTextAlreadySent) {
+      const customerPhone = String(existingFields['Phone Number'] || '');
+      const customerName = String(existingFields['Name'] || '');
+      if (customerPhone) {
+        const firstName = customerName.trim().split(' ')[0];
+        const msg = `Hey ${firstName}, we're working on your GlowBlocks order now! We'll let you know when it's ready.`;
+        const sent = await sendSMS(customerPhone, msg);
+        if (sent) {
+          await fetch(getAirtableUrl(), {
+            method: 'PATCH',
+            headers: getHeaders(),
+            body: JSON.stringify({
+              records: [{ id: String(id), fields: { 'In Progress Text Sent': true } }],
+            }),
+          });
+        }
+      }
     }
 
     // Send "ready for pickup" SMS when status → Done for pickup orders

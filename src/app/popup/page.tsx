@@ -45,11 +45,12 @@ export default function PopupPage() {
   } | null>(null);
   const [confirmedDeliveryMethod, setConfirmedDeliveryMethod] = useState<'pick-up' | 'ship'>('pick-up');
   const [pickupEligible, setPickupEligible] = useState<boolean | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('card');
+  const [paymentMethod, setPaymentMethod] = useState<'mobile' | 'kiosk-card' | 'cash'>('mobile');
+  const [paymentLocation, setPaymentLocation] = useState<'mobile' | 'kiosk'>('mobile');
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'expired' | null>(null);
-  const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState<'cash' | 'card'>('cash');
+  const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState<'mobile' | 'kiosk-card' | 'cash'>('cash');
 
   const nonSpaceLetters = text.replace(/\s/g, '');
 
@@ -65,9 +66,10 @@ export default function PopupPage() {
 
     const letterSubtotal = count * pricePerLetter;
     const customColorFee = colorMode === 'custom' ? 2.00 : 0;
-    const shippingFee = deliveryMethod === 'ship' ? (paymentMethod === 'cash' ? 6.00 : 5.99) : 0;
+    const isCash = paymentMethod === 'cash';
+    const shippingFee = deliveryMethod === 'ship' ? (isCash ? 6.00 : 5.99) : 0;
     const subtotal = letterSubtotal + customColorFee;
-    const tax = paymentMethod === 'cash' ? 0 : subtotal * 0.08875;
+    const tax = isCash ? 0 : subtotal * 0.08875;
     const total = subtotal + tax + shippingFee;
 
     return { count, pricePerLetter, letterSubtotal, customColorFee, shippingFee, subtotal, tax, total };
@@ -170,7 +172,7 @@ export default function PopupPage() {
       setConfirmedOrderNumber('');
       setConfirmedPricing(null);
       setConfirmedDeliveryMethod('pick-up');
-      setConfirmedPaymentMethod('cash');
+      setConfirmedPaymentMethod('mobile');
       setCheckoutUrl(null);
       setSessionId(null);
       setPaymentStatus(null);
@@ -296,8 +298,8 @@ export default function PopupPage() {
       setConfirmedDeliveryMethod(deliveryMethod);
       setConfirmedPaymentMethod(paymentMethod);
 
-      // If Pay Here, create Stripe Checkout session and show QR code
-      if (paymentMethod === 'card' && data.recordId && data.pricing) {
+      // If Pay on Mobile, create Stripe Checkout session and show QR/redirect
+      if (paymentMethod === 'mobile' && data.recordId && data.pricing) {
         try {
           const checkoutRes = await fetch('/api/popup-checkout', {
             method: 'POST',
@@ -345,7 +347,8 @@ export default function PopupPage() {
       setAddressSuggestions([]);
       setSelectedPresetName(null);
       setModalIndex(null);
-      setPaymentMethod('card');
+      setPaymentMethod('mobile');
+      setPaymentLocation('mobile');
     } catch {
       setSubmitMessage('Failed to submit popup order.');
     } finally {
@@ -471,7 +474,7 @@ export default function PopupPage() {
               }}
               className="w-full py-3 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-all"
             >
-              Cancel &amp; Pay with Cash Instead
+              Cancel &amp; Pay at Kiosk Instead
             </button>
           </div>
         ) : orderConfirmed ? (
@@ -550,7 +553,7 @@ export default function PopupPage() {
             )}
 
             <div className="bg-gray-900/60 border border-gray-700 rounded-xl p-5 text-center space-y-3">
-              {confirmedPaymentMethod === 'card' ? (
+              {confirmedPaymentMethod === 'mobile' ? (
                 <p className="text-green-400 font-bold text-lg">
                   Payment complete!
                 </p>
@@ -581,7 +584,7 @@ export default function PopupPage() {
                   setConfirmedOrderNumber('');
                   setConfirmedPricing(null);
                   setConfirmedDeliveryMethod('pick-up');
-                  setConfirmedPaymentMethod('cash');
+                  setConfirmedPaymentMethod('mobile');
                   setCheckoutUrl(null);
                   setSessionId(null);
                   setPaymentStatus(null);
@@ -598,7 +601,7 @@ export default function PopupPage() {
                   setConfirmedOrderNumber('');
                   setConfirmedPricing(null);
                   setConfirmedDeliveryMethod('pick-up');
-                  setConfirmedPaymentMethod('cash');
+                  setConfirmedPaymentMethod('mobile');
                   setCheckoutUrl(null);
                   setSessionId(null);
                   setPaymentStatus(null);
@@ -831,29 +834,64 @@ export default function PopupPage() {
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setPaymentMethod('card')}
+                      onClick={() => {
+                        setPaymentLocation('mobile');
+                        setPaymentMethod('mobile');
+                      }}
                       className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
-                        paymentMethod === 'card'
+                        paymentLocation === 'mobile'
                           ? 'bg-purple-600 border-purple-500 text-white'
                           : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
                       }`}
                     >
-                      Card / Mobile Wallet
+                      Pay on Mobile
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPaymentMethod('cash')}
+                      onClick={() => {
+                        setPaymentLocation('kiosk');
+                        setPaymentMethod('kiosk-card');
+                      }}
                       className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
-                        paymentMethod === 'cash'
+                        paymentLocation === 'kiosk'
                           ? 'bg-purple-600 border-purple-500 text-white'
                           : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
                       }`}
                     >
-                      Cash
+                      Pay at Kiosk
                     </button>
                   </div>
-                  {paymentMethod === 'card' && (
-                    <p className="text-xs text-gray-400">Pay via Apple Pay, Google Pay, or card after confirming your order.</p>
+                  {paymentLocation === 'kiosk' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('kiosk-card')}
+                        className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
+                          paymentMethod === 'kiosk-card'
+                            ? 'bg-gray-700 border-gray-500 text-white'
+                            : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
+                        }`}
+                      >
+                        Card / Mobile Wallet
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('cash')}
+                        className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
+                          paymentMethod === 'cash'
+                            ? 'bg-gray-700 border-gray-500 text-white'
+                            : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
+                        }`}
+                      >
+                        Cash
+                      </button>
+                    </div>
+                  )}
+                  {paymentMethod === 'mobile' && (
+                    <p className="text-xs text-gray-400">Pay via Apple Pay, Google Pay, or card on your phone after confirming.</p>
+                  )}
+                  {paymentMethod === 'kiosk-card' && (
+                    <p className="text-xs text-gray-400">Pay with card or mobile wallet at the kiosk after confirming.</p>
                   )}
                   {paymentMethod === 'cash' && (
                     <p className="text-xs text-gray-400">No tax on cash orders. Pay at the checkout kiosk after confirming.</p>
