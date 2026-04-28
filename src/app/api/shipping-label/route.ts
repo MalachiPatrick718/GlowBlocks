@@ -6,6 +6,7 @@ const ordersTableName = process.env.AIRTABLE_ORDERS_TABLE || 'Orders';
 const popupTableName = process.env.AIRTABLE_POPUP_ORDERS || process.env.AIRTABLE_POPUP_ORDERS_TABLE || 'Popup';
 const adminKey = process.env.POPUP_ORDERS_ADMIN_KEY;
 const shipStationKey = process.env.SHIPSTATION_API_KEY;
+const shipStationSecret = process.env.SHIPSTATION_API_SECRET;
 
 function getAirtableUrl(table: string) {
   return `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}`;
@@ -18,11 +19,12 @@ function getAirtableHeaders() {
   };
 }
 
-const SHIPSTATION_BASE = 'https://api.shipstation.com/v2';
+const SHIPSTATION_BASE = 'https://ssapi.shipstation.com';
 
 function getShipStationHeaders() {
+  const credentials = Buffer.from(`${shipStationKey}:${shipStationSecret}`).toString('base64');
   return {
-    'API-Key': shipStationKey!,
+    Authorization: `Basic ${credentials}`,
     'Content-Type': 'application/json',
   };
 }
@@ -140,7 +142,7 @@ export async function POST(req: NextRequest) {
     if (!apiKey || !baseId) {
       return NextResponse.json({ error: 'Airtable is not configured' }, { status: 500 });
     }
-    if (!shipStationKey) {
+    if (!shipStationKey || !shipStationSecret) {
       return NextResponse.json({ error: 'ShipStation is not configured' }, { status: 500 });
     }
     if (!isAuthorized(req)) {
@@ -186,50 +188,30 @@ export async function POST(req: NextRequest) {
       console.error('ShipStation carriers error:', err);
       return NextResponse.json({ error: 'Failed to fetch carriers from ShipStation' }, { status: 500 });
     }
-    const carriersData = await carriersRes.json();
-    const carriers = carriersData.carriers || [];
+    const carriers: { code: string; name: string }[] = await carriersRes.json();
     const uspsCarrier = carriers.find(
-      (c: { carrier_code?: string; friendly_name?: string }) =>
-        c.carrier_code?.toLowerCase().includes('usps') ||
-        c.friendly_name?.toLowerCase().includes('usps')
+      (c) =>
+        c.code?.toLowerCase().includes('usps') ||
+        c.code?.toLowerCase() === 'stamps_com' ||
+        c.name?.toLowerCase().includes('usps')
     );
     if (!uspsCarrier) {
       return NextResponse.json({ error: 'No USPS carrier found on ShipStation account' }, { status: 400 });
     }
 
     // Step 2: Get shipping rates
-    const ratesRes = await fetch(`${SHIPSTATION_BASE}/rates`, {
+    const ratesRes = await fetch(`${SHIPSTATION_BASE}/shipments/getrates`, {
       method: 'POST',
       headers: getShipStationHeaders(),
       body: JSON.stringify({
-        rate_options: {
-          carrier_ids: [uspsCarrier.carrier_id],
-        },
-        shipment: {
-          ship_from: {
-            name: process.env.GLOWBLOCKS_FROM_NAME || 'GlowBlocks',
-            address_line1: process.env.GLOWBLOCKS_FROM_STREET || '',
-            city_locality: process.env.GLOWBLOCKS_FROM_CITY || '',
-            state_province: process.env.GLOWBLOCKS_FROM_STATE || '',
-            postal_code: process.env.GLOWBLOCKS_FROM_ZIP || '',
-            country_code: process.env.GLOWBLOCKS_FROM_COUNTRY || 'US',
-          },
-          ship_to: {
-            name: parsed.name,
-            address_line1: parsed.street1,
-            address_line2: parsed.street2 || undefined,
-            city_locality: parsed.city,
-            state_province: parsed.state,
-            postal_code: parsed.zip,
-            country_code: parsed.country,
-          },
-          packages: [
-            {
-              weight: { value: 12, unit: 'ounce' },
-              dimensions: { length: 8, width: 6, height: 4, unit: 'inch' },
-            },
-          ],
-        },
+        carrierCode: uspsCarrier.code,
+        fromPostalCode: process.env.GLOWBLOCKS_FROM_ZIP || '',
+        toPostalCode: parsed.zip,
+        toState: parsed.state,
+        toCountry: parsed.country,
+        toCity: parsed.city,
+        weight: { value: 12, units: 'ounces' },
+        dimensions: { units: 'inches', length: 8, width: 6, height: 4 },
       }),
     });
 
@@ -239,33 +221,54 @@ export async function POST(req: NextRequest) {
       let detail = 'Failed to get shipping rates';
       try {
         const errJson = JSON.parse(err);
-        if (errJson?.errors?.[0]?.message) detail = errJson.errors[0].message;
-        else if (errJson?.error?.message) detail = errJson.error.message;
+        if (errJson?.ExceptionMessage) detail = errJson.ExceptionMessage;
+        else if (errJson?.Message) detail = errJson.Message;
       } catch {}
       return NextResponse.json({ error: detail }, { status: 500 });
     }
 
-    const ratesData = await ratesRes.json();
-    const rates = ratesData.rate_response?.rates || ratesData.rates || [];
+    const rates: { serviceName: string; serviceCode: string; shipmentCost: number; otherCost: number }[] = await ratesRes.json();
 
     if (rates.length === 0) {
       return NextResponse.json({ error: 'No shipping rates available' }, { status: 400 });
     }
 
     // Pick the cheapest rate
-    const cheapest = rates.reduce(
-      (min: { shipping_amount: { amount: number } }, r: { shipping_amount: { amount: number } }) =>
-        r.shipping_amount.amount < min.shipping_amount.amount ? r : min,
+    const cheapest = rates.reduce((min, r) =>
+      r.shipmentCost < min.shipmentCost ? r : min,
       rates[0]
     );
 
-    // Step 3: Purchase label from the chosen rate
-    const labelRes = await fetch(`${SHIPSTATION_BASE}/labels/rates/${cheapest.rate_id}`, {
+    // Step 3: Create label with the chosen service
+    const shipDate = new Date().toISOString().split('T')[0];
+    const labelRes = await fetch(`${SHIPSTATION_BASE}/shipments/createlabel`, {
       method: 'POST',
       headers: getShipStationHeaders(),
       body: JSON.stringify({
-        label_format: 'pdf',
-        label_layout: '4x6',
+        carrierCode: uspsCarrier.code,
+        serviceCode: cheapest.serviceCode,
+        packageCode: 'package',
+        shipDate,
+        weight: { value: 12, units: 'ounces' },
+        dimensions: { units: 'inches', length: 8, width: 6, height: 4 },
+        shipFrom: {
+          name: process.env.GLOWBLOCKS_FROM_NAME || 'GlowBlocks',
+          street1: process.env.GLOWBLOCKS_FROM_STREET || '',
+          city: process.env.GLOWBLOCKS_FROM_CITY || '',
+          state: process.env.GLOWBLOCKS_FROM_STATE || '',
+          postalCode: process.env.GLOWBLOCKS_FROM_ZIP || '',
+          country: process.env.GLOWBLOCKS_FROM_COUNTRY || 'US',
+        },
+        shipTo: {
+          name: parsed.name,
+          street1: parsed.street1,
+          street2: parsed.street2 || undefined,
+          city: parsed.city,
+          state: parsed.state,
+          postalCode: parsed.zip,
+          country: parsed.country,
+        },
+        testLabel: false,
       }),
     });
 
@@ -275,19 +278,21 @@ export async function POST(req: NextRequest) {
       let detail = 'Failed to purchase label';
       try {
         const errJson = JSON.parse(err);
-        if (errJson?.errors?.[0]?.message) detail = errJson.errors[0].message;
-        else if (errJson?.error?.message) detail = errJson.error.message;
+        if (errJson?.ExceptionMessage) detail = errJson.ExceptionMessage;
+        else if (errJson?.Message) detail = errJson.Message;
       } catch {}
       return NextResponse.json({ error: detail }, { status: 500 });
     }
 
     const label = await labelRes.json();
 
-    const trackingNumber = label.tracking_number || '';
-    const labelUrl = label.label_download?.pdf || '';
-    const cost = label.shipment_cost?.amount?.toString() || cheapest.shipping_amount?.amount?.toString() || '';
+    const trackingNumber = label.trackingNumber || '';
+    const labelUrl = label.labelData
+      ? `data:application/pdf;base64,${label.labelData}`
+      : '';
+    const cost = label.shipmentCost?.toString() || cheapest.shipmentCost?.toString() || '';
 
-    // Update Airtable with tracking info
+    // Update Airtable with tracking number
     await fetch(getAirtableUrl(table), {
       method: 'PATCH',
       headers: getAirtableHeaders(),
@@ -297,7 +302,6 @@ export async function POST(req: NextRequest) {
             id: orderId,
             fields: {
               'Tracking Number': trackingNumber,
-              'Label URL': labelUrl,
             },
           },
         ],
