@@ -94,9 +94,10 @@ export async function POST(req: NextRequest) {
       return_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       metadata: {
         order_details: JSON.stringify(
-          items.map((item: { text: string; letterColors: string[] }) => ({
+          items.map((item: { text: string; letterColors: string[]; quantity: number }) => ({
             text: item.text,
             colors: item.letterColors,
+            quantity: item.quantity || 1,
           }))
         ),
       },

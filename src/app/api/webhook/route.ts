@@ -5,6 +5,97 @@ function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!);
 }
 
+type InventoryRecord = { id: string; fields: { Item?: string; Quantity?: number } };
+
+function getLetterCounts(text: string): Record<string, number> {
+  return text
+    .toUpperCase()
+    .split('')
+    .filter((ch) => ch >= 'A' && ch <= 'Z')
+    .reduce((acc: Record<string, number>, ch) => {
+      acc[ch] = (acc[ch] || 0) + 1;
+      return acc;
+    }, {});
+}
+
+async function deductInventory(
+  orderItems: { text: string; quantity?: number }[],
+  apiKey: string,
+  baseId: string
+): Promise<boolean> {
+  const inventoryTable = process.env.AIRTABLE_INVENTORY_TABLE || 'Inventory';
+  const inventoryUrl = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(inventoryTable)}`;
+  const headers = {
+    Authorization: `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
+
+  const inventoryRes = await fetch(inventoryUrl, { headers, cache: 'no-store' });
+  if (!inventoryRes.ok) return false;
+
+  const inventoryData = await inventoryRes.json();
+  const records: InventoryRecord[] = inventoryData.records || [];
+  const byItem = new Map<string, InventoryRecord>();
+  records.forEach((record) => {
+    const key = (record.fields.Item || '').trim();
+    if (key) byItem.set(key, record);
+  });
+
+  // Aggregate letter counts across all items (accounting for quantity)
+  const totalDeductions: Record<string, number> = {};
+  let totalLetters = 0;
+  for (const item of orderItems) {
+    const qty = item.quantity || 1;
+    const counts = getLetterCounts(item.text);
+    for (const [letter, count] of Object.entries(counts)) {
+      totalDeductions[letter] = (totalDeductions[letter] || 0) + count * qty;
+    }
+    totalLetters += Object.values(counts).reduce((sum, n) => sum + n, 0) * qty;
+  }
+  totalDeductions['P6 Bases'] = (totalDeductions['P6 Bases'] || 0) + totalLetters;
+  totalDeductions['PCB'] = (totalDeductions['PCB'] || 0) + totalLetters;
+
+  const updateRecords: Array<{ id: string; fields: { Quantity: number } }> = [];
+  const createRecords: Array<{ fields: { Item: string; Quantity: number } }> = [];
+
+  Object.entries(totalDeductions).forEach(([item, amount]) => {
+    const existing = byItem.get(item);
+    if (existing) {
+      const currentQty = Number(existing.fields.Quantity) || 0;
+      updateRecords.push({
+        id: existing.id,
+        fields: { Quantity: Math.max(0, currentQty - amount) },
+      });
+    } else {
+      createRecords.push({
+        fields: { Item: item, Quantity: 0 },
+      });
+    }
+  });
+
+  for (let i = 0; i < updateRecords.length; i += 10) {
+    const batch = updateRecords.slice(i, i + 10);
+    const patchRes = await fetch(inventoryUrl, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ records: batch }),
+    });
+    if (!patchRes.ok) return false;
+  }
+
+  for (let i = 0; i < createRecords.length; i += 10) {
+    const batch = createRecords.slice(i, i + 10);
+    const createRes = await fetch(inventoryUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ records: batch }),
+    });
+    if (!createRes.ok) return false;
+  }
+
+  return true;
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.text();
   const sig = req.headers.get('stripe-signature');
@@ -113,6 +204,16 @@ export async function POST(req: NextRequest) {
         if (!res.ok) {
           const err = await res.json();
           console.error('Airtable order save error:', err);
+        }
+
+        // Deduct inventory immediately for online orders
+        const orderItems = items.map((item: { text: string; quantity?: number }) => ({
+          text: item.text,
+          quantity: item.quantity || 1,
+        }));
+        const deducted = await deductInventory(orderItems, apiKey, baseId);
+        if (!deducted) {
+          console.error('Failed to deduct inventory for online order:', session.id);
         }
       }
     } catch (err) {
