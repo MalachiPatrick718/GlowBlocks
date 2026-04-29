@@ -175,6 +175,7 @@ export async function POST(req: NextRequest) {
       address,
       deliveryMethod,
       paymentMethod,
+      smsOptInAt,
     } = await req.json();
 
     if (!text || !customerName || !phoneNumber) {
@@ -223,6 +224,7 @@ export async function POST(req: NextRequest) {
       Name: String(customerName).slice(0, 100),
       'Phone Number': String(phoneNumber).slice(0, 40),
       Email: String(email || '').slice(0, 100),
+      'SMS Opt-In': smsOptInAt ? String(smsOptInAt) : '',
       Address: String(address || '').slice(0, 250),
       'Name/Word': text,
       'Order Number': orderNumber,

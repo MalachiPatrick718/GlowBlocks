@@ -4,7 +4,7 @@ export default function PrivacyPage() {
       <div className="max-w-3xl mx-auto space-y-10">
         <div className="text-center space-y-2">
           <h1 className="text-3xl sm:text-4xl font-bold gradient-text">Privacy Policy</h1>
-          <p className="text-gray-500 text-sm">Last updated: March 2026</p>
+          <p className="text-gray-500 text-sm">Last updated: April 2026</p>
         </div>
 
         <div className="space-y-8 text-gray-300 leading-relaxed text-sm">
@@ -47,9 +47,9 @@ export default function PrivacyPage() {
             </p>
           </Section>
 
-          <Section title="SMS messaging">
+          <Section title="SMS and email messaging">
             <p>
-              When you place a pop-up pickup order, we send transactional SMS messages to the phone number you provide. These messages include an order confirmation and a notification when your order is ready for pickup. We do not send marketing or promotional text messages. Message and data rates may apply. You can contact us at any time to opt out of SMS notifications.
+              When placing a pop-up order, you opt in via a checkbox to receive transactional SMS messages and email communications related to your order. These include order confirmations, status updates, and shipping or pickup notifications. We do not send marketing or promotional messages. Message and data rates may apply. We record the timestamp of your consent with your order. You can opt out at any time by contacting us.
             </p>
           </Section>
 

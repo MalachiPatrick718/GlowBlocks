@@ -4,7 +4,7 @@ export default function TermsPage() {
       <div className="max-w-3xl mx-auto space-y-10">
         <div className="text-center space-y-2">
           <h1 className="text-3xl sm:text-4xl font-bold gradient-text">Terms of Service</h1>
-          <p className="text-gray-500 text-sm">Last updated: March 2026</p>
+          <p className="text-gray-500 text-sm">Last updated: April 2026</p>
         </div>
 
         <div className="space-y-8 text-gray-300 leading-relaxed text-sm">
@@ -47,9 +47,9 @@ export default function TermsPage() {
             </p>
           </Section>
 
-          <Section title="SMS notifications">
+          <Section title="SMS and email notifications">
             <p>
-              By placing a pop-up pickup order and providing your phone number, you consent to receive transactional SMS messages related to your order. These include an order confirmation and a pickup-ready notification. We do not send marketing messages. Message and data rates may apply. You may opt out of SMS notifications by contacting us through our{' '}
+              When placing a pop-up order, you are asked to check a box to opt in to receiving transactional SMS messages and email communications related to your order. These include order confirmations, status updates, and shipping/pickup notifications. We do not send marketing messages. Message and data rates may apply. Your consent timestamp is recorded with your order. You may opt out at any time by contacting us through our{' '}
               <a href="/contact" className="text-purple-400 hover:text-purple-300 underline">contact page</a>.
             </p>
           </Section>

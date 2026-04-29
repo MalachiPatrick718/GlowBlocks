@@ -48,6 +48,7 @@ export default function PopupPage() {
   const [pickupEligible, setPickupEligible] = useState<boolean | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'mobile' | 'kiosk-card' | 'cash'>('mobile');
   const [paymentLocation, setPaymentLocation] = useState<'mobile' | 'kiosk'>('mobile');
+  const [smsOptIn, setSmsOptIn] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'expired' | null>(null);
@@ -285,6 +286,7 @@ export default function PopupPage() {
           address: address.trim(),
           deliveryMethod,
           paymentMethod,
+          smsOptInAt: new Date().toISOString(),
         }),
       });
 
@@ -390,6 +392,10 @@ export default function PopupPage() {
         setValidationMessage('Complete your details above');
       }
       contactRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (!smsOptIn) {
+      setValidationMessage('Please agree to receive SMS order updates');
       return;
     }
     submitOrder();
@@ -909,11 +915,19 @@ export default function PopupPage() {
                     )}
                   </div>
                 )}
-                <p className="text-xs text-gray-500">
-                  By submitting, you agree to receive SMS order updates at the number provided. Msg &amp; data rates may apply. View our{' '}
-                  <a href="/privacy" className="text-purple-400 hover:text-purple-300 underline">Privacy Policy</a> and{' '}
-                  <a href="/terms" className="text-purple-400 hover:text-purple-300 underline">Terms</a>.
-                </p>
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={smsOptIn}
+                    onChange={(e) => setSmsOptIn(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-gray-600 bg-gray-800 text-purple-500 focus:ring-purple-500 shrink-0"
+                  />
+                  <span className="text-xs text-gray-400">
+                    I agree to receive SMS order updates{email.trim() ? ' and email communications' : ''} at the contact info provided. Msg &amp; data rates may apply. View our{' '}
+                    <a href="/privacy" className="text-purple-400 hover:text-purple-300 underline">Privacy Policy</a> and{' '}
+                    <a href="/terms" className="text-purple-400 hover:text-purple-300 underline">Terms</a>.
+                  </span>
+                </label>
               </div>
             </div>
 
