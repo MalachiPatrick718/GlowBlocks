@@ -50,7 +50,8 @@ export default function CheckoutPage() {
   const pricePerBlock = getPricePerBlock(totalBlocks);
   const hasCustomColors = items.some(item => item.customColors);
   const customFee = hasCustomColors ? 2.00 : 0;
-  const subtotal = totalBlocks * pricePerBlock + customFee;
+  const shipping = 5.99;
+  const subtotal = totalBlocks * pricePerBlock + customFee + shipping;
 
   return (
     <div className="min-h-screen py-8 px-4">
@@ -77,8 +78,12 @@ export default function CheckoutPage() {
               <div className="text-sm text-gray-400">$2.00</div>
             </div>
           )}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="text-sm text-gray-400">Shipping</div>
+            <div className="text-sm text-gray-400">$5.99</div>
+          </div>
           <div className="border-t border-gray-700 pt-2 flex flex-wrap items-center justify-between gap-4">
-            <div className="text-sm text-gray-300 font-medium">Subtotal</div>
+            <div className="text-sm text-gray-300 font-medium">Estimated Total</div>
             <div className="text-lg font-bold gradient-text">${subtotal.toFixed(2)}</div>
           </div>
         </div>

@@ -12,7 +12,8 @@ export default function CartPage() {
   const pricePerBlock = getPricePerBlock(totalBlocks);
   const hasCustomColors = items.some(item => item.customColors);
   const customFee = hasCustomColors ? 2.00 : 0;
-  const subtotal = totalBlocks * pricePerBlock + customFee;
+  const shipping = 5.99;
+  const subtotal = totalBlocks * pricePerBlock + customFee + shipping;
 
   if (items.length === 0) {
     return (
@@ -112,10 +113,11 @@ export default function CartPage() {
           )}
           <div className="flex justify-between text-gray-400">
             <span>Shipping</span>
-            <span className="text-sm">Selected at checkout</span>
+            <span>$5.99</span>
           </div>
+          <p className="text-xs text-gray-500">Standard Shipping (5-7 business days)</p>
           <div className="border-t border-gray-700 pt-3 flex justify-between text-xl font-bold">
-            <span>Subtotal</span>
+            <span>Estimated Total</span>
             <span className="gradient-text">${subtotal.toFixed(2)}</span>
           </div>
         </div>

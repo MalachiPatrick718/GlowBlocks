@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
+      phone_number_collection: { enabled: true },
       shipping_address_collection: {
         allowed_countries: ['US', 'CA', 'GB', 'AU'],
       },
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
           shipping_rate_data: {
             type: 'fixed_amount',
             fixed_amount: { amount: 599, currency: 'usd' },
-            display_name: 'Standard Shipping (5-7 business days)',
+            display_name: 'Standard Shipping',
             delivery_estimate: {
               minimum: { unit: 'business_day', value: 5 },
               maximum: { unit: 'business_day', value: 7 },

@@ -130,6 +130,7 @@ export async function POST(req: NextRequest) {
       const address = shipping?.address;
       const customerName = shipping?.name || fullSession.customer_details?.name || '';
       const customerEmail = fullSession.customer_details?.email || '';
+      const customerPhone = fullSession.customer_details?.phone || '';
 
       // Get shipping method name
       const shippingCost = fullSession.shipping_cost;
@@ -187,6 +188,7 @@ export async function POST(req: NextRequest) {
               fields: {
                 'Customer Name': customerName,
                 'Email': customerEmail,
+                'Phone Number': customerPhone,
                 'Address': fullAddress,
                 'Shipping Method': shippingMethod,
                 'Items': itemsSummary,

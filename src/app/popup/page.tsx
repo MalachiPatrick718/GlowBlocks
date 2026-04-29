@@ -24,6 +24,7 @@ export default function PopupPage() {
   const [customerName, setCustomerName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [deliveryMethod, setDeliveryMethod] = useState<'pick-up' | 'ship'>('pick-up');
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
@@ -280,6 +281,7 @@ export default function PopupPage() {
           presetName: selectedPresetName,
           customerName: deliveryMethod === 'ship' ? `${customerName.trim()} ${lastName.trim()}` : customerName.trim(),
           phoneNumber: phoneNumber.trim(),
+          email: email.trim(),
           address: address.trim(),
           deliveryMethod,
           paymentMethod,
@@ -762,6 +764,13 @@ export default function PopupPage() {
                   className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 ${
                     highlightSection === 'contact' && phoneNumber.replace(/\D/g, '').length !== 10 ? 'border-amber-500' : 'border-gray-700'
                   }`}
+                />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email (optional)"
+                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                 />
                 <div className="space-y-2">
                   <p className="text-sm text-gray-300">Delivery Method</p>

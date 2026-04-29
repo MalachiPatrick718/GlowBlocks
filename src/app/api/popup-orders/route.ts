@@ -171,6 +171,7 @@ export async function POST(req: NextRequest) {
       presetName,
       customerName,
       phoneNumber,
+      email,
       address,
       deliveryMethod,
       paymentMethod,
@@ -221,6 +222,7 @@ export async function POST(req: NextRequest) {
     const fields: Record<string, string | boolean | number> = {
       Name: String(customerName).slice(0, 100),
       'Phone Number': String(phoneNumber).slice(0, 40),
+      Email: String(email || '').slice(0, 100),
       Address: String(address || '').slice(0, 250),
       'Name/Word': text,
       'Order Number': orderNumber,

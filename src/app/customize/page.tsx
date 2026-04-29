@@ -2,10 +2,13 @@
 
 import { Suspense, useState, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import BlockPreview from '@/components/BlockPreview';
 import TextInput from '@/components/TextInput';
 import ColorPresets from '@/components/ColorPresets';
 import ColorModal from '@/components/CustomColorPicker';
+import PopupColorNumberModal from '@/components/PopupColorNumberModal';
+import { POPUP_COLOR_MAP } from '@/data/popupColorCatalog';
 import { useCart } from '@/context/CartContext';
 
 export default function CustomizePage() {
@@ -25,8 +28,9 @@ function CustomizeContent() {
 
   const [text, setText] = useState('');
   const [letterColors, setLetterColors] = useState<string[]>([]);
+  const [colorNumbers, setColorNumbers] = useState<(number | null)[]>([]);
   const [modalIndex, setModalIndex] = useState<number | null>(null);
-  const [colorMode, setColorMode] = useState<'presets' | 'custom'>('presets');
+  const [colorMode, setColorMode] = useState<'presets' | 'custom' | 'color-number'>('presets');
   const [added, setAdded] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
@@ -45,7 +49,6 @@ function CustomizeContent() {
     }
   }, [editId, items, initialized]);
 
-  const letters = text.split('');
   const nonSpaceLetters = text.replace(/\s/g, '');
 
   const handleTextChange = useCallback((newText: string) => {
@@ -56,6 +59,13 @@ function CustomizeContent() {
         newColors.push('#FFFFFF');
       }
       return newColors.slice(0, newText.length);
+    });
+    setColorNumbers(prev => {
+      const newNums = [...prev];
+      while (newNums.length < newText.length) {
+        newNums.push(null);
+      }
+      return newNums.slice(0, newText.length);
     });
     setModalIndex(null);
   }, []);
@@ -83,12 +93,29 @@ function CustomizeContent() {
     });
   }, [modalIndex]);
 
+  const handleColorNumberApply = useCallback((colorNumber: number) => {
+    if (modalIndex === null) return;
+    const color = POPUP_COLOR_MAP.get(colorNumber);
+    if (!color) return;
+    setLetterColors(prev => {
+      const next = [...prev];
+      next[modalIndex] = color.hex;
+      return next;
+    });
+    setColorNumbers(prev => {
+      const next = [...prev];
+      next[modalIndex] = colorNumber;
+      return next;
+    });
+  }, [modalIndex]);
+
   const handleAddToCart = () => {
     if (nonSpaceLetters.length === 0) return;
+    const isCustom = colorMode === 'custom' || colorMode === 'color-number';
     if (editId) {
-      updateItem(editId, { text, letterColors, customColors: colorMode === 'custom' });
+      updateItem(editId, { text, letterColors, customColors: isCustom });
     } else {
-      addItem({ text, letterColors, customColors: colorMode === 'custom' });
+      addItem({ text, letterColors, customColors: isCustom });
     }
     setAdded(true);
     setTimeout(() => {
@@ -132,6 +159,16 @@ function CustomizeContent() {
                   >
                     Custom Colors
                   </button>
+                  <button
+                    onClick={() => setColorMode('color-number')}
+                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                      colorMode === 'color-number'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-900 text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    Color Guide
+                  </button>
                 </div>
 
                 {colorMode === 'presets' ? (
@@ -139,12 +176,30 @@ function CustomizeContent() {
                     onApplyPreset={handlePresetApply}
                     letterCount={nonSpaceLetters.length}
                   />
-                ) : (
+                ) : colorMode === 'custom' ? (
                   <div className="space-y-3">
                     <p className="text-sm text-gray-400">
                       Tap a letter to pick its color. <span className="text-purple-400">+$2.00 one-time fee</span>
                     </p>
-                    {/* Inline clickable tiles */}
+                    <div className="bg-gray-950 border border-gray-800 rounded-xl p-4">
+                      <BlockPreview
+                        text={text}
+                        letterColors={letterColors}
+                        onSelectBlock={(i) => {
+                          if (text[i] !== ' ') setModalIndex(i);
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-400">
+                      Tap a letter and enter its color number from the{' '}
+                      <Link href="/color-guide" target="_blank" className="text-purple-400 underline hover:text-purple-300">
+                        Color Guide
+                      </Link>
+                      . <span className="text-purple-400">+$2.00 one-time fee</span>
+                    </p>
                     <div className="bg-gray-950 border border-gray-800 rounded-xl p-4">
                       <BlockPreview
                         text={text}
@@ -185,7 +240,9 @@ function CustomizeContent() {
               />
               {nonSpaceLetters.length > 0 && (
                 <p className="text-center text-sm text-gray-500 mt-4">
-                  {colorMode === 'custom' ? 'Tap letters on the left to customize colors' : 'Select a preset theme on the left'}
+                  {colorMode === 'presets'
+                    ? 'Select a preset theme on the left'
+                    : 'Tap letters on the left to customize colors'}
                 </p>
               )}
             </div>
@@ -193,13 +250,24 @@ function CustomizeContent() {
         </div>
       </div>
 
-      {/* Color picker modal */}
-      {modalIndex !== null && text[modalIndex] && (
+      {/* Color picker modal (custom hex mode) */}
+      {modalIndex !== null && text[modalIndex] && colorMode === 'custom' && (
         <ColorModal
           letterChar={text[modalIndex]}
           letterIndex={modalIndex}
           currentColor={letterColors[modalIndex] || '#FFFFFF'}
           onApply={handleColorApply}
+          onClose={() => setModalIndex(null)}
+        />
+      )}
+
+      {/* Color number modal (color guide mode) */}
+      {modalIndex !== null && text[modalIndex] && colorMode === 'color-number' && (
+        <PopupColorNumberModal
+          letterChar={text[modalIndex]}
+          letterIndex={modalIndex}
+          currentColorNumber={colorNumbers[modalIndex] || null}
+          onApply={handleColorNumberApply}
           onClose={() => setModalIndex(null)}
         />
       )}
