@@ -249,6 +249,8 @@ export async function POST(req: NextRequest) {
     }
     if (mappedOrderType === 'Pickup') {
       fields['Pickup Status'] = 'Not Ready';
+    } else {
+      fields['Pickup Status'] = 'Not Applicable';
     }
 
     const airtableRes = await fetch(getAirtableUrl(), {
