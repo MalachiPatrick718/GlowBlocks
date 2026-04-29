@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -49,36 +49,87 @@ function OrdersContent() {
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
   const [creatingLabelId, setCreatingLabelId] = useState<string | null>(null);
   const [orderFilter, setOrderFilter] = useState('');
+  const [newOrderCount, setNewOrderCount] = useState(0);
+  const prevOrderIdsRef = useRef<Set<string>>(new Set());
 
-  useEffect(() => {
+  const playChime = useCallback(() => {
+    try {
+      const ctx = new AudioContext();
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(587.33, ctx.currentTime);
+      gain1.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      osc1.start(ctx.currentTime);
+      osc1.stop(ctx.currentTime + 0.5);
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.15);
+      gain2.gain.setValueAtTime(0.3, ctx.currentTime + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.65);
+      osc2.start(ctx.currentTime + 0.15);
+      osc2.stop(ctx.currentTime + 0.65);
+    } catch {}
+  }, []);
+
+  const fetchOrders = useCallback(async (isInitialLoad: boolean) => {
     if (!key) {
-      setLoading(false);
+      if (isInitialLoad) setLoading(false);
       return;
     }
-
-    const run = async () => {
+    if (isInitialLoad) {
       setLoading(true);
       setError(null);
-      try {
-        const res = await fetch('/api/orders', {
-          headers: { 'x-popup-admin-key': key },
-          cache: 'no-store',
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.error || 'Failed to load orders.');
-          return;
-        }
-        setOrders(data.orders || []);
-      } catch {
-        setError('Failed to load orders.');
-      } finally {
-        setLoading(false);
+    }
+    try {
+      const res = await fetch('/api/orders', {
+        headers: { 'x-popup-admin-key': key },
+        cache: 'no-store',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (isInitialLoad) setError(data.error || 'Failed to load orders.');
+        return;
       }
-    };
+      const nextOrders = data.orders || [];
+      setOrders(nextOrders);
+      const nextIds = new Set<string>(nextOrders.map((o: Order) => o.id));
+      if (isInitialLoad) {
+        prevOrderIdsRef.current = nextIds;
+      } else if (prevOrderIdsRef.current.size > 0) {
+        const newIds = [...nextIds].filter(id => !prevOrderIdsRef.current.has(id));
+        if (newIds.length > 0) {
+          setNewOrderCount(newIds.length);
+          playChime();
+          setTimeout(() => setNewOrderCount(0), 10_000);
+        }
+        prevOrderIdsRef.current = nextIds;
+      }
+    } catch {
+      if (isInitialLoad) setError('Failed to load orders.');
+    } finally {
+      if (isInitialLoad) setLoading(false);
+    }
+  }, [key, playChime]);
 
-    run();
-  }, [key]);
+  useEffect(() => {
+    fetchOrders(true);
+  }, [fetchOrders]);
+
+  useEffect(() => {
+    if (!key) return;
+    const interval = setInterval(() => {
+      if (savingOrderId || creatingLabelId) return;
+      fetchOrders(false);
+    }, 120_000);
+    return () => clearInterval(interval);
+  }, [key, fetchOrders, savingOrderId, creatingLabelId]);
 
   const saveStatus = async (orderId: string, newStatus: string) => {
     if (!key || !newStatus) return;
@@ -170,6 +221,11 @@ function OrdersContent() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl md:text-4xl font-bold gradient-text">
             Online Orders
+            {newOrderCount > 0 && (
+              <span className="ml-3 inline-flex items-center justify-center px-2.5 py-1 rounded-full text-sm font-bold bg-red-600 text-white animate-pulse">
+                +{newOrderCount} new
+              </span>
+            )}
           </h1>
           <div className="flex gap-2">
             <Link

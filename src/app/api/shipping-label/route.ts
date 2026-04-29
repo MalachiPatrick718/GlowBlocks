@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { sendSMS } from '@/lib/sms';
 
 const apiKey = process.env.AIRTABLE_API_KEY;
 const baseId = process.env.AIRTABLE_BASE_ID;
@@ -326,6 +327,30 @@ export async function POST(req: NextRequest) {
     if (!patchRes.ok) {
       const patchErr = await patchRes.text();
       console.error('Failed to update Airtable with tracking:', patchErr);
+    }
+
+    // Send tracking SMS if real phone is available
+    const trackingSmsSent = fields['Tracking SMS Sent'] === true || fields['Tracking SMS Sent'] === 'true';
+    if (customerPhone !== '555-555-5555' && trackingNumber && !trackingSmsSent) {
+      try {
+        const customerName = (isPopup ? fields['Name'] : fields['Customer Name']) || '';
+        const firstName = String(customerName).trim().split(' ')[0];
+        const msg = firstName
+          ? `Hey ${firstName}, your GlowBlocks order is on the way! Your tracking number is ${trackingNumber}.`
+          : `Your GlowBlocks order is on the way! Your tracking number is ${trackingNumber}.`;
+        const sent = await sendSMS(customerPhone, msg);
+        if (sent) {
+          await fetch(getAirtableUrl(table), {
+            method: 'PATCH',
+            headers: getAirtableHeaders(),
+            body: JSON.stringify({
+              records: [{ id: orderId, fields: { 'Tracking SMS Sent': true } }],
+            }),
+          });
+        }
+      } catch (err) {
+        console.error('Failed to send tracking SMS:', err);
+      }
     }
 
     return NextResponse.json({ trackingNumber, labelUrl, cost });
