@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 
 const MAIN_ITEMS = ['P6 Bases', 'PCB'];
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const PCB_REORDER_THRESHOLD = 80;
 
 export default function InventoryPage() {
   return (
@@ -58,6 +59,9 @@ function InventoryContent() {
 
     return { eligible: shortages.length === 0, shortages, totalLetters };
   }, [checkerText, inventory]);
+
+  const pcbCount = Number(inventory['PCB'] || 0);
+  const pcbNeedsReorder = !loading && key && pcbCount < PCB_REORDER_THRESHOLD;
 
   useEffect(() => {
     if (!key) {
@@ -185,6 +189,17 @@ function InventoryContent() {
           <p className="text-red-300">Missing admin key. Open with <span className="font-mono">/inventory?key=YOUR_KEY</span></p>
         )}
         {loading && <p className="text-gray-400">Loading inventory...</p>}
+
+        {pcbNeedsReorder && (
+          <div className="rounded-xl border border-amber-600/50 bg-amber-950/30 p-4 space-y-1">
+            <p className="text-amber-300 font-semibold flex items-center gap-2">
+              <span className="text-lg">⚠</span> PCB Reorder Needed
+            </p>
+            <p className="text-sm text-amber-200/80">
+              PCB stock is at <span className="font-bold text-white">{pcbCount}</span> (below {PCB_REORDER_THRESHOLD}). Lead time is ~1.5 weeks from order to delivery.
+            </p>
+          </div>
+        )}
 
         {!loading && key && (
           <>

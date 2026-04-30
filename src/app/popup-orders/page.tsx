@@ -537,7 +537,16 @@ function PopupOrdersContent() {
               {order.total !== undefined && (
                 <div className="text-right">
                   <p className="text-2xl font-bold text-green-400">${order.total.toFixed(2)}</p>
-                  <p className="text-xs text-gray-500">Amount to Charge</p>
+                  <p className="text-xs text-gray-500 mb-1">Amount to Charge</p>
+                  {(order.paymentStatus || 'Awaiting Payment').toLowerCase() === 'paid' ? (
+                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-900/50 text-green-400 border border-green-600/40">
+                      Paid
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-900/50 text-yellow-400 border border-yellow-600/40">
+                      Awaiting Payment
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -573,21 +582,12 @@ function PopupOrdersContent() {
               </div>
             )}
 
-            {/* Payment status */}
-            <div className="flex flex-wrap items-center gap-2">
-              {(order.paymentStatus || 'Awaiting Payment').toLowerCase() === 'paid' ? (
-                <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-green-900/50 text-green-400 border border-green-600/40">
-                  Paid
-                </span>
-              ) : (
-                <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-yellow-900/50 text-yellow-400 border border-yellow-600/40">
-                  Awaiting Payment
-                </span>
-              )}
-              {order.paymentMethod && (
-                <span className="text-xs text-gray-500">{order.paymentMethod}</span>
-              )}
-              {(order.paymentStatus || 'Awaiting Payment').toLowerCase() !== 'paid' && (
+            {/* Payment action */}
+            {(order.paymentStatus || 'Awaiting Payment').toLowerCase() !== 'paid' && (
+              <div className="flex flex-wrap items-center gap-2">
+                {order.paymentMethod && (
+                  <span className="text-xs text-gray-500">{order.paymentMethod}</span>
+                )}
                 <button
                   type="button"
                   onClick={() => markAsPaid(order.id)}
@@ -596,8 +596,8 @@ function PopupOrdersContent() {
                 >
                   {markingPaidId === order.id ? 'Saving...' : 'Mark as Paid'}
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-2">
               {(() => {
