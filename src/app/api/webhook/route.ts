@@ -8,6 +8,27 @@ function getStripe() {
 
 type InventoryRecord = { id: string; fields: { Item?: string; Quantity?: number } };
 
+const COLOR_PRESETS: { label: string; colors: string[] }[] = [
+  { label: 'Rainbow', colors: ['#FF3C3C', '#FF8C00', '#FFDC3C', '#50DC50'] },
+  { label: 'American Flag', colors: ['#C82828', '#F0F0F0', '#283C78'] },
+  { label: 'Party', colors: ['#FF3C8C', '#50B4FF', '#64DC64', '#FFDC50'] },
+  { label: 'Tropical', colors: ['#FF7864', '#50C8C8', '#FFB43C', '#50B464'] },
+  { label: 'Sunset', colors: ['#FF783C', '#FF508C', '#A050FF', '#FFB450'] },
+  { label: 'Ocean', colors: ['#3CA096', '#28508C', '#64DCDC', '#50A064'] },
+];
+
+function detectPreset(colors: string[]): string | null {
+  const nonWhite = colors.filter((c) => c.toUpperCase() !== '#FFFFFF');
+  if (nonWhite.length === 0) return null;
+  for (const preset of COLOR_PRESETS) {
+    const expected = nonWhite.map((_, i) => preset.colors[i % preset.colors.length]);
+    if (expected.every((c, i) => c.toUpperCase() === nonWhite[i].toUpperCase())) {
+      return preset.label;
+    }
+  }
+  return null;
+}
+
 function getLetterCounts(text: string): Record<string, number> {
   return text
     .toUpperCase()
@@ -149,8 +170,13 @@ export async function POST(req: NextRequest) {
       const items = JSON.parse(orderDetails);
       const itemsSummary = items
         .map((item: { text: string; colors: string[] }) => {
-          const colors = item.colors?.join(', ') || 'default';
-          return `"${item.text}" (colors: ${colors})`;
+          const presetName = item.colors ? detectPreset(item.colors) : null;
+          const colorLabel = presetName
+            ? `Preset: ${presetName}`
+            : item.colors?.length
+              ? 'Custom Colors'
+              : 'Default';
+          return `"${item.text}" (${colorLabel})`;
         })
         .join(' | ');
 
