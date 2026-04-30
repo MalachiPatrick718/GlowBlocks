@@ -267,7 +267,7 @@ export async function POST(req: NextRequest) {
           const html = `
             <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
               <div style="text-align: center; margin-bottom: 20px;">
-                <img src="${siteUrl}/images/logo-light.png" alt="GlowBlocks" style="height: 48px;" />
+                <img src="${siteUrl}/images/email-banner.png" alt="GlowBlocks Studio" style="width: 100%; max-width: 500px; border-radius: 12px;" />
               </div>
               <h2 style="color: #7c3aed;">Thanks for your order, ${firstName}!</h2>
               <p>We've received your GlowBlocks order and are getting started on it.</p>
