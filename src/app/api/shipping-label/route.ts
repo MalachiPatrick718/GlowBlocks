@@ -364,15 +364,40 @@ export async function POST(req: NextRequest) {
         const customerName = (isPopup ? fields['Name'] : fields['Customer Name']) || '';
         const firstName = String(customerName).trim().split(' ')[0];
         const greeting = firstName ? `Hey ${firstName},` : 'Hi,';
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://glowblocks.shop';
+        const trackingUrl = `https://tools.usps.com/go/TrackConfirmAction?tLabels=${trackingNumber}`;
+        const orderItems = fields['Items'] || '';
+        const orderTotal = fields['Total'] || '';
+        const shippingAddress = fields['Address'] || '';
         const html = `
-          <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
-            <h2 style="color: #7c3aed;">${greeting} your GlowBlocks are on the way!</h2>
-            <p>Your order has shipped. Here are your tracking details:</p>
-            <p style="background: #f3f4f6; padding: 12px 16px; border-radius: 8px; font-family: monospace; font-size: 16px;">
-              <strong>Tracking Number:</strong> ${trackingNumber}
+          <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; color: #1f2937;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <img src="${siteUrl}/images/logo-light.png" alt="GlowBlocks" style="height: 48px;" />
+            </div>
+            <h2 style="color: #7c3aed; margin-bottom: 4px;">${greeting} your GlowBlocks are on the way!</h2>
+            <p style="color: #6b7280; margin-top: 0;">Your order has been shipped via USPS and is headed your way.</p>
+
+            <div style="background: #f3f4f6; border-radius: 12px; padding: 20px; margin: 20px 0;">
+              <p style="margin: 0 0 8px; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Tracking Number</p>
+              <p style="margin: 0 0 12px; font-family: monospace; font-size: 18px; color: #1f2937; word-break: break-all;">${trackingNumber}</p>
+              <a href="${trackingUrl}" style="display: inline-block; background: #7c3aed; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">Track Your Package</a>
+            </div>
+
+            ${orderItems ? `
+            <h3 style="color: #1f2937; font-size: 15px; margin-bottom: 8px;">Order Details</h3>
+            <p style="margin: 0 0 4px; color: #374151;">${orderItems}</p>
+            ${orderTotal ? `<p style="margin: 0 0 4px; color: #374151;"><strong>Total:</strong> ${orderTotal}</p>` : ''}
+            ` : ''}
+
+            ${shippingAddress ? `
+            <h3 style="color: #1f2937; font-size: 15px; margin-bottom: 8px;">Shipping To</h3>
+            <p style="margin: 0; color: #374151;">${shippingAddress}</p>
+            ` : ''}
+
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0 16px;" />
+            <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">
+              Questions? Visit our <a href="${siteUrl}/contact" style="color: #7c3aed;">contact page</a>.
             </p>
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-            <p style="color: #6b7280; font-size: 13px;">If you have questions, visit our <a href="https://glowblocksstudio.com/contact" style="color: #7c3aed;">contact page</a>.</p>
           </div>
         `;
         await sendEmail(customerEmail, 'Your GlowBlocks Order Has Shipped!', html);

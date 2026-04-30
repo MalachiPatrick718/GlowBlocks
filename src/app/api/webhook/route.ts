@@ -124,7 +124,8 @@ export async function POST(req: NextRequest) {
       }) as Stripe.Checkout.Session;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const shipping = (fullSession as any).shipping_details as {
+      const fs = fullSession as any;
+      const shipping = (fs.collected_information?.shipping_details || fs.shipping_details) as {
         name?: string;
         address?: { line1?: string; line2?: string; city?: string; state?: string; postal_code?: string; country?: string };
       } | null;
@@ -236,8 +237,12 @@ export async function POST(req: NextRequest) {
               `<li>"${item.text}" × ${item.quantity || 1}</li>`
             )
             .join('');
+          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://glowblocks.shop';
           const html = `
             <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
+              <div style="text-align: center; margin-bottom: 20px;">
+                <img src="${siteUrl}/images/logo-light.png" alt="GlowBlocks" style="height: 48px;" />
+              </div>
               <h2 style="color: #7c3aed;">Thanks for your order, ${firstName}!</h2>
               <p>We've received your GlowBlocks order and are getting started on it.</p>
               <h3>Order Details</h3>
@@ -246,7 +251,7 @@ export async function POST(req: NextRequest) {
               <p><strong>Shipping to:</strong> ${fullAddress || 'N/A'}</p>
               <p><strong>Estimated delivery:</strong> 5-7 business days</p>
               <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-              <p style="color: #6b7280; font-size: 13px;">We'll send you a tracking number once your order ships. If you have questions, visit our <a href="https://glowblocksstudio.com/contact" style="color: #7c3aed;">contact page</a>.</p>
+              <p style="color: #6b7280; font-size: 13px;">We'll send you a tracking number once your order ships. If you have questions, visit our <a href="${siteUrl}/contact" style="color: #7c3aed;">contact page</a>.</p>
             </div>
           `;
           await sendEmail(customerEmail, 'Your GlowBlocks Order Confirmation', html);
