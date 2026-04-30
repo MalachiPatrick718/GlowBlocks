@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     let textBody = '';
 
     if (emailId && RESEND_API_KEY) {
-      const res = await fetch(`https://api.resend.com/emails/received/${emailId}`, {
+      const res = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
         headers: { Authorization: `Bearer ${RESEND_API_KEY}` },
       });
       if (res.ok) {
