@@ -1,6 +1,6 @@
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'GlowBlocks <noreply@resend.dev>';
-const REPLY_TO = process.env.CONTACT_TO_EMAIL || '';
+const REPLY_TO = process.env.RESEND_REPLY_TO || 'orders@glowblocks.shop';
 
 export async function sendEmail(
   to: string,
