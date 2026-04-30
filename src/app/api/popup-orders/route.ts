@@ -6,6 +6,7 @@ const apiKey = process.env.AIRTABLE_API_KEY;
 const baseId = process.env.AIRTABLE_BASE_ID;
 const tableName = process.env.AIRTABLE_POPUP_ORDERS || process.env.AIRTABLE_POPUP_ORDERS_TABLE || 'Popup';
 const inventoryTableName = process.env.AIRTABLE_INVENTORY_TABLE || 'Inventory';
+const onlineOrdersTableName = process.env.AIRTABLE_ORDERS_TABLE || 'Orders';
 const adminKey = process.env.POPUP_ORDERS_ADMIN_KEY;
 const popupOrderStatusValue = process.env.AIRTABLE_POPUP_ORDER_STATUS || '';
 const taxRate = parseFloat(process.env.POPUP_TAX_RATE || '0.08875');
@@ -23,6 +24,10 @@ function getAirtableUrl() {
 
 function getInventoryAirtableUrl() {
   return `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(inventoryTableName)}`;
+}
+
+function getOnlineOrdersAirtableUrl() {
+  return `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(onlineOrdersTableName)}`;
 }
 
 function getHeaders() {
@@ -278,6 +283,20 @@ export async function POST(req: NextRequest) {
     const airtableData = await airtableRes.json();
     const recordId = airtableData.records?.[0]?.id || '';
 
+    // Deduct inventory immediately at order creation
+    const deducted = await deductInventoryForOrder(text);
+    if (deducted && recordId) {
+      await fetch(getAirtableUrl(), {
+        method: 'PATCH',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          records: [{ id: recordId, fields: { 'Inventory Deducted': true } }],
+        }),
+      });
+    } else if (!deducted) {
+      console.error('Failed to deduct inventory for popup order:', orderNumber);
+    }
+
     // Send confirmation SMS for pickup orders
     if (mappedOrderType === 'Pickup' && phoneNumber) {
       const msg = `Hey, ${String(customerName).trim()}, Thanks for your Glowblocks Set Order! Your order number is ${orderNumber}. We will message you once your set is ready for pickup! It will take between 10-15 minutes! See you again soon!`;
@@ -483,6 +502,28 @@ export async function PATCH(req: NextRequest) {
               const orderNum = r.fields['Order Number'] || r.id;
               return NextResponse.json({
                 error: `${boardIdStr} is already linked to Order #${orderNum}`,
+              }, { status: 409 });
+            }
+          } catch { /* skip */ }
+        }
+      }
+
+      // Also check online orders for duplicates
+      const onlineRes = await fetch(getOnlineOrdersAirtableUrl(), {
+        headers: getHeaders(),
+        next: { revalidate: 0 },
+      });
+      if (onlineRes.ok) {
+        const onlineData = await onlineRes.json();
+        for (const r of (onlineData.records || []) as { id: string; fields: Record<string, string> }[]) {
+          try {
+            const od = JSON.parse(r.fields['Order Data'] || '{}');
+            const ids: (string | null)[] = Array.isArray(od.boardIds) ? od.boardIds : [];
+            const foundIdx = ids.indexOf(boardIdStr);
+            if (foundIdx !== -1) {
+              const customerName = r.fields['Customer Name'] || r.id;
+              return NextResponse.json({
+                error: `${boardIdStr} is already linked to Online Order (${customerName})`,
               }, { status: 409 });
             }
           } catch { /* skip */ }

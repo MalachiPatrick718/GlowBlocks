@@ -29,6 +29,12 @@ function ScanContent() {
   const orderId = searchParams.get('order') || '';
   const letterParam = searchParams.get('letter');
   const replaceIndex = letterParam != null && !isNaN(parseInt(letterParam, 10)) ? parseInt(letterParam, 10) : null;
+  const source = searchParams.get('source') || 'popup';
+  const isOnline = source === 'online';
+  const apiEndpoint = isOnline ? '/api/orders' : '/api/popup-orders';
+  const backLink = isOnline
+    ? `/orders?key=${encodeURIComponent(key)}`
+    : `/popup-orders?key=${encodeURIComponent(key)}`;
 
   const [order, setOrder] = useState<OrderData | null>(null);
   const [boardIds, setBoardIds] = useState<(string | null)[]>([]);
@@ -62,7 +68,7 @@ function ScanContent() {
     }
     const load = async () => {
       try {
-        const res = await fetch('/api/popup-orders', {
+        const res = await fetch(apiEndpoint, {
           headers: { 'x-popup-admin-key': key },
           cache: 'no-store',
         });
@@ -76,29 +82,45 @@ function ScanContent() {
           setError('Order not found');
           return;
         }
+
+        // Normalize: popup uses `text`, online uses `orderText`
+        const text = isOnline ? (found.orderText || '') : (found.text || '');
         const ids: (string | null)[] = Array.isArray(found.boardIds) ? found.boardIds : [];
-        // Ensure array matches word length
-        while (ids.length < (found.text || '').length) ids.push(null);
+        // Ensure array matches text length
+        while (ids.length < text.length) ids.push(null);
         setOrder({
           id: found.id,
-          text: found.text || '',
+          text,
           customerName: found.customerName || '',
-          orderNumber: found.orderNumber || '',
+          orderNumber: isOnline ? undefined : (found.orderNumber || ''),
           boardIds: ids,
         });
         setBoardIds(ids);
 
-        // Auto-set to In Progress if not already
+        // Auto-set status on scan start
         const status = (found.status || '').toLowerCase();
-        if (status === 'not started' || status === '') {
-          fetch('/api/popup-orders', {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-popup-admin-key': key,
-            },
-            body: JSON.stringify({ id: found.id, status: 'In Progress' }),
-          }).catch(() => {});
+        if (isOnline) {
+          if (status === 'new') {
+            fetch(apiEndpoint, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-popup-admin-key': key,
+              },
+              body: JSON.stringify({ id: found.id, status: 'Processing' }),
+            }).catch(() => {});
+          }
+        } else {
+          if (status === 'not started' || status === '') {
+            fetch(apiEndpoint, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-popup-admin-key': key,
+              },
+              body: JSON.stringify({ id: found.id, status: 'In Progress' }),
+            }).catch(() => {});
+          }
         }
       } catch {
         setError('Failed to load order');
@@ -107,6 +129,7 @@ function ScanContent() {
       }
     };
     load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, orderId]);
 
   const handleScan = useCallback(
@@ -127,7 +150,7 @@ function ScanContent() {
       setError(null);
 
       try {
-        const res = await fetch('/api/popup-orders', {
+        const res = await fetch(apiEndpoint, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -164,7 +187,7 @@ function ScanContent() {
         setSaving(false);
       }
     },
-    [order, boardIds, nonSpaceIndices, totalNeeded, key, saving, paused, replaceIndex]
+    [order, boardIds, nonSpaceIndices, totalNeeded, key, saving, paused, replaceIndex, apiEndpoint]
   );
 
   const resumeScanning = useCallback(() => {
@@ -220,6 +243,8 @@ function ScanContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, orderId, loading, order?.id, allDone]);
 
+  const orderLabel = order?.orderNumber ? `Order #${order.orderNumber}` : order?.customerName || 'Order';
+
   if (!key || !orderId) {
     return (
       <div className="min-h-screen py-8 px-4">
@@ -236,10 +261,10 @@ function ScanContent() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <Link
-            href={`/popup-orders?key=${encodeURIComponent(key)}`}
+            href={backLink}
             className="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm font-medium text-white"
           >
-            Back to Orders
+            {isOnline ? 'Back to Online Orders' : 'Back to Orders'}
           </Link>
           <h1 className="text-xl font-bold gradient-text">Scan PCBs</h1>
         </div>
@@ -257,8 +282,14 @@ function ScanContent() {
             <div className="rounded-xl border border-gray-800 bg-gray-950/50 p-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <span className="text-2xl font-black text-white">#{order.orderNumber}</span>
-                  <span className="text-gray-400 ml-2">{order.customerName}</span>
+                  {order.orderNumber ? (
+                    <>
+                      <span className="text-2xl font-black text-white">#{order.orderNumber}</span>
+                      <span className="text-gray-400 ml-2">{order.customerName}</span>
+                    </>
+                  ) : (
+                    <span className="text-2xl font-black text-white">{order.customerName}</span>
+                  )}
                 </div>
                 <span className={`text-sm font-bold ${allDone ? 'text-green-400' : 'text-purple-400'}`}>
                   {scannedCount}/{totalNeeded}
@@ -360,8 +391,8 @@ function ScanContent() {
                 </p>
                 <p className="text-sm text-gray-400">
                   {replaceIndex != null
-                    ? <>{letters[replaceIndex]?.toUpperCase()} updated to {boardIds[replaceIndex]} on Order #{order.orderNumber}</>
-                    : <>{totalNeeded} board{totalNeeded !== 1 ? 's' : ''} linked to Order #{order.orderNumber}</>
+                    ? <>{letters[replaceIndex]?.toUpperCase()} updated to {boardIds[replaceIndex]} on {orderLabel}</>
+                    : <>{totalNeeded} board{totalNeeded !== 1 ? 's' : ''} linked to {orderLabel}</>
                   }
                 </p>
               </div>
@@ -369,7 +400,7 @@ function ScanContent() {
 
             {/* Done button */}
             <Link
-              href={`/popup-orders?key=${encodeURIComponent(key)}`}
+              href={backLink}
               className="block w-full py-3 rounded-lg border border-gray-700 bg-gray-800 hover:bg-gray-700 text-white font-semibold text-center transition-colors"
             >
               {allDone ? 'Done — Return to Orders' : 'Return to Orders'}

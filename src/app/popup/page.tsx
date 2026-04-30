@@ -414,7 +414,44 @@ export default function PopupPage() {
   return (
     <div className="min-h-screen py-6 sm:py-8 px-3 sm:px-4">
       <div className="max-w-6xl mx-auto">
-        {checkoutUrl && paymentStatus === 'pending' ? (
+        {paymentStatus === 'expired' ? (
+          <div className="max-w-lg mx-auto mt-6 sm:mt-10 rounded-2xl border border-amber-700 bg-amber-950/20 p-6 sm:p-8 space-y-6">
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl font-bold text-amber-300">Payment Expired</h1>
+              <p className="text-gray-300 text-sm">The payment session timed out. You can try again or pay at the kiosk.</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-400 mb-1">Order Number</p>
+              <p className="text-5xl font-black text-white">{confirmedOrderNumber || '--'}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                  setCheckoutUrl(null);
+                  setSessionId(null);
+                  setPaymentStatus(null);
+                  setConfirmedPaymentMethod('cash');
+                  setOrderConfirmed(true);
+                }}
+                className="py-3 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-all"
+              >
+                Pay at Kiosk
+              </button>
+              <button
+                onClick={() => {
+                  setCheckoutUrl(null);
+                  setSessionId(null);
+                  setPaymentStatus(null);
+                  setPaymentMethod('mobile');
+                  setOrderConfirmed(false);
+                }}
+                className="py-3 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold transition-all"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : checkoutUrl && paymentStatus === 'pending' ? (
           <div className="max-w-lg mx-auto mt-6 sm:mt-10 rounded-2xl border border-purple-700 bg-purple-950/20 p-6 sm:p-8 space-y-6">
             {confirmedPricing && (
               <div className="text-center">
@@ -494,10 +531,12 @@ export default function PopupPage() {
               </p>
             </div>
 
-            {/* Order Number - Only for pickup */}
-            {confirmedDeliveryMethod === 'pick-up' && (
+            {/* Order Number */}
+            {(confirmedDeliveryMethod === 'pick-up' || confirmedPaymentMethod !== 'mobile') && (
               <div className="bg-gray-950/50 border-2 border-green-500 rounded-xl p-6 text-center">
-                <p className="text-sm text-gray-400 mb-2">Tell this number at the kiosk to checkout</p>
+                <p className="text-sm text-gray-400 mb-2">
+                  {confirmedPaymentMethod !== 'mobile' ? 'Give this order number at the kiosk to pay' : 'Your order number'}
+                </p>
                 <p className="text-7xl sm:text-8xl font-black text-white tracking-wider">
                   {confirmedOrderNumber || '--'}
                 </p>

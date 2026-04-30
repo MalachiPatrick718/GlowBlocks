@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendSMS } from '@/lib/sms';
+import { sendEmail } from '@/lib/email';
 
 const apiKey = process.env.AIRTABLE_API_KEY;
 const baseId = process.env.AIRTABLE_BASE_ID;
@@ -319,6 +320,9 @@ export async function POST(req: NextRequest) {
             fields: {
               'Tracking Number': trackingNumber,
               'Label URL': labelUrl,
+              ...(isPopup
+                ? { 'Order Status': 'Ready to Ship' }
+                : { 'Status': 'Shipped' }),
             },
           },
         ],
@@ -350,6 +354,30 @@ export async function POST(req: NextRequest) {
         }
       } catch (err) {
         console.error('Failed to send tracking SMS:', err);
+      }
+    }
+
+    // Send tracking email if available
+    const customerEmail = fields['Email'] || '';
+    if (customerEmail && trackingNumber) {
+      try {
+        const customerName = (isPopup ? fields['Name'] : fields['Customer Name']) || '';
+        const firstName = String(customerName).trim().split(' ')[0];
+        const greeting = firstName ? `Hey ${firstName},` : 'Hi,';
+        const html = `
+          <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
+            <h2 style="color: #7c3aed;">${greeting} your GlowBlocks are on the way!</h2>
+            <p>Your order has shipped. Here are your tracking details:</p>
+            <p style="background: #f3f4f6; padding: 12px 16px; border-radius: 8px; font-family: monospace; font-size: 16px;">
+              <strong>Tracking Number:</strong> ${trackingNumber}
+            </p>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+            <p style="color: #6b7280; font-size: 13px;">If you have questions, visit our <a href="https://glowblocksstudio.com/contact" style="color: #7c3aed;">contact page</a>.</p>
+          </div>
+        `;
+        await sendEmail(customerEmail, 'Your GlowBlocks Order Has Shipped!', html);
+      } catch (err) {
+        console.error('Failed to send tracking email:', err);
       }
     }
 

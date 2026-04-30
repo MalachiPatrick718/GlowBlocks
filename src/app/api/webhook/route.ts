@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { sendEmail } from '@/lib/email';
 
 function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -152,6 +153,22 @@ export async function POST(req: NextRequest) {
         })
         .join(' | ');
 
+      // Build structured order data for board scanning
+      const fullOrderText = items
+        .flatMap((item: { text: string; quantity?: number }) => {
+          const qty = item.quantity || 1;
+          return Array.from({ length: qty }, () => item.text);
+        })
+        .join(' ');
+      const orderData = {
+        items: items.map((item: { text: string; colors: string[]; quantity?: number }) => ({
+          text: item.text,
+          colors: item.colors || [],
+          quantity: item.quantity || 1,
+        })),
+        boardIds: Array.from({ length: fullOrderText.length }, () => null),
+      };
+
       // Format full address
       const fullAddress = [
         address?.line1,
@@ -198,6 +215,8 @@ export async function POST(req: NextRequest) {
                 'Stripe Session ID': session.id,
                 'Date': new Date().toISOString().split('T')[0],
                 'Status': 'New',
+                'Order Text': fullOrderText,
+                'Order Data': JSON.stringify(orderData),
               },
             }),
           }
@@ -206,6 +225,31 @@ export async function POST(req: NextRequest) {
         if (!res.ok) {
           const err = await res.json();
           console.error('Airtable order save error:', err);
+        }
+
+        // Send order confirmation email
+        if (customerEmail) {
+          const firstName = customerName.split(' ')[0] || 'there';
+          const totalFormatted = `$${((fullSession.amount_total || 0) / 100).toFixed(2)}`;
+          const itemList = items
+            .map((item: { text: string; quantity?: number }) =>
+              `<li>"${item.text}" × ${item.quantity || 1}</li>`
+            )
+            .join('');
+          const html = `
+            <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
+              <h2 style="color: #7c3aed;">Thanks for your order, ${firstName}!</h2>
+              <p>We've received your GlowBlocks order and are getting started on it.</p>
+              <h3>Order Details</h3>
+              <ul>${itemList}</ul>
+              <p><strong>Total:</strong> ${totalFormatted}</p>
+              <p><strong>Shipping to:</strong> ${fullAddress || 'N/A'}</p>
+              <p><strong>Estimated delivery:</strong> 5-7 business days</p>
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+              <p style="color: #6b7280; font-size: 13px;">We'll send you a tracking number once your order ships. If you have questions, visit our <a href="https://glowblocksstudio.com/contact" style="color: #7c3aed;">contact page</a>.</p>
+            </div>
+          `;
+          await sendEmail(customerEmail, 'Your GlowBlocks Order Confirmation', html);
         }
 
         // Deduct inventory immediately for online orders

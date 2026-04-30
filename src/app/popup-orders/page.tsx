@@ -270,6 +270,13 @@ function PopupOrdersContent() {
 
   const saveStatus = async (orderId: string, newStatus: string) => {
     if (!key || !newStatus) return;
+    if (newStatus.toLowerCase() === 'done') {
+      const order = orders.find((o) => o.id === orderId);
+      if (order && (order.paymentStatus || 'Awaiting Payment').toLowerCase() !== 'paid') {
+        setError('Cannot mark as Done — payment is still pending. Mark as Paid first.');
+        return;
+      }
+    }
     setSavingOrderId(orderId);
     try {
       const res = await fetch('/api/popup-orders', {
@@ -361,7 +368,7 @@ function PopupOrdersContent() {
       setOrders((prev) =>
         prev.map((order) =>
           order.id === orderId
-            ? { ...order, trackingNumber: data.trackingNumber, labelUrl: data.labelUrl }
+            ? { ...order, trackingNumber: data.trackingNumber, labelUrl: data.labelUrl, status: 'Ready to Ship' }
             : order
         )
       );

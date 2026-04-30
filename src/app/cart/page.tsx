@@ -139,7 +139,9 @@ export default function CartPage() {
         </div>
 
         <button
-          onClick={clearCart}
+          onClick={() => {
+            if (window.confirm('Clear all items from your cart?')) clearCart();
+          }}
           className="text-sm text-gray-500 hover:text-red-400 transition-colors"
         >
           Clear cart

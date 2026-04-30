@@ -19,6 +19,8 @@ interface Order {
   status: string;
   trackingNumber: string;
   labelUrl: string;
+  orderText: string;
+  boardIds: (string | null)[];
 }
 
 const STATUS_OPTIONS = ['New', 'Processing', 'Ready to Ship', 'Shipped', 'Delivered'];
@@ -55,6 +57,7 @@ function OrdersContent() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'processing' | 'ready to ship' | 'shipped' | 'delivered'>('all');
   const [newOrderCount, setNewOrderCount] = useState(0);
   const prevOrderIdsRef = useRef<Set<string>>(new Set());
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const playChime = useCallback(() => {
     try {
@@ -184,7 +187,7 @@ function OrdersContent() {
       setOrders((prev) =>
         prev.map((order) =>
           order.id === orderId
-            ? { ...order, trackingNumber: data.trackingNumber, labelUrl: data.labelUrl }
+            ? { ...order, trackingNumber: data.trackingNumber, labelUrl: data.labelUrl, status: 'Shipped' }
             : order
         )
       );
@@ -290,119 +293,198 @@ function OrdersContent() {
           </div>
         )}
 
-        {filteredOrders.map((order) => (
-          <div
-            key={order.id}
-            className="rounded-2xl border border-gray-800 bg-gray-950 p-5 space-y-3"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-              <div>
-                <p className="text-xl font-bold text-white">
-                  {order.customerName || 'Unknown Customer'}
-                </p>
-                <p className="text-sm text-gray-400">{order.email}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-green-400">
-                  {order.total}
-                </p>
-                <p className="text-xs text-gray-500">{order.date}</p>
-              </div>
-            </div>
+        {filteredOrders.map((order) => {
+          const ids = order.boardIds || [];
+          const nonSpaceCount = (order.orderText || '').split('').filter(c => c !== ' ').length;
+          const scannedCount = ids.filter(b => b != null).length;
+          const allScanned = scannedCount >= nonSpaceCount && nonSpaceCount > 0;
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              <p>
-                <span className="text-gray-400">Address:</span>{' '}
-                {order.address || '-'}
-              </p>
-              <p>
-                <span className="text-gray-400">Shipping:</span>{' '}
-                {order.shippingMethod}{' '}
-                {order.shippingCost && (
-                  <span className="text-gray-500">({order.shippingCost})</span>
-                )}
-              </p>
-            </div>
+          return (
+            <div
+              key={order.id}
+              className="rounded-2xl border border-gray-800 bg-gray-950 p-5 space-y-3"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-xl font-bold text-white">
+                    {order.customerName || 'Unknown Customer'}
+                  </p>
+                  {/* PCB progress badge */}
+                  {order.orderText && (
+                    allScanned ? (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-900/50 text-green-400 border border-green-600/40">
+                        PCBs Done
+                      </span>
+                    ) : scannedCount > 0 ? (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-900/50 text-blue-400 border border-blue-600/40">
+                        PCBs {scannedCount}/{nonSpaceCount}
+                      </span>
+                    ) : null
+                  )}
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-green-400">
+                    {order.total}
+                  </p>
+                  <p className="text-xs text-gray-500">{order.date}</p>
+                </div>
+              </div>
 
-            <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 text-sm space-y-1">
-              <p className="text-gray-400 text-xs font-medium mb-1">Items</p>
-              {order.items
-                ? order.items.split(' | ').map((item, idx) => (
-                    <p key={idx} className="text-gray-300">
-                      {item}
-                    </p>
-                  ))
-                : order.lineItems
-                  ? order.lineItems.split(' | ').map((item, idx) => (
+              <p className="text-sm text-gray-400">{order.email}</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <p>
+                  <span className="text-gray-400">Address:</span>{' '}
+                  {order.address || '-'}
+                </p>
+                <p>
+                  <span className="text-gray-400">Shipping:</span>{' '}
+                  {order.shippingMethod}{' '}
+                  {order.shippingCost && (
+                    <span className="text-gray-500">({order.shippingCost})</span>
+                  )}
+                </p>
+              </div>
+
+              <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 text-sm space-y-1">
+                <p className="text-gray-400 text-xs font-medium mb-1">Items</p>
+                {order.items
+                  ? order.items.split(' | ').map((item, idx) => (
                       <p key={idx} className="text-gray-300">
                         {item}
                       </p>
                     ))
-                  : <p className="text-gray-500">No items</p>
-              }
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {(() => {
-                const currentStatus = (order.status || 'new').toLowerCase();
-                const isLocked = LOCKED_STATUSES.includes(currentStatus);
-                return STATUS_OPTIONS.map((opt) => {
-                  const isActive = opt.toLowerCase() === currentStatus;
-                  const isSaving = savingOrderId === order.id;
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => !isActive && !isLocked && saveStatus(order.id, opt)}
-                      disabled={isSaving || (isLocked && !isActive)}
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                        isActive
-                          ? getStatusPillClasses(opt)
-                          : 'bg-gray-800 text-gray-500 border border-gray-700 hover:text-white hover:border-gray-500'
-                      } ${(isSaving || (isLocked && !isActive)) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                    >
-                      {isSaving && isActive ? 'Saving...' : opt}
-                    </button>
-                  );
-                });
-              })()}
-            </div>
-
-            {/* Shipping label section */}
-            {order.trackingNumber ? (
-              <div className="flex flex-wrap items-center gap-3 bg-cyan-950/30 border border-cyan-800/40 rounded-lg px-3 py-2 text-sm">
-                <span className="text-gray-400">Tracking:</span>
-                <span className="text-white font-mono">{order.trackingNumber}</span>
-                {order.labelUrl && (
-                  <a
-                    href={order.labelUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-cyan-400 hover:text-cyan-300 underline text-xs"
-                  >
-                    Download Label (PDF)
-                  </a>
-                )}
+                  : order.lineItems
+                    ? order.lineItems.split(' | ').map((item, idx) => (
+                        <p key={idx} className="text-gray-300">
+                          {item}
+                        </p>
+                      ))
+                    : <p className="text-gray-500">No items</p>
+                }
               </div>
-            ) : (
-              order.address &&
-              (order.status || 'new').toLowerCase() === 'ready to ship' && (
-                <button
-                  type="button"
-                  onClick={() => createLabel(order.id)}
-                  disabled={creatingLabelId === order.id}
-                  className="px-4 py-2 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {creatingLabelId === order.id ? 'Creating Label...' : 'Create Shipping Label'}
-                </button>
-              )
-            )}
 
-            <p className="text-xs text-gray-600 font-mono">
-              {order.stripeSessionId}
-            </p>
-          </div>
-        ))}
+              <div className="flex flex-wrap items-center gap-2">
+                {(() => {
+                  const currentStatus = (order.status || 'new').toLowerCase();
+                  const isLocked = LOCKED_STATUSES.includes(currentStatus);
+                  return STATUS_OPTIONS.map((opt) => {
+                    const isActive = opt.toLowerCase() === currentStatus;
+                    const isSaving = savingOrderId === order.id;
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => !isActive && !isLocked && saveStatus(order.id, opt)}
+                        disabled={isSaving || (isLocked && !isActive)}
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                          isActive
+                            ? getStatusPillClasses(opt)
+                            : 'bg-gray-800 text-gray-500 border border-gray-700 hover:text-white hover:border-gray-500'
+                        } ${(isSaving || (isLocked && !isActive)) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      >
+                        {isSaving && isActive ? 'Saving...' : opt}
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+
+              {/* PCB Scanning section */}
+              {order.orderText && (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {allScanned ? (
+                      <span className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-green-900/50 text-green-400 border border-green-600/40 opacity-60 cursor-not-allowed">
+                        PCBs Scanned
+                      </span>
+                    ) : (
+                      <Link
+                        href={`/scan?key=${encodeURIComponent(key)}&order=${encodeURIComponent(order.id)}&source=online`}
+                        className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-purple-800 text-purple-200 border border-purple-600 hover:bg-purple-700 transition-colors"
+                      >
+                        {scannedCount > 0 ? `Scan PCBs (${scannedCount}/${nonSpaceCount})` : 'Scan PCBs'}
+                      </Link>
+                    )}
+                  </div>
+                  {scannedCount > 0 && (
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                      {(order.orderText || '').split('').map((ch, i) => {
+                        if (ch === ' ') return <div key={i} className="w-1.5" />;
+                        const bid = ids[i];
+                        return (
+                          <span
+                            key={i}
+                            className={`px-2 py-0.5 rounded text-xs font-mono select-none ${
+                              bid ? 'bg-green-900/40 text-green-400 border border-green-700/40' : 'bg-gray-800 text-gray-500 border border-gray-700'
+                            }`}
+                            onTouchStart={() => {
+                              if (!bid) return;
+                              longPressTimerRef.current = setTimeout(() => {
+                                longPressTimerRef.current = null;
+                                window.location.href = `/scan?key=${encodeURIComponent(key)}&order=${encodeURIComponent(order.id)}&letter=${i}&source=online`;
+                              }, 600);
+                            }}
+                            onTouchEnd={() => {
+                              if (longPressTimerRef.current) {
+                                clearTimeout(longPressTimerRef.current);
+                                longPressTimerRef.current = null;
+                              }
+                            }}
+                            onTouchCancel={() => {
+                              if (longPressTimerRef.current) {
+                                clearTimeout(longPressTimerRef.current);
+                                longPressTimerRef.current = null;
+                              }
+                            }}
+                            onContextMenu={(e) => { if (bid) e.preventDefault(); }}
+                          >
+                            {ch.toUpperCase()}{bid ? ` ${bid}` : ''}
+                          </span>
+                        );
+                      })}
+                      <span className="text-xs text-gray-600 italic ml-1">Hold to replace</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Shipping label section */}
+              {order.trackingNumber ? (
+                <div className="flex flex-wrap items-center gap-3 bg-cyan-950/30 border border-cyan-800/40 rounded-lg px-3 py-2 text-sm">
+                  <span className="text-gray-400">Tracking:</span>
+                  <span className="text-white font-mono">{order.trackingNumber}</span>
+                  {order.labelUrl && (
+                    <a
+                      href={order.labelUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 underline text-xs"
+                    >
+                      Download Label (PDF)
+                    </a>
+                  )}
+                </div>
+              ) : (
+                order.address &&
+                (order.status || 'new').toLowerCase() === 'ready to ship' && (
+                  <button
+                    type="button"
+                    onClick={() => createLabel(order.id)}
+                    disabled={creatingLabelId === order.id}
+                    className="px-4 py-2 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {creatingLabelId === order.id ? 'Creating Label...' : 'Create Shipping Label'}
+                  </button>
+                )
+              )}
+
+              <p className="text-xs text-gray-600 font-mono">
+                {order.stripeSessionId}
+              </p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
