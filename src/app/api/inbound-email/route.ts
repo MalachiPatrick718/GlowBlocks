@@ -2,15 +2,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail } from '@/lib/email';
 
 const FORWARD_TO = process.env.INBOUND_FORWARD_TO || 'm.patrick0718@gmail.com';
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const from = body.from || 'Unknown sender';
-    const subject = body.subject || '(No subject)';
-    const text = body.text || '';
-    const htmlBody = body.html || '';
+    // Resend wraps inbound data in { type: "email.received", data: { ... } }
+    const event = body.data || body;
+    const emailId = event.email_id;
+    const from = event.from || 'Unknown sender';
+    const subject = event.subject || '(No subject)';
+
+    // Webhook only includes metadata — fetch full content via Resend API
+    let htmlBody = '';
+    let textBody = '';
+
+    if (emailId && RESEND_API_KEY) {
+      const res = await fetch(`https://api.resend.com/emails/received/${emailId}`, {
+        headers: { Authorization: `Bearer ${RESEND_API_KEY}` },
+      });
+      if (res.ok) {
+        const emailData = await res.json();
+        htmlBody = emailData.html || '';
+        textBody = emailData.text || '';
+      }
+    }
 
     const html = `
       <div style="font-family: sans-serif; max-width: 600px;">
@@ -19,7 +36,7 @@ export async function POST(req: NextRequest) {
           <strong>Subject:</strong> ${subject}
         </p>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
-        ${htmlBody || `<pre style="white-space: pre-wrap;">${text}</pre>`}
+        ${htmlBody || `<pre style="white-space: pre-wrap;">${textBody || '(empty message)'}</pre>`}
       </div>
     `;
 
