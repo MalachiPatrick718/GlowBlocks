@@ -47,3 +47,7 @@ next-env.d.ts
 /tools/firmware-flasher-gui/node_modules
 /tools/firmware-flasher-gui/dist
 /tools/firmware-flasher-gui/build
+
+# Inventory manager GUI
+/tools/inventory-manager-gui/node_modules
+/tools/inventory-manager-gui/dist
