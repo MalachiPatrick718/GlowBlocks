@@ -727,7 +727,7 @@ function PopupOrdersContent() {
                   )}
                 </div>
               ) : (
-                order.address && !isCompletedOrder(order) && (
+                order.address && (order.status || '').toLowerCase() === 'ready to ship' && (
                   <button
                     type="button"
                     onClick={() => createLabel(order.id)}

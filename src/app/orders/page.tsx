@@ -21,16 +21,19 @@ interface Order {
   labelUrl: string;
 }
 
-const STATUS_OPTIONS = ['New', 'Processing', 'Shipped', 'Delivered'];
+const STATUS_OPTIONS = ['New', 'Processing', 'Ready to Ship', 'Shipped', 'Delivered'];
 
 function getStatusPillClasses(status: string): string {
   const s = status.toLowerCase();
   if (s === 'new') return 'bg-blue-200 text-blue-900 border border-blue-300';
   if (s === 'processing') return 'bg-amber-200 text-amber-900 border border-amber-300';
+  if (s === 'ready to ship') return 'bg-emerald-200 text-emerald-900 border border-emerald-300';
   if (s === 'shipped') return 'bg-cyan-200 text-cyan-900 border border-cyan-300';
   if (s === 'delivered') return 'bg-green-200 text-green-900 border border-green-300';
   return 'bg-gray-300 text-gray-900 border border-gray-400';
 }
+
+const LOCKED_STATUSES = ['shipped', 'delivered'];
 
 export default function OrdersPage() {
   return (
@@ -49,6 +52,7 @@ function OrdersContent() {
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
   const [creatingLabelId, setCreatingLabelId] = useState<string | null>(null);
   const [orderFilter, setOrderFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'processing' | 'ready to ship' | 'shipped' | 'delivered'>('all');
   const [newOrderCount, setNewOrderCount] = useState(0);
   const prevOrderIdsRef = useRef<Set<string>>(new Set());
 
@@ -193,7 +197,7 @@ function OrdersContent() {
 
   const filteredOrders = useMemo(() => {
     const q = orderFilter.trim().toLowerCase();
-    const filtered = !q
+    let filtered = !q
       ? orders
       : orders.filter(
           (order) =>
@@ -202,13 +206,18 @@ function OrdersContent() {
             order.items.toLowerCase().includes(q) ||
             order.address.toLowerCase().includes(q)
         );
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(
+        (order) => (order.status || 'new').toLowerCase() === statusFilter
+      );
+    }
     return [...filtered].sort((a, b) => {
       const aDone = a.status.toLowerCase() === 'delivered' ? 1 : 0;
       const bDone = b.status.toLowerCase() === 'delivered' ? 1 : 0;
       if (aDone !== bDone) return aDone - bDone;
       return 0;
     });
-  }, [orders, orderFilter]);
+  }, [orders, orderFilter, statusFilter]);
 
   const emptyState = useMemo(
     () => !loading && !error && orders.length === 0,
@@ -254,13 +263,31 @@ function OrdersContent() {
         {error && <p className="text-red-300">{error}</p>}
         {emptyState && <p className="text-gray-400">No online orders yet.</p>}
         {!loading && key && (
-          <input
-            type="text"
-            value={orderFilter}
-            onChange={(e) => setOrderFilter(e.target.value)}
-            placeholder="Find by name, email, items, or address..."
-            className="w-full max-w-md px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500"
-          />
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={orderFilter}
+              onChange={(e) => setOrderFilter(e.target.value)}
+              placeholder="Find by name, email, items, or address..."
+              className="w-full max-w-md px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500"
+            />
+            <div className="flex flex-wrap gap-2">
+              {([['all', 'All'], ['new', 'New'], ['processing', 'Processing'], ['ready to ship', 'Ready to Ship'], ['shipped', 'Shipped'], ['delivered', 'Delivered']] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setStatusFilter(value)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                    statusFilter === value
+                      ? 'bg-purple-600 text-white border border-purple-500'
+                      : 'bg-gray-800 text-gray-400 border border-gray-700 hover:text-white hover:border-gray-500'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
 
         {filteredOrders.map((order) => (
@@ -316,26 +343,29 @@ function OrdersContent() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {STATUS_OPTIONS.map((opt) => {
-                const isActive =
-                  opt.toLowerCase() === (order.status || 'new').toLowerCase();
-                const isSaving = savingOrderId === order.id;
-                return (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => !isActive && saveStatus(order.id, opt)}
-                    disabled={isSaving}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                      isActive
-                        ? getStatusPillClasses(opt)
-                        : 'bg-gray-800 text-gray-500 border border-gray-700 hover:text-white hover:border-gray-500'
-                    } ${isSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                  >
-                    {isSaving && isActive ? 'Saving...' : opt}
-                  </button>
-                );
-              })}
+              {(() => {
+                const currentStatus = (order.status || 'new').toLowerCase();
+                const isLocked = LOCKED_STATUSES.includes(currentStatus);
+                return STATUS_OPTIONS.map((opt) => {
+                  const isActive = opt.toLowerCase() === currentStatus;
+                  const isSaving = savingOrderId === order.id;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => !isActive && !isLocked && saveStatus(order.id, opt)}
+                      disabled={isSaving || (isLocked && !isActive)}
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                        isActive
+                          ? getStatusPillClasses(opt)
+                          : 'bg-gray-800 text-gray-500 border border-gray-700 hover:text-white hover:border-gray-500'
+                      } ${(isSaving || (isLocked && !isActive)) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                      {isSaving && isActive ? 'Saving...' : opt}
+                    </button>
+                  );
+                });
+              })()}
             </div>
 
             {/* Shipping label section */}
@@ -356,7 +386,7 @@ function OrdersContent() {
               </div>
             ) : (
               order.address &&
-              ['new', 'processing'].includes(order.status.toLowerCase()) && (
+              (order.status || 'new').toLowerCase() === 'ready to ship' && (
                 <button
                   type="button"
                   onClick={() => createLabel(order.id)}
