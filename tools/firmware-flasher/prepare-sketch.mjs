@@ -97,8 +97,8 @@ function main() {
   const colors = loadColors();
   const { r, g, b, label } = resolveRgb(colors, args);
 
-  // Handle brightness (default 200 if not specified)
-  const brightness = args.brightness !== undefined ? args.brightness : 200;
+  // Handle brightness (default 80 if not specified)
+  const brightness = args.brightness !== undefined ? args.brightness : 80;
   if (brightness < 0 || brightness > 255) {
     console.error('Brightness must be between 0 and 255');
     process.exit(1);
