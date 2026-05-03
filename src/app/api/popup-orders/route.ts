@@ -187,8 +187,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const normalizedDeliveryMethod = deliveryMethod === 'ship' ? 'ship' : 'pick-up';
-    const mappedOrderType = normalizedDeliveryMethod === 'ship' ? 'Ship to Customer' : 'Pickup';
+    const normalizedDeliveryMethod = 'ship';
+    const mappedOrderType = 'Ship to Customer';
     const orderNumber = generateOrderNumber();
     if (normalizedDeliveryMethod === 'ship' && !String(address || '').trim()) {
       return NextResponse.json({ error: 'Shipping address is required for shipping orders' }, { status: 400 });
@@ -256,11 +256,7 @@ export async function POST(req: NextRequest) {
     if (popupOrderStatusValue) {
       fields['Order Status'] = popupOrderStatusValue;
     }
-    if (mappedOrderType === 'Pickup') {
-      fields['Pickup Status'] = 'Not Ready';
-    } else {
-      fields['Pickup Status'] = 'Not Applicable';
-    }
+    fields['Pickup Status'] = 'Not Applicable';
 
     const airtableRes = await fetch(getAirtableUrl(), {
       method: 'POST',
@@ -297,16 +293,8 @@ export async function POST(req: NextRequest) {
       console.error('Failed to deduct inventory for popup order:', orderNumber);
     }
 
-    // Send confirmation SMS for pickup orders
-    if (mappedOrderType === 'Pickup' && phoneNumber) {
-      const msg = `Hey, ${String(customerName).trim()}, Thanks for your Glowblocks Set Order! Your order number is ${orderNumber}. We will message you once your set is ready for pickup! It will take between 10-15 minutes! See you again soon!`;
-      sendSMS(String(phoneNumber), msg).catch((err) =>
-        console.error('Failed to send order confirmation SMS:', err)
-      );
-    }
-
-    // Send confirmation SMS for ship orders
-    if (mappedOrderType === 'Ship to Customer' && phoneNumber) {
+    // Send confirmation SMS
+    if (phoneNumber) {
       const firstName = String(customerName).trim().split(' ')[0];
       const msg = `Hey ${firstName}, thanks for your GlowBlocks order! Your order has been received. Be on the lookout for your GlowBlocks set in 5-7 business days!`;
       sendSMS(String(phoneNumber), msg).catch((err) =>

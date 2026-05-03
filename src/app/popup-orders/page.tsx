@@ -562,7 +562,7 @@ function PopupOrdersContent() {
               <p><span className="text-gray-400">Custom Letters:</span> <span className="font-bold text-white">{order.text}</span></p>
               <p><span className="text-gray-400">Customer Name:</span> {order.customerName}</p>
               <p><span className="text-gray-400">Number:</span> {order.phoneNumber}</p>
-              <p><span className="text-gray-400">Delivery:</span> {order.deliveryMethod === 'ship' ? 'Ship to Me' : 'Pick Up'}</p>
+              <p><span className="text-gray-400">Delivery:</span> Ship to Me</p>
               <p><span className="text-gray-400">Address:</span> {order.address || '-'}</p>
             </div>
 
@@ -608,10 +608,7 @@ function PopupOrdersContent() {
 
             <div className="flex flex-wrap items-center gap-2">
               {(() => {
-                const isShipOrder = (order.deliveryMethod || '').toLowerCase() === 'ship';
-                const statusOptions = isShipOrder
-                  ? [...baseStatusOptions, 'Ready to Ship']
-                  : baseStatusOptions;
+                const statusOptions = [...baseStatusOptions, 'Ready to Ship'];
                 const currentStatus = (order.status || 'Not Started').toLowerCase();
                 const isCompleted = (pickupDrafts[order.id] || order.pickupStatus) === 'Picked Up';
                 return statusOptions.map((opt) => {
