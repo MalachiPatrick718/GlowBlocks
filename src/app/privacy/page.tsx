@@ -57,7 +57,7 @@ export default function PrivacyPage() {
             <p>We use the following services to operate:</p>
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li><strong>Stripe</strong> — payment processing</li>
-              <li><strong>Twilio</strong> — SMS delivery for order notifications</li>
+              <li><strong>Telnyx</strong> — SMS delivery for order notifications</li>
               <li><strong>Resend</strong> — email delivery for contact form messages</li>
               <li><strong>Netlify</strong> — website hosting</li>
             </ul>

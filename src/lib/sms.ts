@@ -1,6 +1,5 @@
-const twilioSid = process.env.TWILIO_ACCOUNT_SID || '';
-const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN || '';
-const twilioFromNumber = process.env.TWILIO_FROM_NUMBER || process.env.TWILIO_PHONE_NUMBER || '';
+const telnyxApiKey = process.env.TELNYX_API_KEY || '';
+const telnyxFromNumber = process.env.TELNYX_FROM_NUMBER || '';
 
 export function normalizePhone(value: string): string {
   const trimmed = value.trim();
@@ -11,32 +10,27 @@ export function normalizePhone(value: string): string {
 }
 
 export async function sendSMS(to: string, message: string): Promise<boolean> {
-  if (!twilioSid || !twilioAuthToken || !twilioFromNumber) {
-    console.warn('Twilio is not configured, skipping SMS');
+  if (!telnyxApiKey || !telnyxFromNumber) {
+    console.warn('Telnyx is not configured, skipping SMS');
     return false;
   }
 
-  const body = new URLSearchParams({
-    To: normalizePhone(to),
-    From: twilioFromNumber,
-    Body: message,
+  const res = await fetch('https://api.telnyx.com/v2/messages', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${telnyxApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: telnyxFromNumber,
+      to: normalizePhone(to),
+      text: message,
+    }),
   });
-
-  const res = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${twilioSid}:${twilioAuthToken}`).toString('base64')}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: body.toString(),
-    }
-  );
 
   if (!res.ok) {
     const err = await res.text();
-    console.error('Twilio send error:', err);
+    console.error('Telnyx send error:', err);
     return false;
   }
 
