@@ -255,8 +255,6 @@ export async function POST(req: NextRequest) {
       'Subtotal': subtotal,
       'Tax': tax,
       'Total': total,
-      'Discount': discount,
-      ...(normalizedDiscountCode ? { 'Discount Code': normalizedDiscountCode } : {}),
       'Payment Method': paymentMethodLabel,
       'Payment': 'Awaiting Payment',
     };
@@ -280,8 +278,9 @@ export async function POST(req: NextRequest) {
 
     if (!airtableRes.ok) {
       const err = await airtableRes.json();
-      console.error('Popup order Airtable error:', err);
-      return NextResponse.json({ error: 'Failed to save popup order' }, { status: 500 });
+      console.error('Popup order Airtable error:', JSON.stringify(err));
+      const detail = err?.error?.message || 'Failed to save popup order';
+      return NextResponse.json({ error: detail }, { status: 500 });
     }
 
     const airtableData = await airtableRes.json();
