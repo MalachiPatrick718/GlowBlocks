@@ -125,7 +125,8 @@ small {
   gap: 8px;
 }
 
-.input-with-button input {
+.input-with-button input,
+.input-with-button select {
   flex: 1;
 }
 

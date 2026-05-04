@@ -31,6 +31,7 @@ function CustomizeContent() {
   const [colorNumbers, setColorNumbers] = useState<(number | null)[]>([]);
   const [modalIndex, setModalIndex] = useState<number | null>(null);
   const [colorMode, setColorMode] = useState<'presets' | 'custom' | 'color-number'>('presets');
+  const [applyAll, setApplyAll] = useState(false);
   const [added, setAdded] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
@@ -86,28 +87,39 @@ function CustomizeContent() {
 
   const handleColorApply = useCallback((color: string) => {
     if (modalIndex === null) return;
-    setLetterColors(prev => {
-      const next = [...prev];
-      next[modalIndex] = color;
-      return next;
-    });
-  }, [modalIndex]);
+    if (applyAll) {
+      setLetterColors(prev => prev.map((c, i) => text[i] !== ' ' ? color : c));
+      setApplyAll(false);
+    } else {
+      setLetterColors(prev => {
+        const next = [...prev];
+        next[modalIndex] = color;
+        return next;
+      });
+    }
+  }, [modalIndex, applyAll, text]);
 
   const handleColorNumberApply = useCallback((colorNumber: number) => {
     if (modalIndex === null) return;
     const color = POPUP_COLOR_MAP.get(colorNumber);
     if (!color) return;
-    setLetterColors(prev => {
-      const next = [...prev];
-      next[modalIndex] = color.hex;
-      return next;
-    });
-    setColorNumbers(prev => {
-      const next = [...prev];
-      next[modalIndex] = colorNumber;
-      return next;
-    });
-  }, [modalIndex]);
+    if (applyAll) {
+      setLetterColors(prev => prev.map((c, i) => text[i] !== ' ' ? color.hex : c));
+      setColorNumbers(prev => prev.map((n, i) => text[i] !== ' ' ? colorNumber : n));
+      setApplyAll(false);
+    } else {
+      setLetterColors(prev => {
+        const next = [...prev];
+        next[modalIndex] = color.hex;
+        return next;
+      });
+      setColorNumbers(prev => {
+        const next = [...prev];
+        next[modalIndex] = colorNumber;
+        return next;
+      });
+    }
+  }, [modalIndex, applyAll, text]);
 
   const handleAddToCart = () => {
     if (nonSpaceLetters.length === 0) return;
@@ -186,10 +198,23 @@ function CustomizeContent() {
                         text={text}
                         letterColors={letterColors}
                         onSelectBlock={(i) => {
-                          if (text[i] !== ' ') setModalIndex(i);
+                          if (text[i] !== ' ') { setApplyAll(false); setModalIndex(i); }
                         }}
                       />
                     </div>
+                    {nonSpaceLetters.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setApplyAll(true);
+                          const firstNonSpace = text.split('').findIndex(ch => ch !== ' ');
+                          setModalIndex(firstNonSpace >= 0 ? firstNonSpace : 0);
+                        }}
+                        className="w-full py-2 rounded-lg border border-purple-600 text-purple-400 text-sm font-medium hover:bg-purple-600/10 transition-colors"
+                      >
+                        Apply Color to All Letters
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -205,10 +230,23 @@ function CustomizeContent() {
                         text={text}
                         letterColors={letterColors}
                         onSelectBlock={(i) => {
-                          if (text[i] !== ' ') setModalIndex(i);
+                          if (text[i] !== ' ') { setApplyAll(false); setModalIndex(i); }
                         }}
                       />
                     </div>
+                    {nonSpaceLetters.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setApplyAll(true);
+                          const firstNonSpace = text.split('').findIndex(ch => ch !== ' ');
+                          setModalIndex(firstNonSpace >= 0 ? firstNonSpace : 0);
+                        }}
+                        className="w-full py-2 rounded-lg border border-purple-600 text-purple-400 text-sm font-medium hover:bg-purple-600/10 transition-colors"
+                      >
+                        Apply Color to All Letters
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -257,7 +295,7 @@ function CustomizeContent() {
           letterIndex={modalIndex}
           currentColor={letterColors[modalIndex] || '#FFFFFF'}
           onApply={handleColorApply}
-          onClose={() => setModalIndex(null)}
+          onClose={() => { setModalIndex(null); setApplyAll(false); }}
         />
       )}
 
@@ -268,7 +306,7 @@ function CustomizeContent() {
           letterIndex={modalIndex}
           currentColorNumber={colorNumbers[modalIndex] || null}
           onApply={handleColorNumberApply}
-          onClose={() => setModalIndex(null)}
+          onClose={() => { setModalIndex(null); setApplyAll(false); }}
         />
       )}
     </div>

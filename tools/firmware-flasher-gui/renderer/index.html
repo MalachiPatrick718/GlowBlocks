@@ -40,10 +40,12 @@
           <div class="form-group">
             <label for="port">Serial Port:</label>
             <div class="input-with-button">
-              <input type="text" id="port" placeholder="/dev/cu.usbserial-0001">
-              <button id="detect-port" class="btn-secondary">Auto-detect</button>
+              <select id="port">
+                <option value="">Scanning...</option>
+              </select>
+              <button id="refresh-ports" class="btn-secondary">Refresh</button>
             </div>
-            <small>ESP32 programmer port</small>
+            <small>Select the programmer's serial port</small>
           </div>
 
           <div class="form-group">

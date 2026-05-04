@@ -46,7 +46,7 @@ const previewRgb = document.getElementById('preview-rgb');
 // Config elements
 const sketchDirInput = document.getElementById('sketch-dir');
 const fqbnInput = document.getElementById('fqbn');
-const portInput = document.getElementById('port');
+const portSelect = document.getElementById('port');
 const programmerInput = document.getElementById('programmer');
 
 // Batch elements
@@ -80,6 +80,7 @@ async function init() {
   await loadColors();
   await loadPresets();
   await loadConfig();
+  await refreshPorts();
   updateUploadButton();
 }
 
@@ -135,7 +136,7 @@ function setupEventListeners() {
   document.getElementById('save-config').addEventListener('click', saveConfig);
   document.getElementById('edit-config').addEventListener('click', editConfig);
   document.getElementById('browse-dir').addEventListener('click', selectDirectory);
-  document.getElementById('detect-port').addEventListener('click', detectSerialPort);
+  document.getElementById('refresh-ports').addEventListener('click', refreshPorts);
 
   // Upload button
   uploadBtn.addEventListener('click', handleUpload);
@@ -299,7 +300,7 @@ async function loadConfig() {
     if (currentConfig) {
       sketchDirInput.value = currentConfig.sketchDir || '';
       fqbnInput.value = currentConfig.fqbn || '';
-      portInput.value = currentConfig.port || '';
+      portSelect.value = currentConfig.port || '';
       programmerInput.value = currentConfig.programmer || '';
 
       configForm.style.display = 'none';
@@ -324,7 +325,7 @@ async function saveConfig() {
   const config = {
     sketchDir: sketchDirInput.value.trim(),
     fqbn: fqbnInput.value.trim(),
-    port: portInput.value.trim(),
+    port: portSelect.value,
     programmer: programmerInput.value.trim()
   };
 
@@ -368,23 +369,31 @@ async function selectDirectory() {
   }
 }
 
-// Detect serial port
-async function detectSerialPort() {
+// Refresh serial port dropdown
+async function refreshPorts() {
+  const savedPort = portSelect.value || (currentConfig && currentConfig.port) || '';
+  portSelect.innerHTML = '<option value="">Scanning...</option>';
+
   try {
-    showMessage(configMessage, 'info', 'Detecting serial ports...');
     const ports = await window.flasherAPI.listSerialPorts();
 
     if (ports.length === 0) {
-      showMessage(configMessage, 'error', 'No serial ports detected. Is the ESP32 connected?');
-    } else if (ports.length === 1) {
-      portInput.value = ports[0].address;
-      showMessage(configMessage, 'success', `Auto-detected port: ${ports[0].address}`);
+      portSelect.innerHTML = '<option value="">No ports detected</option>';
+      showMessage(configMessage, 'info', 'No serial ports detected. Is the programmer connected?');
     } else {
-      // Multiple ports - show the first one but let user know
-      portInput.value = ports[0].address;
-      showMessage(configMessage, 'info', `Found ${ports.length} ports. Selected: ${ports[0].address}`);
+      portSelect.innerHTML = ports.map(p =>
+        `<option value="${p.address}">${p.address}${p.label && p.label !== p.address ? ' (' + p.label + ')' : ''}</option>`
+      ).join('');
+
+      // Restore previously selected port if still available
+      if (savedPort && [...portSelect.options].some(o => o.value === savedPort)) {
+        portSelect.value = savedPort;
+      }
+
+      showMessage(configMessage, 'success', `Found ${ports.length} port${ports.length !== 1 ? 's' : ''}`);
     }
   } catch (error) {
+    portSelect.innerHTML = '<option value="">Error scanning ports</option>';
     showMessage(configMessage, 'error', `Failed to detect ports: ${error.message}`);
   }
 }

@@ -14,6 +14,7 @@ export default function PopupPage() {
   const [colorNumbers, setColorNumbers] = useState<(number | null)[]>([]);
   const [modalIndex, setModalIndex] = useState<number | null>(null);
   const [colorMode, setColorMode] = useState<'presets' | 'custom'>('presets');
+  const [applyAll, setApplyAll] = useState(false);
   const [selectedPresetName, setSelectedPresetName] = useState<string | null>(null);
   const [highlightSection, setHighlightSection] = useState<'text' | 'colors' | 'contact' | null>(null);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
@@ -44,8 +45,6 @@ export default function PopupPage() {
     taxRate: number;
     total: number;
   } | null>(null);
-  const [confirmedDeliveryMethod, setConfirmedDeliveryMethod] = useState<'pick-up' | 'ship'>('ship');
-  const pickupEligible = false as const;
   const [paymentMethod, setPaymentMethod] = useState<'mobile' | 'kiosk-card' | 'cash'>('mobile');
   const [paymentLocation, setPaymentLocation] = useState<'mobile' | 'kiosk'>('mobile');
   const [smsOptIn, setSmsOptIn] = useState(false);
@@ -113,18 +112,24 @@ export default function PopupPage() {
     const selected = POPUP_COLOR_MAP.get(colorNumber);
     if (!selected) return;
 
-    setLetterColors((prev) => {
-      const next = [...prev];
-      next[modalIndex] = selected.hex;
-      return next;
-    });
-    setColorNumbers((prev) => {
-      const next = [...prev];
-      next[modalIndex] = selected.id;
-      return next;
-    });
+    if (applyAll) {
+      setLetterColors((prev) => prev.map((c, i) => text[i] !== ' ' ? selected.hex : c));
+      setColorNumbers((prev) => prev.map((n, i) => text[i] !== ' ' ? selected.id : n));
+      setApplyAll(false);
+    } else {
+      setLetterColors((prev) => {
+        const next = [...prev];
+        next[modalIndex] = selected.hex;
+        return next;
+      });
+      setColorNumbers((prev) => {
+        const next = [...prev];
+        next[modalIndex] = selected.id;
+        return next;
+      });
+    }
     setSelectedPresetName(null);
-  }, [modalIndex]);
+  }, [modalIndex, applyAll, text]);
 
   const canSubmit = useMemo(() => {
     const hasContact = customerName.trim().length > 1 && phoneNumber.replace(/\D/g, '').length === 10;
@@ -173,7 +178,7 @@ export default function PopupPage() {
       setConfirmedWord('');
       setConfirmedOrderNumber('');
       setConfirmedPricing(null);
-      setConfirmedDeliveryMethod('ship');
+
       setConfirmedPaymentMethod('mobile');
       setCheckoutUrl(null);
       setSessionId(null);
@@ -269,7 +274,6 @@ export default function PopupPage() {
       setConfirmedWord(text);
       setConfirmedOrderNumber(data.orderNumber || '');
       setConfirmedPricing(data.pricing || null);
-      setConfirmedDeliveryMethod(deliveryMethod);
       setConfirmedPaymentMethod(paymentMethod);
 
       // If Pay on Mobile, create Stripe Checkout session and show QR/redirect
@@ -593,7 +597,7 @@ export default function PopupPage() {
                   setConfirmedWord('');
                   setConfirmedOrderNumber('');
                   setConfirmedPricing(null);
-                  setConfirmedDeliveryMethod('ship');
+            
                   setConfirmedPaymentMethod('mobile');
                   setCheckoutUrl(null);
                   setSessionId(null);
@@ -610,7 +614,7 @@ export default function PopupPage() {
                   setConfirmedWord('');
                   setConfirmedOrderNumber('');
                   setConfirmedPricing(null);
-                  setConfirmedDeliveryMethod('ship');
+            
                   setConfirmedPaymentMethod('mobile');
                   setCheckoutUrl(null);
                   setSessionId(null);
@@ -699,10 +703,23 @@ export default function PopupPage() {
                           text={text}
                           letterColors={letterColors}
                           onSelectBlock={(i) => {
-                            if (text[i] !== ' ') setModalIndex(i);
+                            if (text[i] !== ' ') { setApplyAll(false); setModalIndex(i); }
                           }}
                         />
                       </div>
+                      {nonSpaceLetters.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setApplyAll(true);
+                            const firstNonSpace = text.split('').findIndex(ch => ch !== ' ');
+                            setModalIndex(firstNonSpace >= 0 ? firstNonSpace : 0);
+                          }}
+                          className="w-full py-2 rounded-lg border border-purple-600 text-purple-400 text-sm font-medium hover:bg-purple-600/10 transition-colors"
+                        >
+                          Apply Color to All Letters
+                        </button>
+                      )}
                       {uncoloredCount > 0 && (
                         <p className="text-sm text-amber-300/80">
                           {uncoloredCount === 1 ? '1 letter still needs a color' : `${uncoloredCount} letters still need a color`}
@@ -962,7 +979,7 @@ export default function PopupPage() {
           letterIndex={modalIndex}
           currentColorNumber={colorNumbers[modalIndex] || null}
           onApply={handleCustomApply}
-          onClose={() => setModalIndex(null)}
+          onClose={() => { setModalIndex(null); setApplyAll(false); }}
         />
       )}
     </div>
