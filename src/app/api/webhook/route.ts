@@ -244,6 +244,7 @@ export async function POST(req: NextRequest) {
                 'Status': 'New',
                 'Order Text': fullOrderText,
                 'Order Data': JSON.stringify(orderData),
+                ...(fullSession.metadata?.referral ? { 'Referral': fullSession.metadata.referral } : {}),
               },
             }),
           }

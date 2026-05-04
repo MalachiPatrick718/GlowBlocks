@@ -14,7 +14,7 @@ function getPricePerBlock(totalBlocks: number): number {
 
 export async function POST(req: NextRequest) {
   try {
-    const { items } = await req.json();
+    const { items, referral, promoId } = await req.json();
 
     if (!process.env.STRIPE_SECRET_KEY) {
       return NextResponse.json(
@@ -91,7 +91,9 @@ export async function POST(req: NextRequest) {
           },
         },
       ],
-      allow_promotion_codes: true,
+      ...(promoId
+        ? { discounts: [{ promotion_code: promoId }] }
+        : { allow_promotion_codes: true }),
       return_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       metadata: {
         order_details: JSON.stringify(
@@ -101,6 +103,7 @@ export async function POST(req: NextRequest) {
             quantity: item.quantity || 1,
           }))
         ),
+        ...(referral ? { referral: String(referral).slice(0, 500) } : {}),
       },
     });
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import BlockPreview from '@/components/BlockPreview';
@@ -9,11 +10,70 @@ export default function CartPage() {
   const { items, removeItem, updateQuantity, totalBlocks, clearCart } = useCart();
   const router = useRouter();
 
+  const [promoInput, setPromoInput] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{
+    promoId: string;
+    code: string;
+    description: string;
+    percentOff: number | null;
+    amountOff: number | null;
+  } | null>(null);
+
   const pricePerBlock = getPricePerBlock(totalBlocks);
   const hasCustomColors = items.some(item => item.customColors);
   const customFee = hasCustomColors ? 2.00 : 0;
   const shipping = 5.99;
-  const subtotal = totalBlocks * pricePerBlock + customFee + shipping;
+  const preDiscountSubtotal = totalBlocks * pricePerBlock + customFee + shipping;
+
+  // Calculate discount
+  let discount = 0;
+  if (appliedPromo) {
+    if (appliedPromo.percentOff) {
+      discount = preDiscountSubtotal * (appliedPromo.percentOff / 100);
+    } else if (appliedPromo.amountOff) {
+      discount = Math.min(appliedPromo.amountOff, preDiscountSubtotal);
+    }
+  }
+  const subtotal = preDiscountSubtotal - discount;
+
+  const handleApplyPromo = async () => {
+    const code = promoInput.trim();
+    if (!code) return;
+
+    setPromoLoading(true);
+    setPromoError(null);
+
+    try {
+      const res = await fetch('/api/validate-promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+
+      if (data.valid) {
+        setAppliedPromo(data);
+        setPromoError(null);
+        // Save to localStorage for checkout
+        localStorage.setItem('glowblocks-promo', JSON.stringify(data));
+      } else {
+        setPromoError(data.error || 'Invalid code');
+      }
+    } catch {
+      setPromoError('Failed to validate code');
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoInput('');
+    setPromoError(null);
+    localStorage.removeItem('glowblocks-promo');
+  };
 
   if (items.length === 0) {
     return (
@@ -116,6 +176,51 @@ export default function CartPage() {
             <span>$5.99</span>
           </div>
           <p className="text-xs text-gray-500">Standard Shipping (5-7 business days)</p>
+
+          {/* Promo Code */}
+          <div className="border-t border-gray-700 pt-3 space-y-2">
+            {appliedPromo ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-green-400 text-sm font-medium">{appliedPromo.code}</span>
+                  <span className="text-gray-400 text-sm ml-2">({appliedPromo.description})</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-green-400 text-sm font-medium">-${discount.toFixed(2)}</span>
+                  <button
+                    onClick={handleRemovePromo}
+                    className="text-xs text-red-400 hover:text-red-300"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={promoInput}
+                    onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(null); }}
+                    placeholder="Discount code"
+                    className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleApplyPromo(); }}
+                  />
+                  <button
+                    onClick={handleApplyPromo}
+                    disabled={promoLoading || !promoInput.trim()}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    {promoLoading ? '...' : 'Apply'}
+                  </button>
+                </div>
+                {promoError && (
+                  <p className="text-xs text-red-400">{promoError}</p>
+                )}
+              </>
+            )}
+          </div>
+
           <div className="border-t border-gray-700 pt-3 flex justify-between text-xl font-bold">
             <span>Estimated Total</span>
             <span className="gradient-text">${subtotal.toFixed(2)}</span>

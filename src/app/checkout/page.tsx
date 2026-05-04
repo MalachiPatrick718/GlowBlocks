@@ -18,10 +18,19 @@ export default function CheckoutPage() {
   }, []);
 
   const fetchClientSecret = useCallback(async () => {
+    const referral = typeof window !== 'undefined' ? localStorage.getItem('glowblocks-referral') : null;
+    let promoId: string | undefined;
+    try {
+      const savedPromo = typeof window !== 'undefined' ? localStorage.getItem('glowblocks-promo') : null;
+      if (savedPromo) {
+        const parsed = JSON.parse(savedPromo);
+        promoId = parsed.promoId;
+      }
+    } catch {}
     const res = await fetch('/api/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items }),
+      body: JSON.stringify({ items, referral: referral || undefined, promoId }),
     });
     const data = await res.json();
     if (data.error) {

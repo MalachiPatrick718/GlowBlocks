@@ -32,6 +32,8 @@ function CustomizeContent() {
   const [modalIndex, setModalIndex] = useState<number | null>(null);
   const [colorMode, setColorMode] = useState<'presets' | 'custom' | 'color-number'>('presets');
   const [applyAll, setApplyAll] = useState(false);
+  const [referral, setReferral] = useState<'yes' | 'no' | null>(null);
+  const [referralName, setReferralName] = useState('');
   const [added, setAdded] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
@@ -121,9 +123,19 @@ function CustomizeContent() {
     }
   }, [modalIndex, applyAll, text]);
 
+  const referralComplete = referral === 'no' || (referral === 'yes' && referralName.trim().length > 0);
+
   const handleAddToCart = () => {
-    if (nonSpaceLetters.length === 0) return;
+    if (nonSpaceLetters.length === 0 || !referralComplete) return;
     const isCustom = colorMode === 'custom' || colorMode === 'color-number';
+
+    // Save referral info to localStorage for checkout
+    if (referral === 'yes' && referralName.trim()) {
+      localStorage.setItem('glowblocks-referral', referralName.trim());
+    } else {
+      localStorage.removeItem('glowblocks-referral');
+    }
+
     if (editId) {
       updateItem(editId, { text, letterColors, customColors: isCustom });
     } else {
@@ -250,15 +262,58 @@ function CustomizeContent() {
                   </div>
                 )}
 
+                {/* Referral */}
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-gray-300">Were you referred to GlowBlocks?</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setReferral('yes')}
+                      className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        referral === 'yes'
+                          ? 'bg-purple-600 border-purple-500 text-white'
+                          : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setReferral('no'); setReferralName(''); }}
+                      className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        referral === 'no'
+                          ? 'bg-purple-600 border-purple-500 text-white'
+                          : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      No
+                    </button>
+                  </div>
+                  {referral === 'yes' && (
+                    <input
+                      type="text"
+                      value={referralName}
+                      onChange={(e) => setReferralName(e.target.value)}
+                      placeholder="Who referred you?"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                    />
+                  )}
+                  {referral === null && (
+                    <p className="text-xs text-amber-300/80">Please answer to continue</p>
+                  )}
+                </div>
+
                 {/* Add to cart */}
                 <div className="pt-4 border-t border-gray-800">
                   <button
                     onClick={handleAddToCart}
-                    disabled={added}
+                    disabled={added || !referralComplete}
                     className={`w-full py-3 rounded-lg font-semibold text-lg transition-all duration-300 ${
                       added
                         ? 'bg-green-600 text-white'
-                        : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40'
+                        : !referralComplete
+                          ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40'
                     }`}
                   >
                     {added ? (editId ? 'Updated!' : 'Added to Cart!') : (editId ? 'Save Changes' : 'Finished — Add to Cart')}
