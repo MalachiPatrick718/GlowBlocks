@@ -255,6 +255,8 @@ export async function POST(req: NextRequest) {
       'Subtotal': subtotal,
       'Tax': tax,
       'Total': total,
+      'Discount': discount,
+      ...(normalizedDiscountCode ? { 'Discount Code': normalizedDiscountCode } : {}),
       'Payment Method': paymentMethodLabel,
       'Payment': 'Awaiting Payment',
     };
