@@ -32,6 +32,7 @@ function CustomizeContent() {
   const [modalIndex, setModalIndex] = useState<number | null>(null);
   const [colorMode, setColorMode] = useState<'presets' | 'custom' | 'color-number'>('presets');
   const [applyAll, setApplyAll] = useState(false);
+  const [selectedPresetName, setSelectedPresetName] = useState<string | null>(null);
   const [referral, setReferral] = useState<'yes' | 'no' | null>(null);
   const [referralName, setReferralName] = useState('');
   const [added, setAdded] = useState(false);
@@ -73,7 +74,7 @@ function CustomizeContent() {
     setModalIndex(null);
   }, []);
 
-  const handlePresetApply = useCallback((colors: string[]) => {
+  const handlePresetApply = useCallback((colors: string[], presetLabel?: string) => {
     const mapped: string[] = [];
     let colorIdx = 0;
     for (let i = 0; i < text.length; i++) {
@@ -85,6 +86,7 @@ function CustomizeContent() {
       }
     }
     setLetterColors(mapped);
+    setSelectedPresetName(presetLabel || 'Preset Theme');
   }, [text]);
 
   const handleColorApply = useCallback((color: string) => {
@@ -199,6 +201,7 @@ function CustomizeContent() {
                   <ColorPresets
                     onApplyPreset={handlePresetApply}
                     letterCount={nonSpaceLetters.length}
+                    selectedPresetName={selectedPresetName}
                   />
                 ) : colorMode === 'custom' ? (
                   <div className="space-y-3">

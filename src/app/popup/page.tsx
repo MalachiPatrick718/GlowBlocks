@@ -138,14 +138,14 @@ export default function PopupPage() {
   }, [modalIndex, applyAll, text]);
 
   const canSubmit = useMemo(() => {
-    const hasContact = customerName.trim().length > 1 && phoneNumber.replace(/\D/g, '').length === 10;
+    const hasContact = customerName.trim().length > 1;
     const hasRequiredAddress = deliveryMethod === 'ship' ? address.trim().length > 5 : true;
     const hasLastName = deliveryMethod === 'ship' ? lastName.trim().length > 0 : true;
     const hasColors = colorMode === 'presets'
       ? selectedPresetName !== null
       : text.split('').every((ch, i) => ch === ' ' || colorNumbers[i] != null);
     return nonSpaceLetters.length > 0 && hasContact && hasRequiredAddress && hasLastName && hasColors;
-  }, [nonSpaceLetters.length, customerName, lastName, phoneNumber, address, deliveryMethod, colorMode, selectedPresetName, text, colorNumbers]);
+  }, [nonSpaceLetters.length, customerName, lastName, address, deliveryMethod, colorMode, selectedPresetName, text, colorNumbers]);
 
   const textComplete = nonSpaceLetters.length > 0;
 
@@ -156,11 +156,11 @@ export default function PopupPage() {
   }, [textComplete, colorMode, selectedPresetName, text, colorNumbers]);
 
   const contactComplete = useMemo(() => {
-    const hasContact = customerName.trim().length > 1 && phoneNumber.replace(/\D/g, '').length === 10;
+    const hasContact = customerName.trim().length > 1;
     const hasRequiredAddress = deliveryMethod === 'ship' ? address.trim().length > 5 : true;
     const hasLastName = deliveryMethod === 'ship' ? lastName.trim().length > 0 : true;
     return hasContact && hasRequiredAddress && hasLastName;
-  }, [customerName, lastName, phoneNumber, address, deliveryMethod]);
+  }, [customerName, lastName, address, deliveryMethod]);
 
   const uncoloredCount = useMemo(() => {
     if (colorMode !== 'custom' || !textComplete) return 0;
@@ -268,7 +268,7 @@ export default function PopupPage() {
           deliveryMethod,
           paymentMethod,
           discountCode: discountCode.trim().toUpperCase() || undefined,
-          smsOptInAt: new Date().toISOString(),
+          smsOptInAt: smsOptIn ? new Date().toISOString() : undefined,
         }),
       });
 
@@ -366,8 +366,6 @@ export default function PopupPage() {
         setValidationMessage('Enter your first name');
       } else if (deliveryMethod === 'ship' && lastName.trim().length === 0) {
         setValidationMessage('Enter your last name');
-      } else if (phoneNumber.replace(/\D/g, '').length !== 10) {
-        setValidationMessage('Enter a valid 10-digit phone number');
       } else if (deliveryMethod === 'ship' && address.trim().length <= 5) {
         setValidationMessage('Enter a shipping address');
       } else {
@@ -376,7 +374,7 @@ export default function PopupPage() {
       contactRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    if (!smsOptIn) {
+    if (phoneNumber.replace(/\D/g, '').length > 0 && !smsOptIn) {
       setValidationMessage('Please agree to receive SMS order updates');
       return;
     }
@@ -826,10 +824,8 @@ export default function PopupPage() {
                       setPhoneNumber(digits);
                     }
                   }}
-                  placeholder="(555) 555-5555"
-                  className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 ${
-                    highlightSection === 'contact' && phoneNumber.replace(/\D/g, '').length !== 10 ? 'border-amber-500' : 'border-gray-700'
-                  }`}
+                  placeholder="Phone (optional)"
+                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                 />
                 <input
                   type="email"

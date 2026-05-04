@@ -184,7 +184,7 @@ export async function POST(req: NextRequest) {
       smsOptInAt,
     } = await req.json();
 
-    if (!text || !customerName || !phoneNumber) {
+    if (!text || !customerName) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -302,7 +302,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Send confirmation SMS
-    if (phoneNumber) {
+    if (phoneNumber && String(phoneNumber).replace(/\D/g, '').length >= 10) {
       const firstName = String(customerName).trim().split(' ')[0];
       const msg = normalizedDeliveryMethod === 'pick-up'
         ? `Hey ${firstName}, thanks for your GlowBlocks order! Your order number is ${orderNumber}. We'll text you when your set is ready for pickup!`

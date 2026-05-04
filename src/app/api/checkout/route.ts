@@ -14,7 +14,7 @@ function getPricePerBlock(totalBlocks: number): number {
 
 export async function POST(req: NextRequest) {
   try {
-    const { items, referral, promoId } = await req.json();
+    const { items, referral, promoId, promoCode } = await req.json();
 
     if (!process.env.STRIPE_SECRET_KEY) {
       return NextResponse.json(
@@ -68,6 +68,9 @@ export async function POST(req: NextRequest) {
 
     const origin = process.env.NEXT_PUBLIC_SITE_URL || req.headers.get('origin') || 'http://localhost:3000';
 
+    const normalizedPromoCode = String(promoCode || '').trim().toUpperCase();
+    const isFreeShipping = ['POP', 'MARTEL', 'PICKUP'].includes(normalizedPromoCode);
+
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       ui_mode: 'embedded',
@@ -82,8 +85,8 @@ export async function POST(req: NextRequest) {
         {
           shipping_rate_data: {
             type: 'fixed_amount',
-            fixed_amount: { amount: 599, currency: 'usd' },
-            display_name: 'Standard Shipping',
+            fixed_amount: { amount: isFreeShipping ? 0 : 599, currency: 'usd' },
+            display_name: isFreeShipping ? 'Free Shipping' : 'Standard Shipping',
             delivery_estimate: {
               minimum: { unit: 'business_day', value: 5 },
               maximum: { unit: 'business_day', value: 7 },

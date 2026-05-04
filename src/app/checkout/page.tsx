@@ -20,17 +20,19 @@ export default function CheckoutPage() {
   const fetchClientSecret = useCallback(async () => {
     const referral = typeof window !== 'undefined' ? localStorage.getItem('glowblocks-referral') : null;
     let promoId: string | undefined;
+    let promoCodeValue: string | undefined;
     try {
       const savedPromo = typeof window !== 'undefined' ? localStorage.getItem('glowblocks-promo') : null;
       if (savedPromo) {
         const parsed = JSON.parse(savedPromo);
         promoId = parsed.promoId;
+        promoCodeValue = parsed.code;
       }
     } catch {}
     const res = await fetch('/api/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items, referral: referral || undefined, promoId }),
+      body: JSON.stringify({ items, referral: referral || undefined, promoId, promoCode: promoCodeValue }),
     });
     const data = await res.json();
     if (data.error) {
@@ -59,8 +61,28 @@ export default function CheckoutPage() {
   const pricePerBlock = getPricePerBlock(totalBlocks);
   const hasCustomColors = items.some(item => item.customColors);
   const customFee = hasCustomColors ? 2.00 : 0;
-  const shipping = 5.99;
-  const subtotal = totalBlocks * pricePerBlock + customFee + shipping;
+
+  // Read applied promo from localStorage
+  let appliedPromo: { code?: string; percentOff?: number | null; amountOff?: number | null } | null = null;
+  try {
+    const savedPromo = typeof window !== 'undefined' ? localStorage.getItem('glowblocks-promo') : null;
+    if (savedPromo) appliedPromo = JSON.parse(savedPromo);
+  } catch {}
+
+  const promoCode = (appliedPromo?.code || '').toUpperCase();
+  const isFreeShipping = ['POP', 'MARTEL', 'PICKUP'].includes(promoCode);
+  const shipping = isFreeShipping ? 0 : 5.99;
+  const preDiscountSubtotal = totalBlocks * pricePerBlock + customFee;
+
+  let discount = 0;
+  if (appliedPromo) {
+    if (appliedPromo.percentOff) {
+      discount = preDiscountSubtotal * (appliedPromo.percentOff / 100);
+    } else if (appliedPromo.amountOff) {
+      discount = Math.min(appliedPromo.amountOff, preDiscountSubtotal);
+    }
+  }
+  const subtotal = preDiscountSubtotal - discount + shipping;
 
   return (
     <div className="min-h-screen py-8 px-4">
@@ -87,9 +109,17 @@ export default function CheckoutPage() {
               <div className="text-sm text-gray-400">$2.00</div>
             </div>
           )}
+          {discount > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="text-sm text-green-400">Discount ({promoCode})</div>
+              <div className="text-sm text-green-400">-${discount.toFixed(2)}</div>
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="text-sm text-gray-400">Shipping</div>
-            <div className="text-sm text-gray-400">$5.99</div>
+            <div className={`text-sm ${isFreeShipping ? 'text-green-400' : 'text-gray-400'}`}>
+              {isFreeShipping ? 'Free' : '$5.99'}
+            </div>
           </div>
           <div className="border-t border-gray-700 pt-2 flex flex-wrap items-center justify-between gap-4">
             <div className="text-sm text-gray-300 font-medium">Estimated Total</div>
