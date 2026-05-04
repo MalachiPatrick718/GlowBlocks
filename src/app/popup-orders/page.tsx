@@ -20,6 +20,8 @@ interface PopupOrder {
   letterCount?: number;
   customColorFee?: number;
   subtotal?: number;
+  discount?: number;
+  shippingFee?: number;
   tax?: number;
   total?: number;
   onSiteEligible?: boolean | null;
@@ -562,7 +564,7 @@ function PopupOrdersContent() {
               <p><span className="text-gray-400">Custom Letters:</span> <span className="font-bold text-white">{order.text}</span></p>
               <p><span className="text-gray-400">Customer Name:</span> {order.customerName}</p>
               <p><span className="text-gray-400">Number:</span> {order.phoneNumber}</p>
-              <p><span className="text-gray-400">Delivery:</span> Ship to Me</p>
+              <p><span className="text-gray-400">Delivery:</span> {(order.orderType || '').toLowerCase().includes('pickup') ? 'Pick Up' : 'Ship to Me'}</p>
               <p><span className="text-gray-400">Address:</span> {order.address || '-'}</p>
             </div>
 
@@ -570,12 +572,24 @@ function PopupOrdersContent() {
               <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 text-sm space-y-1">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Letters ({order.letterCount || 0}):</span>
-                  <span className="text-white font-medium">${((order.subtotal || 0) - (order.customColorFee || 0)).toFixed(2)}</span>
+                  <span className="text-white font-medium">${((order.subtotal || 0) + (order.discount || 0) - (order.customColorFee || 0)).toFixed(2)}</span>
                 </div>
                 {(order.customColorFee || 0) > 0 && (
                   <div className="flex justify-between">
                     <span className="text-gray-400">Custom Color Fee:</span>
                     <span className="text-white font-medium">${order.customColorFee!.toFixed(2)}</span>
+                  </div>
+                )}
+                {(order.discount || 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-green-400">Discount (10%):</span>
+                    <span className="text-green-400 font-medium">-${order.discount!.toFixed(2)}</span>
+                  </div>
+                )}
+                {(order.shippingFee || 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Shipping:</span>
+                    <span className="text-white font-medium">${order.shippingFee!.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
@@ -608,7 +622,8 @@ function PopupOrdersContent() {
 
             <div className="flex flex-wrap items-center gap-2">
               {(() => {
-                const statusOptions = [...baseStatusOptions, 'Ready to Ship'];
+                const isPickup = (order.orderType || '').toLowerCase().includes('pickup');
+                const statusOptions = isPickup ? [...baseStatusOptions] : [...baseStatusOptions, 'Ready to Ship'];
                 const currentStatus = (order.status || 'Not Started').toLowerCase();
                 const isCompleted = (pickupDrafts[order.id] || order.pickupStatus) === 'Picked Up';
                 return statusOptions.map((opt) => {
@@ -631,7 +646,7 @@ function PopupOrdersContent() {
                   );
                 });
               })()}
-              {(order.orderType || '').toLowerCase() === 'pickup' && (
+              {(order.orderType || '').toLowerCase().includes('pickup') && (
                 <button
                   type="button"
                   onClick={() => markPickedUp(order.id)}

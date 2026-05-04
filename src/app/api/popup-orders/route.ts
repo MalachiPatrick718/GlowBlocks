@@ -180,6 +180,7 @@ export async function POST(req: NextRequest) {
       address,
       deliveryMethod,
       paymentMethod,
+      discountCode,
       smsOptInAt,
     } = await req.json();
 
@@ -187,8 +188,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const normalizedDeliveryMethod = 'ship';
-    const mappedOrderType = 'Ship to Customer';
+    const normalizedDeliveryMethod = String(deliveryMethod || 'ship').toLowerCase() === 'pick-up' ? 'pick-up' : 'ship';
+    const mappedOrderType = normalizedDeliveryMethod === 'pick-up' ? 'Pickup at Event' : 'Ship to Customer';
     const orderNumber = generateOrderNumber();
     if (normalizedDeliveryMethod === 'ship' && !String(address || '').trim()) {
       return NextResponse.json({ error: 'Shipping address is required for shipping orders' }, { status: 400 });
@@ -202,10 +203,15 @@ export async function POST(req: NextRequest) {
     const pricePerLetter = getPricePerLetter(letterCount);
     const letterSubtotal = letterCount * pricePerLetter;
     const customColorFee = colorMode === 'custom' ? 2.00 : 0;
-    const shippingFee = normalizedDeliveryMethod === 'ship' ? (isCash ? 6.00 : 5.99) : 0;
-    const subtotal = letterSubtotal + customColorFee;
-    const tax = isCash ? 0 : subtotal * taxRate;
-    const total = subtotal + tax + shippingFee;
+    const subtotalBeforeDiscount = letterSubtotal + customColorFee;
+    const discount = subtotalBeforeDiscount * 0.10;
+    const discountedSubtotal = subtotalBeforeDiscount - discount;
+    const normalizedDiscountCode = String(discountCode || '').trim().toUpperCase();
+    const freeShippingCode = ['POP', 'MARTEL'].includes(normalizedDiscountCode);
+    const shippingFee = normalizedDeliveryMethod === 'pick-up' || freeShippingCode ? 0 : (isCash ? 6.00 : 5.99);
+    const subtotal = discountedSubtotal;
+    const tax = isCash ? 0 : discountedSubtotal * taxRate;
+    const total = discountedSubtotal + tax + shippingFee;
 
     // Map payment method label for Airtable
     const paymentMethodLabel = normalizedPayment === 'mobile' ? 'Mobile'
@@ -249,6 +255,8 @@ export async function POST(req: NextRequest) {
       'Subtotal': subtotal,
       'Tax': tax,
       'Total': total,
+      'Discount': discount,
+      ...(normalizedDiscountCode ? { 'Discount Code': normalizedDiscountCode } : {}),
       'Payment Method': paymentMethodLabel,
       'Payment': 'Awaiting Payment',
     };
@@ -256,7 +264,7 @@ export async function POST(req: NextRequest) {
     if (popupOrderStatusValue) {
       fields['Order Status'] = popupOrderStatusValue;
     }
-    fields['Pickup Status'] = 'Not Applicable';
+    fields['Pickup Status'] = normalizedDeliveryMethod === 'pick-up' ? 'Awaiting Pickup' : 'Not Applicable';
 
     const airtableRes = await fetch(getAirtableUrl(), {
       method: 'POST',
@@ -296,9 +304,11 @@ export async function POST(req: NextRequest) {
     // Send confirmation SMS
     if (phoneNumber) {
       const firstName = String(customerName).trim().split(' ')[0];
-      const msg = `Hey ${firstName}, thanks for your GlowBlocks order! Your order has been received. Be on the lookout for your GlowBlocks set in 5-7 business days!`;
+      const msg = normalizedDeliveryMethod === 'pick-up'
+        ? `Hey ${firstName}, thanks for your GlowBlocks order! Your order number is ${orderNumber}. We'll text you when your set is ready for pickup!`
+        : `Hey ${firstName}, thanks for your GlowBlocks order! Your order has been received. Be on the lookout for your GlowBlocks set in 5-7 business days!`;
       sendSMS(String(phoneNumber), msg).catch((err) =>
-        console.error('Failed to send ship order confirmation SMS:', err)
+        console.error('Failed to send order confirmation SMS:', err)
       );
     }
 
@@ -311,6 +321,7 @@ export async function POST(req: NextRequest) {
         pricePerLetter,
         letterSubtotal,
         customColorFee,
+        discount,
         shippingFee,
         subtotal,
         tax,
@@ -396,6 +407,8 @@ export async function GET(req: NextRequest) {
       letterCount: record.fields['Letter Count'] || 0,
       customColorFee: record.fields['Custom Color Fee'] || 0,
       subtotal: record.fields['Subtotal'] || 0,
+      discount: record.fields['Discount'] || 0,
+      shippingFee: record.fields['Shipping Fee'] || 0,
       tax: record.fields['Tax'] || 0,
       total: record.fields['Total'] || 0,
       trackingNumber: record.fields['Tracking Number'] || '',

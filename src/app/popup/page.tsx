@@ -39,6 +39,7 @@ export default function PopupPage() {
     pricePerLetter: number;
     letterSubtotal: number;
     customColorFee: number;
+    discount: number;
     shippingFee: number;
     subtotal: number;
     tax: number;
@@ -52,8 +53,11 @@ export default function PopupPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'expired' | null>(null);
   const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState<'mobile' | 'kiosk-card' | 'cash'>('cash');
+  const [discountCode, setDiscountCode] = useState('');
 
   const nonSpaceLetters = text.replace(/\s/g, '');
+
+  const freeShippingCode = ['POP', 'MARTEL'].includes(discountCode.trim().toUpperCase());
 
   // Calculate live pricing preview
   const livePrice = useMemo(() => {
@@ -67,14 +71,16 @@ export default function PopupPage() {
 
     const letterSubtotal = count * pricePerLetter;
     const customColorFee = colorMode === 'custom' ? 2.00 : 0;
+    const subtotalBeforeDiscount = letterSubtotal + customColorFee;
+    const discount = subtotalBeforeDiscount * 0.10;
+    const discountedSubtotal = subtotalBeforeDiscount - discount;
     const isCash = paymentMethod === 'cash';
-    const shippingFee = deliveryMethod === 'ship' ? (isCash ? 6.00 : 5.99) : 0;
-    const subtotal = letterSubtotal + customColorFee;
-    const tax = isCash ? 0 : subtotal * 0.08875;
-    const total = subtotal + tax + shippingFee;
+    const shippingFee = deliveryMethod === 'pick-up' || freeShippingCode ? 0 : (isCash ? 6.00 : 5.99);
+    const tax = isCash ? 0 : discountedSubtotal * 0.08875;
+    const total = discountedSubtotal + tax + shippingFee;
 
-    return { count, pricePerLetter, letterSubtotal, customColorFee, shippingFee, subtotal, tax, total };
-  }, [nonSpaceLetters, colorMode, paymentMethod, deliveryMethod]);
+    return { count, pricePerLetter, letterSubtotal, customColorFee, discount, shippingFee, subtotal: discountedSubtotal, tax, total };
+  }, [nonSpaceLetters, colorMode, paymentMethod, deliveryMethod, freeShippingCode]);
 
   const handleTextChange = useCallback((newText: string) => {
     setText(newText);
@@ -133,13 +139,13 @@ export default function PopupPage() {
 
   const canSubmit = useMemo(() => {
     const hasContact = customerName.trim().length > 1 && phoneNumber.replace(/\D/g, '').length === 10;
-    const hasRequiredAddress = address.trim().length > 5;
-    const hasLastName = lastName.trim().length > 0;
+    const hasRequiredAddress = deliveryMethod === 'ship' ? address.trim().length > 5 : true;
+    const hasLastName = deliveryMethod === 'ship' ? lastName.trim().length > 0 : true;
     const hasColors = colorMode === 'presets'
       ? selectedPresetName !== null
       : text.split('').every((ch, i) => ch === ' ' || colorNumbers[i] != null);
     return nonSpaceLetters.length > 0 && hasContact && hasRequiredAddress && hasLastName && hasColors;
-  }, [nonSpaceLetters.length, customerName, lastName, phoneNumber, address, colorMode, selectedPresetName, text, colorNumbers]);
+  }, [nonSpaceLetters.length, customerName, lastName, phoneNumber, address, deliveryMethod, colorMode, selectedPresetName, text, colorNumbers]);
 
   const textComplete = nonSpaceLetters.length > 0;
 
@@ -151,10 +157,10 @@ export default function PopupPage() {
 
   const contactComplete = useMemo(() => {
     const hasContact = customerName.trim().length > 1 && phoneNumber.replace(/\D/g, '').length === 10;
-    const hasRequiredAddress = address.trim().length > 5;
-    const hasLastName = lastName.trim().length > 0;
+    const hasRequiredAddress = deliveryMethod === 'ship' ? address.trim().length > 5 : true;
+    const hasLastName = deliveryMethod === 'ship' ? lastName.trim().length > 0 : true;
     return hasContact && hasRequiredAddress && hasLastName;
-  }, [customerName, lastName, phoneNumber, address]);
+  }, [customerName, lastName, phoneNumber, address, deliveryMethod]);
 
   const uncoloredCount = useMemo(() => {
     if (colorMode !== 'custom' || !textComplete) return 0;
@@ -255,12 +261,13 @@ export default function PopupPage() {
           colorNumbers,
           colorMode,
           presetName: selectedPresetName,
-          customerName: `${customerName.trim()} ${lastName.trim()}`,
+          customerName: deliveryMethod === 'ship' ? `${customerName.trim()} ${lastName.trim()}` : customerName.trim(),
           phoneNumber: phoneNumber.trim(),
           email: email.trim(),
-          address: address.trim(),
+          address: deliveryMethod === 'ship' ? address.trim() : '',
           deliveryMethod,
           paymentMethod,
+          discountCode: discountCode.trim().toUpperCase() || undefined,
           smsOptInAt: new Date().toISOString(),
         }),
       });
@@ -322,6 +329,7 @@ export default function PopupPage() {
       setPhoneNumber('');
       setAddress('');
       setDeliveryMethod('ship');
+      setDiscountCode('');
       setAddressSuggestions([]);
       setSelectedPresetName(null);
       setModalIndex(null);
@@ -356,11 +364,11 @@ export default function PopupPage() {
       setHighlightSection('contact');
       if (customerName.trim().length <= 1) {
         setValidationMessage('Enter your first name');
-      } else if (lastName.trim().length === 0) {
+      } else if (deliveryMethod === 'ship' && lastName.trim().length === 0) {
         setValidationMessage('Enter your last name');
       } else if (phoneNumber.replace(/\D/g, '').length !== 10) {
         setValidationMessage('Enter a valid 10-digit phone number');
-      } else if (address.trim().length <= 5) {
+      } else if (deliveryMethod === 'ship' && address.trim().length <= 5) {
         setValidationMessage('Enter a shipping address');
       } else {
         setValidationMessage('Complete your details above');
@@ -546,6 +554,15 @@ export default function PopupPage() {
                   </div>
                 )}
 
+                {confirmedPricing.discount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-green-400">Pop-Up Discount (10%)</span>
+                    <span className="text-green-400 font-medium">
+                      -${confirmedPricing.discount.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
                 {confirmedPricing.shippingFee > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Shipping (5-7 business days)</span>
@@ -585,7 +602,13 @@ export default function PopupPage() {
               )}
               <div className="space-y-1 text-sm text-gray-400">
                 <p>We&apos;ve sent you a confirmation text</p>
-                <p>Be on the lookout for your GlowBlocks set in 5-7 business days!</p>
+                {confirmedPricing && confirmedPricing.shippingFee > 0 ? (
+                  <p>Be on the lookout for your GlowBlocks set in 5-7 business days!</p>
+                ) : confirmedPricing && confirmedPricing.shippingFee === 0 && deliveryMethod === 'pick-up' ? (
+                  <p>We&apos;ll text you when your order is ready for pickup!</p>
+                ) : (
+                  <p>Be on the lookout for your GlowBlocks set in 5-7 business days!</p>
+                )}
               </div>
             </div>
 
@@ -741,6 +764,35 @@ export default function PopupPage() {
                 <span className={`text-sm font-medium ${contactComplete ? 'text-green-400' : 'text-gray-300'}`}>Your details</span>
               </div>
               <div className="space-y-3">
+                {/* Delivery Method */}
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-300">Delivery Method</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryMethod('pick-up')}
+                      className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        deliveryMethod === 'pick-up'
+                          ? 'bg-purple-600 border-purple-500 text-white'
+                          : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      Pick Up
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryMethod('ship')}
+                      className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        deliveryMethod === 'ship'
+                          ? 'bg-purple-600 border-purple-500 text-white'
+                          : 'bg-gray-900 border-gray-700 text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      Ship to Me
+                    </button>
+                  </div>
+                </div>
+
                 <input
                   type="text"
                   value={customerName}
@@ -750,15 +802,17 @@ export default function PopupPage() {
                     highlightSection === 'contact' && customerName.trim().length <= 1 ? 'border-amber-500' : 'border-gray-700'
                   }`}
                 />
-                <input
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Last Name"
-                  className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 ${
-                    highlightSection === 'contact' && lastName.trim().length === 0 ? 'border-amber-500' : 'border-gray-700'
-                  }`}
-                />
+                {deliveryMethod === 'ship' && (
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Last Name"
+                    className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 ${
+                      highlightSection === 'contact' && lastName.trim().length === 0 ? 'border-amber-500' : 'border-gray-700'
+                    }`}
+                  />
+                )}
                 <input
                   type="tel"
                   value={phoneNumber}
@@ -784,35 +838,54 @@ export default function PopupPage() {
                   placeholder="Email (optional)"
                   className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                 />
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Shipping address (required)"
-                  className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 ${
-                    highlightSection === 'contact' && address.trim().length <= 5 ? 'border-amber-500' : 'border-gray-700'
-                  }`}
-                />
-                {addressSuggestions.length > 0 && (
-                  <div className="rounded-lg border border-gray-800 bg-gray-950/90 max-h-44 overflow-y-auto">
-                    {addressSuggestions.map((suggestion) => (
-                      <button
-                        key={suggestion}
-                        type="button"
-                        onClick={() => {
-                          setAddress(suggestion);
-                          setAddressSuggestions([]);
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-800/80"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
+                {deliveryMethod === 'ship' && (
+                  <>
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Shipping address (required)"
+                      className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 ${
+                        highlightSection === 'contact' && address.trim().length <= 5 ? 'border-amber-500' : 'border-gray-700'
+                      }`}
+                    />
+                    {addressSuggestions.length > 0 && (
+                      <div className="rounded-lg border border-gray-800 bg-gray-950/90 max-h-44 overflow-y-auto">
+                        {addressSuggestions.map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            onClick={() => {
+                              setAddress(suggestion);
+                              setAddressSuggestions([]);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-800/80"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {address.trim().length <= 5 && (
+                      <p className="text-xs text-amber-300">Shipping requires a complete address.</p>
+                    )}
+                  </>
                 )}
-                {address.trim().length <= 5 && (
-                  <p className="text-xs text-amber-300">Shipping requires a complete address.</p>
-                )}
+                {/* Discount Code */}
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-300">Discount Code (optional)</p>
+                  <input
+                    type="text"
+                    value={discountCode}
+                    onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                    placeholder="Enter code"
+                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                  />
+                  {freeShippingCode && (
+                    <p className="text-xs text-green-400">Free shipping applied!</p>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <p className="text-sm text-gray-300">Payment Method</p>
                   <div className="grid grid-cols-2 gap-2">
@@ -939,6 +1012,12 @@ export default function PopupPage() {
                     <div className="flex justify-between text-gray-300">
                       <span>Custom Color Fee</span>
                       <span>${livePrice.customColorFee.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {livePrice.discount > 0 && (
+                    <div className="flex justify-between text-green-400">
+                      <span>Pop-Up Discount (10%)</span>
+                      <span>-${livePrice.discount.toFixed(2)}</span>
                     </div>
                   )}
                   {livePrice.shippingFee > 0 && (
