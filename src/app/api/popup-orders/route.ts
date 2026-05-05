@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
     }
 
     const normalizedDeliveryMethod = String(deliveryMethod || 'ship').toLowerCase() === 'pick-up' ? 'pick-up' : 'ship';
-    const mappedOrderType = normalizedDeliveryMethod === 'pick-up' ? 'Pickup at Event' : 'Ship to Customer';
+    const mappedOrderType = normalizedDeliveryMethod === 'pick-up' ? 'Pickup' : 'Ship to Customer';
     const orderNumber = generateOrderNumber();
     if (normalizedDeliveryMethod === 'ship' && !String(address || '').trim()) {
       return NextResponse.json({ error: 'Shipping address is required for shipping orders' }, { status: 400 });
