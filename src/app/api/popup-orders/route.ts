@@ -264,7 +264,7 @@ export async function POST(req: NextRequest) {
     if (popupOrderStatusValue) {
       fields['Order Status'] = popupOrderStatusValue;
     }
-    fields['Pickup Status'] = normalizedDeliveryMethod === 'pick-up' ? 'Awaiting Pickup' : 'Not Applicable';
+    fields['Pickup Status'] = normalizedDeliveryMethod === 'pick-up' ? 'Not Ready' : 'Not Applicable';
 
     const airtableRes = await fetch(getAirtableUrl(), {
       method: 'POST',
