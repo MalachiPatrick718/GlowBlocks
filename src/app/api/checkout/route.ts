@@ -66,6 +66,24 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const hasSymbols = items.some((item: { text: string }) =>
+      item.text.split('').some((ch: string) => ch !== ' ' && !/[A-Z0-9]/.test(ch))
+    );
+
+    if (hasSymbols) {
+      lineItems.push({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: 'Custom Symbols',
+            description: 'One-time fee for custom symbol blocks',
+          },
+          unit_amount: 200,
+        },
+        quantity: 1,
+      });
+    }
+
     const origin = process.env.NEXT_PUBLIC_SITE_URL || req.headers.get('origin') || 'http://localhost:3000';
 
     const normalizedPromoCode = String(promoCode || '').trim().toUpperCase();

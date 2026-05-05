@@ -60,7 +60,9 @@ export default function CheckoutPage() {
 
   const pricePerBlock = getPricePerBlock(totalBlocks);
   const hasCustomColors = items.some(item => item.customColors);
+  const hasSymbols = items.some(item => item.hasSymbols);
   const customFee = hasCustomColors ? 2.00 : 0;
+  const symbolFee = hasSymbols ? 2.00 : 0;
 
   // Read applied promo from localStorage
   let appliedPromo: { code?: string; percentOff?: number | null; amountOff?: number | null } | null = null;
@@ -72,7 +74,7 @@ export default function CheckoutPage() {
   const promoCode = (appliedPromo?.code || '').toUpperCase();
   const isFreeShipping = ['POP', 'MARTEL', 'PICKUP'].includes(promoCode);
   const shipping = isFreeShipping ? 0 : 5.99;
-  const preDiscountSubtotal = totalBlocks * pricePerBlock + customFee;
+  const preDiscountSubtotal = totalBlocks * pricePerBlock + customFee + symbolFee;
 
   let discount = 0;
   if (appliedPromo) {
@@ -106,6 +108,12 @@ export default function CheckoutPage() {
           {hasCustomColors && (
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="text-sm text-gray-400">Custom colours</div>
+              <div className="text-sm text-gray-400">$2.00</div>
+            </div>
+          )}
+          {hasSymbols && (
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="text-sm text-gray-400">Custom symbols</div>
               <div className="text-sm text-gray-400">$2.00</div>
             </div>
           )}

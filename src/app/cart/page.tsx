@@ -23,9 +23,11 @@ export default function CartPage() {
 
   const pricePerBlock = getPricePerBlock(totalBlocks);
   const hasCustomColors = items.some(item => item.customColors);
+  const hasSymbols = items.some(item => item.hasSymbols);
   const customFee = hasCustomColors ? 2.00 : 0;
+  const symbolFee = hasSymbols ? 2.00 : 0;
   const shipping = 5.99;
-  const preDiscountSubtotal = totalBlocks * pricePerBlock + customFee + shipping;
+  const preDiscountSubtotal = totalBlocks * pricePerBlock + customFee + symbolFee + shipping;
 
   // Calculate discount
   let discount = 0;
@@ -168,6 +170,12 @@ export default function CartPage() {
           {hasCustomColors && (
             <div className="flex justify-between text-gray-400">
               <span>Custom colours</span>
+              <span>$2.00</span>
+            </div>
+          )}
+          {hasSymbols && (
+            <div className="flex justify-between text-gray-400">
+              <span>Custom symbols</span>
               <span>$2.00</span>
             </div>
           )}

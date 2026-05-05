@@ -8,6 +8,11 @@ export interface CartItem {
   letterColors: string[];
   quantity: number;
   customColors?: boolean;
+  hasSymbols?: boolean;
+}
+
+export function textHasSymbols(text: string): boolean {
+  return text.split('').some(ch => ch !== ' ' && !/[A-Z0-9]/.test(ch));
 }
 
 interface CartContextType {

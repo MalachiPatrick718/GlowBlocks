@@ -9,7 +9,7 @@ import ColorPresets from '@/components/ColorPresets';
 import ColorModal from '@/components/CustomColorPicker';
 import PopupColorNumberModal from '@/components/PopupColorNumberModal';
 import { POPUP_COLOR_MAP } from '@/data/popupColorCatalog';
-import { useCart } from '@/context/CartContext';
+import { useCart, textHasSymbols } from '@/context/CartContext';
 
 export default function CustomizePage() {
   return (
@@ -138,10 +138,11 @@ function CustomizeContent() {
       localStorage.removeItem('glowblocks-referral');
     }
 
+    const symbols = textHasSymbols(text);
     if (editId) {
-      updateItem(editId, { text, letterColors, customColors: isCustom });
+      updateItem(editId, { text, letterColors, customColors: isCustom, hasSymbols: symbols });
     } else {
-      addItem({ text, letterColors, customColors: isCustom });
+      addItem({ text, letterColors, customColors: isCustom, hasSymbols: symbols });
     }
     setAdded(true);
     setTimeout(() => {
@@ -160,6 +161,9 @@ function CustomizeContent() {
           {/* Controls */}
           <div className="space-y-6">
             <TextInput text={text} onChange={handleTextChange} />
+            {textHasSymbols(text) && (
+              <p className="text-sm text-purple-400">+$2.00 one-time symbol fee</p>
+            )}
 
             {nonSpaceLetters.length > 0 && (
               <>
