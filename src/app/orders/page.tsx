@@ -479,9 +479,19 @@ function OrdersContent() {
                 )
               )}
 
-              <p className="text-xs text-gray-600 font-mono">
-                {order.stripeSessionId}
-              </p>
+              <div className="flex items-center gap-3">
+                <a
+                  href={`/packing-label?id=${encodeURIComponent(order.id)}&source=online&key=${encodeURIComponent(key)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block px-4 py-2 rounded-lg bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:text-white text-xs font-semibold transition-colors"
+                >
+                  Print Packing Slip
+                </a>
+                <p className="text-xs text-gray-600 font-mono">
+                  {order.stripeSessionId}
+                </p>
+              </div>
             </div>
           );
         })}
