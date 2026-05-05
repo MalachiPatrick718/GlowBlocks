@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     }
 
     const totalBlocks = items.reduce((sum: number, item: { text: string; quantity: number }) => {
-      return sum + item.text.replace(/\s/g, '').length * item.quantity;
+      return sum + item.text.replace(/[^A-Z0-9]/g, '').length * item.quantity;
     }, 0);
 
     const pricePerBlock = getPricePerBlock(totalBlocks);
@@ -37,15 +37,15 @@ export async function POST(req: NextRequest) {
 
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map(
       (item: { text: string; letterColors: string[]; quantity: number }) => {
-        const blockCount = item.text.replace(/\s/g, '').length;
+        const letterCount = item.text.replace(/[^A-Z0-9]/g, '').length;
         return {
           price_data: {
             currency: 'usd',
             product_data: {
               name: `GlowBlocks: "${item.text}"`,
-              description: `${blockCount} custom illuminating letter tile${blockCount !== 1 ? 's' : ''}`,
+              description: `${letterCount} custom illuminating letter tile${letterCount !== 1 ? 's' : ''}`,
             },
-            unit_amount: Math.round(pricePerBlock * blockCount * 100),
+            unit_amount: Math.round(pricePerBlock * letterCount * 100),
           },
           quantity: item.quantity,
         };

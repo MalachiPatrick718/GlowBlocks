@@ -56,7 +56,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, loaded]);
 
   const totalBlocks = useMemo(() =>
-    items.reduce((sum, item) => sum + item.text.replace(/\s/g, '').length * item.quantity, 0),
+    items.reduce((sum, item) => sum + item.text.replace(/[^A-Z0-9]/g, '').length * item.quantity, 0),
     [items]
   );
 

@@ -19,9 +19,10 @@ interface TextInputProps {
 }
 
 export default function TextInput({ text, onChange }: TextInputProps) {
-  const blockCount = text.replace(/\s/g, '').length;
-  const pricePerBlock = getPricePerBlock(blockCount);
-  const totalPrice = blockCount * pricePerBlock;
+  const letterCount = text.replace(/[^A-Z0-9]/g, '').length;
+  const symbolCount = text.split('').filter(ch => ch !== ' ' && !/[A-Z0-9]/.test(ch)).length;
+  const pricePerBlock = getPricePerBlock(letterCount);
+  const totalPrice = letterCount * pricePerBlock + (symbolCount > 0 ? 2.00 : 0);
 
   const insertSymbol = (symbol: string) => {
     if (text.length >= 30) return;
@@ -53,8 +54,12 @@ export default function TextInput({ text, onChange }: TextInputProps) {
         ))}
       </div>
       <div className="flex justify-between text-sm text-gray-400">
-        <span>{blockCount} block{blockCount !== 1 ? 's' : ''} &middot; {text.length}/30 characters</span>
-        {blockCount > 0 && (
+        <span>
+          {letterCount} letter{letterCount !== 1 ? 's' : ''}
+          {symbolCount > 0 && ` + ${symbolCount} symbol${symbolCount !== 1 ? 's' : ''}`}
+          {' '}&middot; {text.length}/30 characters
+        </span>
+        {(letterCount > 0 || symbolCount > 0) && (
           <span className="text-white font-medium">${totalPrice.toFixed(2)}</span>
         )}
       </div>
