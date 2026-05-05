@@ -796,6 +796,7 @@ export default function PopupPage() {
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="First Name"
+                  autoComplete="off"
                   className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 ${
                     highlightSection === 'contact' && customerName.trim().length <= 1 ? 'border-amber-500' : 'border-gray-700'
                   }`}
@@ -806,6 +807,7 @@ export default function PopupPage() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder="Last Name"
+                    autoComplete="off"
                     className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 ${
                       highlightSection === 'contact' && lastName.trim().length === 0 ? 'border-amber-500' : 'border-gray-700'
                     }`}
@@ -825,6 +827,7 @@ export default function PopupPage() {
                     }
                   }}
                   placeholder="Phone (optional)"
+                  autoComplete="off"
                   className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                 />
                 <input
@@ -832,6 +835,7 @@ export default function PopupPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email (optional)"
+                  autoComplete="off"
                   className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                 />
                 {deliveryMethod === 'ship' && (
