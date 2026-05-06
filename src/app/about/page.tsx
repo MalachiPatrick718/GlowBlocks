@@ -15,7 +15,7 @@ export default function AboutPage() {
         </div>
 
         {/* Meet the Creator */}
-        <section className="flex flex-col sm:flex-row items-center gap-8">
+        <section className="flex flex-col sm:flex-row items-start gap-8">
           <div className="shrink-0">
             <Image
               src="/images/founder.jpg"
