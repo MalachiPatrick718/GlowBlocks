@@ -27,7 +27,6 @@ export default function PopupPage() {
   const [selectedPresetName, setSelectedPresetName] = useState<string | null>(null);
   const [highlightSection, setHighlightSection] = useState<'text' | 'colors' | 'contact' | null>(null);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
-  const [confirmedSets, setConfirmedSets] = useState<SavedSet[]>([]);
 
   const textRef = useRef<HTMLDivElement>(null);
   const colorsRef = useRef<HTMLDivElement>(null);
@@ -181,11 +180,9 @@ export default function PopupPage() {
     const hasContact = customerName.trim().length > 1;
     const hasRequiredAddress = deliveryMethod === 'ship' ? address.trim().length > 5 : true;
     const hasLastName = deliveryMethod === 'ship' ? lastName.trim().length > 0 : true;
-    const hasColors = colorMode === 'presets'
-      ? selectedPresetName !== null
-      : text.split('').every((ch, i) => ch === ' ' || colorNumbers[i] != null);
-    return nonSpaceLetters.length > 0 && hasContact && hasRequiredAddress && hasLastName && hasColors;
-  }, [nonSpaceLetters.length, customerName, lastName, address, deliveryMethod, colorMode, selectedPresetName, text, colorNumbers]);
+    const hasSets = sets.length > 0 || currentSetComplete;
+    return hasSets && hasContact && hasRequiredAddress && hasLastName;
+  }, [sets.length, currentSetComplete, customerName, lastName, address, deliveryMethod]);
 
   const textComplete = nonSpaceLetters.length > 0;
 
@@ -292,15 +289,17 @@ export default function PopupPage() {
     setSubmitting(true);
     setSubmitMessage(null);
     try {
+      // Combine saved sets + current in-progress set (if complete)
+      const allSets = [...sets];
+      if (currentSetComplete) {
+        allSets.push({ text, letterColors, colorNumbers, colorMode, presetName: selectedPresetName });
+      }
+
       const res = await fetch('/api/popup-orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text,
-          letterColors,
-          colorNumbers,
-          colorMode,
-          presetName: selectedPresetName,
+          sets: allSets,
           customerName: deliveryMethod === 'ship' ? `${customerName.trim()} ${lastName.trim()}` : customerName.trim(),
           phoneNumber: phoneNumber.trim(),
           email: email.trim(),
@@ -318,7 +317,11 @@ export default function PopupPage() {
         return;
       }
 
-      setConfirmedWord(text);
+      const allSetsForConfirm = [...sets];
+      if (currentSetComplete) {
+        allSetsForConfirm.push({ text, letterColors, colorNumbers, colorMode, presetName: selectedPresetName });
+      }
+      setConfirmedWord(allSetsForConfirm.map(s => s.text).join(' / '));
       setConfirmedOrderNumber(data.orderNumber || '');
       setConfirmedPricing(data.pricing || null);
       setConfirmedPaymentMethod(paymentMethod);
@@ -361,6 +364,7 @@ export default function PopupPage() {
       }
 
       setSubmitMessage('Pop-up order submitted successfully.');
+      setSets([]);
       setText('');
       setLetterColors([]);
       setColorNumbers([]);
@@ -384,21 +388,24 @@ export default function PopupPage() {
 
   const handleSubmitClick = () => {
     setValidationMessage(null);
-    if (!textComplete) {
-      setHighlightSection('text');
-      setValidationMessage('Enter your custom word or name');
-      textRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
-    if (!colorsComplete) {
-      setHighlightSection('colors');
-      if (colorMode === 'presets') {
-        setValidationMessage('Select a color theme');
-      } else {
-        setValidationMessage(`${uncoloredCount} letter${uncoloredCount !== 1 ? 's' : ''} still need${uncoloredCount === 1 ? 's' : ''} a color`);
+    // If no saved sets and no current complete set, need at least one
+    if (sets.length === 0 && !currentSetComplete) {
+      if (!textComplete) {
+        setHighlightSection('text');
+        setValidationMessage('Enter your custom word or name');
+        textRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
       }
-      colorsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
+      if (!colorsComplete) {
+        setHighlightSection('colors');
+        if (colorMode === 'presets') {
+          setValidationMessage('Select a color theme');
+        } else {
+          setValidationMessage(`${uncoloredCount} letter${uncoloredCount !== 1 ? 's' : ''} still need${uncoloredCount === 1 ? 's' : ''} a color`);
+        }
+        colorsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
     }
     if (!contactComplete) {
       setHighlightSection('contact');
@@ -792,6 +799,43 @@ export default function PopupPage() {
               )}
             </div>
 
+            {/* Saved Sets List */}
+            {sets.length > 0 && (
+              <div className="rounded-xl border border-purple-700/50 bg-purple-950/20 p-4 space-y-3">
+                <p className="text-sm font-semibold text-purple-300">
+                  Sets in this order ({sets.length})
+                </p>
+                {sets.map((s, idx) => (
+                  <div key={idx} className="flex items-center justify-between bg-gray-900/80 rounded-lg px-3 py-2 border border-gray-700">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-white font-bold tracking-wide truncate">{s.text}</span>
+                      <span className="text-xs text-gray-400 shrink-0">
+                        {s.colorMode === 'custom' ? 'Custom' : s.presetName || 'Preset'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeSetFromList(idx)}
+                      className="text-gray-500 hover:text-red-400 text-lg font-bold ml-2 shrink-0 transition-colors"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add Another Set button */}
+            {currentSetComplete && (
+              <button
+                type="button"
+                onClick={addSetToList}
+                className="w-full py-3 rounded-lg border-2 border-dashed border-purple-600/60 text-purple-400 font-semibold hover:bg-purple-600/10 hover:border-purple-500 transition-all"
+              >
+                + Add Another Set to Order
+              </button>
+            )}
+
             {/* Section 3: Your details */}
             <div ref={contactRef} className={getSectionClass('contact')}>
               <div className="flex items-center gap-2 mb-3">
@@ -1032,7 +1076,21 @@ export default function PopupPage() {
           <div className="lg:sticky lg:top-24 h-fit space-y-4">
             <div className="bg-gray-950 border border-gray-800 rounded-2xl p-6 space-y-4">
               <h2 className="text-lg font-semibold text-gray-300">Live Preview</h2>
-              <BlockPreview text={text} letterColors={letterColors} />
+              {sets.map((s, idx) => (
+                <div key={idx} className="space-y-1">
+                  <p className="text-xs text-gray-500">Set {idx + 1}</p>
+                  <BlockPreview text={s.text} letterColors={s.letterColors} />
+                </div>
+              ))}
+              {nonSpaceLetters.length > 0 && (
+                <div className="space-y-1">
+                  {sets.length > 0 && <p className="text-xs text-gray-500">Set {sets.length + 1}</p>}
+                  <BlockPreview text={text} letterColors={letterColors} />
+                </div>
+              )}
+              {sets.length === 0 && nonSpaceLetters.length === 0 && (
+                <BlockPreview text={text} letterColors={letterColors} />
+              )}
               {nonSpaceLetters.length > 0 && (
                 <p className="text-center text-sm text-gray-500 mt-4">
                   {colorMode === 'custom' ? 'Tap letters on the left and enter color numbers' : 'Select a preset theme on the left'}
@@ -1043,6 +1101,9 @@ export default function PopupPage() {
             {livePrice && (
               <div className="bg-gradient-to-br from-purple-950/50 to-pink-950/50 border border-purple-700/50 rounded-2xl p-6 space-y-3">
                 <h2 className="text-lg font-semibold text-purple-300">Price Estimate</h2>
+                {livePrice.setCount > 1 && (
+                  <p className="text-xs text-purple-400">{livePrice.setCount} sets</p>
+                )}
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between text-gray-300">
                     <span>{livePrice.count} letter{livePrice.count !== 1 ? 's' : ''} × ${livePrice.pricePerLetter}</span>
