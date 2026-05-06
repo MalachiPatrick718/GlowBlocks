@@ -62,6 +62,7 @@ const currentLetterDisplay = document.getElementById('current-letter-display');
 const assignColorBtn = document.getElementById('assign-color-btn');
 const assignLetterLabel = document.getElementById('assign-letter-label');
 const batchAssignmentStatus = document.getElementById('batch-assignment-status');
+const batchLettersStatus = document.getElementById('batch-letters-status');
 
 // Upload elements
 const uploadSection = document.getElementById('upload-section');
@@ -486,18 +487,20 @@ function showMessage(element, type, text) {
 function handleSaveLetters() {
   const letters = batchLettersInput.value.trim().toUpperCase();
 
+  const batchInputStatus = document.getElementById('batch-input-status');
+
   if (!letters) {
-    showMessage(batchAssignmentStatus, 'error', 'Please enter at least one letter');
+    showMessage(batchInputStatus, 'error', 'Please enter at least one letter');
     return;
   }
 
   if (!/^[A-Z]+$/.test(letters)) {
-    showMessage(batchAssignmentStatus, 'error', 'Only letters A-Z are allowed');
+    showMessage(batchInputStatus, 'error', 'Only letters A-Z are allowed');
     return;
   }
 
   if (letters.length > 10) {
-    showMessage(batchAssignmentStatus, 'error', 'Maximum 10 letters allowed');
+    showMessage(batchInputStatus, 'error', 'Maximum 10 letters allowed');
     return;
   }
 
@@ -507,10 +510,11 @@ function handleSaveLetters() {
   batchState.currentIndex = null;
 
   renderLetterButtons();
+  renderBatchPresets();
 
   batchInputSection.style.display = 'none';
   batchLettersSection.style.display = 'block';
-  showMessage(batchAssignmentStatus, 'info', 'Click a letter to assign a color');
+  showMessage(batchLettersStatus, 'info', 'Click a letter to assign individually, apply a color to all, or select a preset');
 }
 
 function renderLetterButtons() {
@@ -586,7 +590,7 @@ function handleAssignColor() {
     // Check if all positions are assigned
     const allAssigned = batchState.letters.every((_, idx) => batchState.assignments[idx]);
     if (allAssigned) {
-      showMessage(batchAssignmentStatus, 'success', '✓ All letters assigned! Ready to upload.');
+      showMessage(batchLettersStatus, 'success', '✓ All letters assigned! Ready to upload.');
       // Show upload area
       batchLettersSection.style.display = 'none';
       startBatchUpload();
@@ -596,7 +600,7 @@ function handleAssignColor() {
 
 function handleApplyColorToAll() {
   if (!selectedColor) {
-    showMessage(batchAssignmentStatus, 'error', 'Select a color first');
+    showMessage(batchLettersStatus, 'error', 'Select a color first');
     return;
   }
 
@@ -605,7 +609,7 @@ function handleApplyColorToAll() {
   });
 
   renderLetterButtons();
-  showMessage(batchAssignmentStatus, 'success', `✓ Applied ${selectedColor.name} to all letters. Ready to upload.`);
+  showMessage(batchLettersStatus, 'success', `✓ Applied ${selectedColor.name} to all letters. Ready to upload.`);
 
   // Start upload after brief delay
   setTimeout(() => {
@@ -762,27 +766,60 @@ function handlePresetClick(presetId) {
     rgbB.value = firstColor.b;
     updateColorPreview();
   } else {
-    // Batch mode: auto-fill letters and assign colors
-    switchMode('batch');
-    const letterCount = preset.colors.length;
-    const suggestedLetters = 'ABCDEFGHIJ'.substring(0, letterCount);
-    batchLettersInput.value = suggestedLetters;
-    batchState.letters = suggestedLetters.split('');
-    batchState.assignments = {};
-
-    // Auto-assign preset colors
-    preset.colors.forEach((color, idx) => {
-      batchState.assignments[idx] = { ...color };
-    });
-
-    // Show letter buttons
-    renderLetterButtons();
-    batchInputSection.style.display = 'none';
-    batchLettersSection.style.display = 'block';
-
-    // Automatically start upload
-    setTimeout(() => startBatchUpload(), 500);
+    // Batch mode: apply preset colors to letters
+    applyPresetToLetters(preset);
   }
+}
+
+function applyPresetToLetters(preset) {
+  if (batchState.letters.length === 0) {
+    // No letters saved yet — prompt user
+    showMessage(batchLettersStatus, 'error', 'Enter and save letters first, then apply a preset');
+    return;
+  }
+
+  // Assign preset colors in order, cycling through if more letters than colors
+  batchState.assignments = {};
+  batchState.letters.forEach((_, idx) => {
+    const color = preset.colors[idx % preset.colors.length];
+    batchState.assignments[idx] = { ...color };
+  });
+
+  renderLetterButtons();
+  showMessage(batchLettersStatus, 'success', `✓ Applied "${preset.name}" preset to all letters. Ready to upload.`);
+
+  // Go to upload after brief delay
+  setTimeout(() => {
+    batchLettersSection.style.display = 'none';
+    startBatchUpload();
+  }, 1000);
+}
+
+function renderBatchPresets() {
+  const container = document.getElementById('batch-presets-container');
+  if (!container || presets.length === 0) return;
+
+  const html = presets.map(preset => {
+    const swatches = preset.colors.map(c =>
+      `<div class="preset-swatch" style="background: rgb(${c.r},${c.g},${c.b})" title="${c.name}"></div>`
+    ).join('');
+
+    return `
+      <div class="preset-card preset-card-small" data-preset-id="${preset.id}">
+        <div class="preset-name">${preset.name}</div>
+        <div class="preset-swatches">${swatches}</div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = html;
+
+  container.querySelectorAll('.preset-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const preset = presets.find(p => p.id === card.dataset.presetId);
+      if (preset) applyPresetToLetters(preset);
+    });
+  });
 }
 
 // Start the app

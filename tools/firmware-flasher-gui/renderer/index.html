@@ -80,16 +80,22 @@
           <small>Enter up to 10 letters</small>
         </div>
         <button id="save-letters" class="btn-primary">Save Letters</button>
+        <div id="batch-input-status" class="message"></div>
       </section>
 
       <!-- Batch Letter Selection (only shown in batch mode after saving) -->
       <section class="card" id="batch-letters-section" style="display: none;">
         <h2>Select Letter to Assign Color</h2>
-        <p style="color: #888; font-size: 0.85em; margin-bottom: 8px;">Click a letter to assign its color individually, or apply one color to all.</p>
+        <p style="color: #888; font-size: 0.85em; margin-bottom: 8px;">Click a letter to assign its color individually, apply one color to all, or select a preset.</p>
         <div id="letter-buttons" class="letter-buttons"></div>
         <div style="display: flex; gap: 8px; margin-top: 12px;">
           <button id="apply-color-all" class="btn-primary">Apply Color to All</button>
           <button id="back-to-input" class="btn-secondary">Change Letters</button>
+        </div>
+        <div id="batch-letters-status" class="message"></div>
+        <div style="margin-top: 16px;">
+          <h3 style="font-size: 0.95em; margin-bottom: 8px;">Or apply a preset:</h3>
+          <div id="batch-presets-container" class="presets-grid"></div>
         </div>
       </section>
 
