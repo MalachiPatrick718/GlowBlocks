@@ -109,8 +109,8 @@ export async function PATCH(req: NextRequest) {
       if (typeof letterIndex !== 'number' || letterIndex < 0) {
         return NextResponse.json({ error: 'Invalid letterIndex' }, { status: 400 });
       }
-      if (!bid || !/^GB_\d{3}$/.test(String(bid))) {
-        return NextResponse.json({ error: 'Invalid board ID format. Expected GB_XXX (e.g. GB_001)' }, { status: 400 });
+      if (!bid || !/^GB\d{4}$/.test(String(bid))) {
+        return NextResponse.json({ error: 'Invalid board ID format. Expected GBXXXX (e.g. GB0001)' }, { status: 400 });
       }
       const boardIdStr = String(bid);
 

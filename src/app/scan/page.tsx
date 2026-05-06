@@ -13,7 +13,7 @@ interface OrderData {
   boardIds: (string | null)[];
 }
 
-const BOARD_ID_PATTERN = /^GB_\d{3}$/;
+const BOARD_ID_PATTERN = /^GB\d{4}$/;
 
 export default function ScanPage() {
   return (
