@@ -58,8 +58,8 @@ function BlockRow({ colors }: { colors: ColorEntry[] }) {
         return (
           <div key={idx} className="flex flex-col items-center gap-1">
             <div
-              className="w-12 h-12 rounded-lg border border-gray-200 flex items-center justify-center text-white text-xl font-black shadow-sm"
-              style={{ backgroundColor: c.colorHex }}
+              className="w-12 h-12 rounded-lg flex items-center justify-center text-xl font-black"
+              style={{ backgroundColor: '#1a1a1a', color: c.colorHex }}
             >
               {c.letter}
             </div>
