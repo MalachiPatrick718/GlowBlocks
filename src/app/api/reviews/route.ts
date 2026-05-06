@@ -128,17 +128,21 @@ export async function POST(req: NextRequest) {
     if (photo && recordId) {
       try {
         const photoBuffer = await photo.arrayBuffer();
-        const uploadUrl = `https://content.airtable.com/v0/${AIRTABLE_BASE_ID}/${recordId}/Photos/uploadAttachment`;
+        const uploadUrl = `https://content.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}/${recordId}/Photos/uploadAttachment`;
         const uploadForm = new FormData();
         uploadForm.append('file', new Blob([photoBuffer], { type: photo.type }), photo.name || 'photo.jpg');
 
-        await fetch(uploadUrl, {
+        const uploadRes = await fetch(uploadUrl, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${AIRTABLE_API_KEY}`,
           },
           body: uploadForm,
         });
+        if (!uploadRes.ok) {
+          const errBody = await uploadRes.text();
+          console.error('Airtable photo upload failed:', uploadRes.status, errBody);
+        }
       } catch (err) {
         console.error('Failed to upload photo to Airtable:', err);
         // Review was still saved, just without photo
