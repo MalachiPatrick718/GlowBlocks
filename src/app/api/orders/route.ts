@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { notify } from '@/lib/notify';
+import { inProgressEmail, doneShipEmail } from '@/lib/email-templates';
 
 const apiKey = process.env.AIRTABLE_API_KEY;
 const baseId = process.env.AIRTABLE_BASE_ID;
@@ -226,6 +228,71 @@ export async function PATCH(req: NextRequest) {
       const err = await res.json();
       console.error('Order status update error:', err);
       return NextResponse.json({ error: 'Failed to update status' }, { status: 500 });
+    }
+
+    // Send notifications on status changes
+    if (status) {
+      const statusLower = String(status).toLowerCase();
+      if (statusLower === 'processing' || statusLower === 'ready to ship') {
+        try {
+          const recordRes = await fetch(`${getAirtableUrl()}/${encodeURIComponent(String(id))}`, {
+            headers: getHeaders(),
+            next: { revalidate: 0 },
+          });
+          if (recordRes.ok) {
+            const record = await recordRes.json();
+            const f = record.fields || {};
+            const customerName = String(f['Customer Name'] || '');
+            const firstName = customerName.trim().split(' ')[0] || 'there';
+            const customerEmail = String(f['Email'] || '') || undefined;
+            const customerPhone = String(f['Phone Number'] || '') || undefined;
+
+            const isTruthy = (v: unknown) => v === true || v === 'true' || v === 'Yes';
+
+            if (statusLower === 'processing' && !isTruthy(f['In Progress Email Sent'])) {
+              const result = await notify({
+                email: customerEmail,
+                phone: !isTruthy(f['In Progress Text Sent']) ? customerPhone : undefined,
+                emailSubject: "We're working on your GlowBlocks!",
+                emailHtml: inProgressEmail(firstName),
+                smsMessage: `Hey ${firstName}, we're working on your GlowBlocks order now! We'll let you know when it's ready.`,
+              });
+              const flagUpdates: Record<string, boolean> = {};
+              if (result.smsSent) flagUpdates['In Progress Text Sent'] = true;
+              if (result.emailSent) flagUpdates['In Progress Email Sent'] = true;
+              if (Object.keys(flagUpdates).length > 0) {
+                await fetch(getAirtableUrl(), {
+                  method: 'PATCH',
+                  headers: getHeaders(),
+                  body: JSON.stringify({ records: [{ id: String(id), fields: flagUpdates }] }),
+                });
+              }
+            }
+
+            if (statusLower === 'ready to ship' && !isTruthy(f['Done Email Sent'])) {
+              const result = await notify({
+                email: customerEmail,
+                phone: !isTruthy(f['Done Text Sent']) ? customerPhone : undefined,
+                emailSubject: 'Your GlowBlocks order is complete!',
+                emailHtml: doneShipEmail(firstName),
+                smsMessage: `Hey ${firstName}, your GlowBlocks order is complete and being prepared for shipment! We'll send tracking info once it ships.`,
+              });
+              const flagUpdates: Record<string, boolean> = {};
+              if (result.smsSent) flagUpdates['Done Text Sent'] = true;
+              if (result.emailSent) flagUpdates['Done Email Sent'] = true;
+              if (Object.keys(flagUpdates).length > 0) {
+                await fetch(getAirtableUrl(), {
+                  method: 'PATCH',
+                  headers: getHeaders(),
+                  body: JSON.stringify({ records: [{ id: String(id), fields: flagUpdates }] }),
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Failed to send status notification:', err);
+        }
+      }
     }
 
     return NextResponse.json({ success: true });

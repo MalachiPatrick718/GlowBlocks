@@ -3,12 +3,22 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+interface ReviewPhoto {
+  url: string;
+  filename?: string;
+  thumbnails?: {
+    small?: { url: string };
+    large?: { url: string };
+  };
+}
+
 interface Review {
   name: string;
   rating: number;
   text: string;
   date: string;
   order: string;
+  photos?: ReviewPhoto[];
 }
 
 const SEED_REVIEWS: Review[] = [
@@ -56,6 +66,8 @@ export default function ReviewsPage() {
   const [rating, setRating] = useState(0);
   const [order, setOrder] = useState('');
   const [text, setText] = useState('');
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/reviews')
@@ -67,14 +79,35 @@ export default function ReviewsPage() {
       .catch(() => { setReviews(SEED_REVIEWS); setLoading(false); });
   }, []);
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file && file.size > 5 * 1024 * 1024) {
+      alert('Photo must be under 5MB');
+      return;
+    }
+    setPhoto(file);
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPhotoPreview(url);
+    } else {
+      setPhotoPreview(null);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!name.trim() || !text.trim() || rating === 0) return;
     setSubmitting(true);
     try {
+      const formData = new FormData();
+      formData.append('name', name.trim());
+      formData.append('rating', String(rating));
+      formData.append('text', text.trim());
+      formData.append('order', order.trim());
+      if (photo) formData.append('photo', photo);
+
       const res = await fetch('/api/reviews', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), rating, text: text.trim(), order: order.trim() }),
+        body: formData,
       });
       if (res.ok) {
         setSuccess(true);
@@ -82,6 +115,8 @@ export default function ReviewsPage() {
         setRating(0);
         setOrder('');
         setText('');
+        setPhoto(null);
+        setPhotoPreview(null);
         const updated = await fetch('/api/reviews').then((r) => r.json());
         setReviews([...updated, ...SEED_REVIEWS]);
         setTimeout(() => { setSuccess(false); setShowForm(false); }, 2000);
@@ -168,6 +203,29 @@ export default function ReviewsPage() {
                     />
                   </div>
 
+                  <div>
+                    <label className="text-gray-400 text-sm block mb-1">Add a photo (optional)</label>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handlePhotoChange}
+                      className="w-full text-sm text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-600/20 file:text-purple-400 hover:file:bg-purple-600/30 file:cursor-pointer"
+                    />
+                    {photoPreview && (
+                      <div className="mt-2 relative inline-block">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={photoPreview} alt="Preview" className="max-h-32 rounded-lg border border-gray-700" />
+                        <button
+                          type="button"
+                          onClick={() => { setPhoto(null); setPhotoPreview(null); }}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-600 rounded-full text-white text-xs flex items-center justify-center hover:bg-red-500"
+                        >
+                          x
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex gap-3">
                     <button
                       onClick={() => setShowForm(false)}
@@ -204,6 +262,16 @@ export default function ReviewsPage() {
                   <Stars count={review.rating} />
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed">{review.text}</p>
+                {review.photos && review.photos.length > 0 && (
+                  <div className="mt-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={review.photos[0].thumbnails?.large?.url || review.photos[0].url}
+                      alt={`Photo by ${review.name}`}
+                      className="max-h-48 rounded-lg object-cover"
+                    />
+                  </div>
+                )}
                 {review.order && <p className="text-xs text-purple-400">{review.order}</p>}
               </div>
             ))}

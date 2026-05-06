@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 export default function AboutPage() {
@@ -12,6 +13,31 @@ export default function AboutPage() {
             Personalised letter tiles that light up when they&apos;re together — and go dark the moment they&apos;re apart. Your name, your word, your glow.
           </p>
         </div>
+
+        {/* Meet the Creator */}
+        <section className="flex flex-col sm:flex-row items-center gap-8">
+          <div className="shrink-0">
+            <Image
+              src="/images/founder.jpg"
+              alt="Malachi Patrick — Founder of GlowBlocks"
+              width={200}
+              height={200}
+              className="rounded-2xl object-cover border-2 border-purple-500/40 shadow-lg shadow-purple-500/10"
+            />
+          </div>
+          <div className="space-y-4 text-center sm:text-left">
+            <h2 className="text-2xl font-bold text-white">Meet the Creator</h2>
+            <p className="text-gray-300 leading-relaxed">
+              Hey, I&apos;m Malachi — the person behind GlowBlocks. I started this project because I wanted to create something that felt personal and a little bit magic. Something you could put on a shelf that actually meant something to you. Not a generic sign from a big box store — something custom, something yours.
+            </p>
+            <p className="text-gray-300 leading-relaxed">
+              I design every part of the product myself — from the electronics inside each tile to the software that powers the glow. GlowBlocks started as an idea in my room and has grown into something I&apos;m really proud of.
+            </p>
+            <p className="text-gray-300 leading-relaxed">
+              My goal goes beyond just selling a product. I want GlowBlocks to become a platform — from custom decor to educational tools like GlowBlocks: Words, a spelling game for kids. I believe something this simple and personal can make a real difference in people&apos;s lives, whether it&apos;s lighting up a nursery or helping a child learn to read.
+            </p>
+          </div>
+        </section>
 
         {/* What Makes Them Special */}
         <section className="space-y-6 text-center">

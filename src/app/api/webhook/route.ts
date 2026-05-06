@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { sendEmail } from '@/lib/email';
+import { sendSMS } from '@/lib/sms';
+import { onlineOrderConfirmationEmail } from '@/lib/email-templates';
 
 function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -255,33 +257,25 @@ export async function POST(req: NextRequest) {
           console.error('Airtable order save error:', err);
         }
 
-        // Send order confirmation email
-        if (customerEmail) {
+        // Send order confirmation email + SMS
+        {
           const firstName = customerName.split(' ')[0] || 'there';
           const totalFormatted = `$${((fullSession.amount_total || 0) / 100).toFixed(2)}`;
-          const itemList = items
+          const itemListHtml = items
             .map((item: { text: string; quantity?: number }) =>
               `<li>"${item.text}" × ${item.quantity || 1}</li>`
             )
             .join('');
-          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://glowblocks.shop';
-          const html = `
-            <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
-              <div style="text-align: center; margin-bottom: 20px;">
-                <img src="${siteUrl}/images/email-banner.png" alt="GlowBlocks Studio" style="width: 100%; max-width: 500px; border-radius: 12px;" />
-              </div>
-              <h2 style="color: #7c3aed;">Thanks for your order, ${firstName}!</h2>
-              <p>We've received your GlowBlocks order and are getting started on it.</p>
-              <h3>Order Details</h3>
-              <ul>${itemList}</ul>
-              <p><strong>Total:</strong> ${totalFormatted}</p>
-              <p><strong>Shipping to:</strong> ${fullAddress || 'N/A'}</p>
-              <p><strong>Estimated delivery:</strong> 5-7 business days</p>
-              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-              <p style="color: #6b7280; font-size: 13px;">We'll send you a tracking number once your order ships. If you have questions, visit our <a href="${siteUrl}/contact" style="color: #7c3aed;">contact page</a>.</p>
-            </div>
-          `;
-          await sendEmail(customerEmail, 'Your GlowBlocks Order Confirmation', html);
+
+          if (customerEmail) {
+            const html = onlineOrderConfirmationEmail(firstName, itemListHtml, totalFormatted, fullAddress || '');
+            await sendEmail(customerEmail, 'Your GlowBlocks Order Confirmation', html);
+          }
+
+          if (customerPhone) {
+            sendSMS(customerPhone, `Hey ${firstName}, thanks for your GlowBlocks order! We've received it and are getting started. Expect delivery in 5-7 business days!`)
+              .catch((err) => console.error('Failed to send order confirmation SMS:', err));
+          }
         }
 
         // Deduct inventory immediately for online orders

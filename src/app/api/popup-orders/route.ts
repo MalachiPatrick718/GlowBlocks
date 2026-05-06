@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { POPUP_COLOR_MAP } from '@/data/popupColorCatalog';
-import { sendSMS } from '@/lib/sms';
+import { notify } from '@/lib/notify';
+import { popupOrderConfirmationEmail, inProgressEmail, donePickupEmail, doneShipEmail } from '@/lib/email-templates';
 
 const apiKey = process.env.AIRTABLE_API_KEY;
 const baseId = process.env.AIRTABLE_BASE_ID;
@@ -326,17 +327,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Send confirmation SMS
-    if (phoneNumber && String(phoneNumber).replace(/\D/g, '').length >= 10) {
+    // Send confirmation email + SMS
+    {
       const firstName = String(customerName).trim().split(' ')[0];
       const setCount = sets.length;
       const setsLabel = setCount > 1 ? `${setCount} sets` : 'your set';
-      const msg = normalizedDeliveryMethod === 'pick-up'
+      const smsMsg = normalizedDeliveryMethod === 'pick-up'
         ? `Hey ${firstName}, thanks for your GlowBlocks order! Your order number is ${orderNumber} (${setsLabel}). We'll text you when your order is ready for pickup!`
         : `Hey ${firstName}, thanks for your GlowBlocks order (${setsLabel})! Your order has been received. Be on the lookout for your GlowBlocks in 5-7 business days!`;
-      sendSMS(String(phoneNumber), msg).catch((err) =>
-        console.error('Failed to send order confirmation SMS:', err)
-      );
+      const phone = phoneNumber && String(phoneNumber).replace(/\D/g, '').length >= 10
+        ? String(phoneNumber)
+        : undefined;
+      const customerEmail = typeof email === 'string' && email.trim() ? email.trim() : undefined;
+      notify({
+        email: customerEmail,
+        phone,
+        emailSubject: 'Your GlowBlocks Order Confirmation',
+        emailHtml: popupOrderConfirmationEmail(firstName, orderNumber, setsLabel, normalizedDeliveryMethod),
+        smsMessage: smsMsg,
+      }).catch((err) => console.error('Failed to send order confirmation:', err));
     }
 
     return NextResponse.json({
@@ -645,52 +654,69 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to update status' }, { status: 500 });
     }
 
-    // Send "in progress" SMS when status → In Progress for pickup orders
-    const isNewInProgressSMS = String(status).toLowerCase() === 'in progress'
-      && existingStatus.toLowerCase() !== 'in progress'
-      && orderType.toLowerCase() === 'pickup';
+    // Send "in progress" notification when status → In Progress
     const inProgressTextAlreadySent = isTruthy(existingFields['In Progress Text Sent']);
+    const inProgressEmailAlreadySent = isTruthy(existingFields['In Progress Email Sent']);
 
-    if (isNewInProgressSMS && !inProgressTextAlreadySent) {
-      const customerPhone = String(existingFields['Phone Number'] || '');
+    if (isNewInProgress && (!inProgressTextAlreadySent || !inProgressEmailAlreadySent)) {
+      const customerPhone = !inProgressTextAlreadySent ? String(existingFields['Phone Number'] || '') : undefined;
+      const customerEmail = !inProgressEmailAlreadySent ? String(existingFields['Email'] || '') : undefined;
       const customerName = String(existingFields['Name'] || '');
-      if (customerPhone) {
-        const firstName = customerName.trim().split(' ')[0];
-        const msg = `Hey ${firstName}, we're working on your GlowBlocks order now! We'll let you know when it's ready.`;
-        const sent = await sendSMS(customerPhone, msg);
-        if (sent) {
-          await fetch(getAirtableUrl(), {
-            method: 'PATCH',
-            headers: getHeaders(),
-            body: JSON.stringify({
-              records: [{ id: String(id), fields: { 'In Progress Text Sent': true } }],
-            }),
-          });
-        }
+      const firstName = customerName.trim().split(' ')[0];
+      const result = await notify({
+        email: customerEmail || undefined,
+        phone: customerPhone || undefined,
+        emailSubject: "We're working on your GlowBlocks!",
+        emailHtml: inProgressEmail(firstName),
+        smsMessage: `Hey ${firstName}, we're working on your GlowBlocks order now! We'll let you know when it's ready.`,
+      });
+      const flagUpdates: Record<string, boolean> = {};
+      if (result.smsSent) flagUpdates['In Progress Text Sent'] = true;
+      if (result.emailSent) flagUpdates['In Progress Email Sent'] = true;
+      if (Object.keys(flagUpdates).length > 0) {
+        await fetch(getAirtableUrl(), {
+          method: 'PATCH',
+          headers: getHeaders(),
+          body: JSON.stringify({
+            records: [{ id: String(id), fields: flagUpdates }],
+          }),
+        });
       }
     }
 
-    // Send "ready for pickup" SMS when status → Done for pickup orders
+    // Send "done" notification when status → Done
     const isNewDone = String(status).toLowerCase() === 'done'
-      && existingStatus.toLowerCase() !== 'done'
-      && orderType.toLowerCase() === 'pickup';
+      && existingStatus.toLowerCase() !== 'done';
     const doneTextAlreadySent = isTruthy(existingFields['Done Text Sent']);
+    const doneEmailAlreadySent = isTruthy(existingFields['Done Email Sent']);
 
-    if (isNewDone && !doneTextAlreadySent) {
-      const customerPhone = String(existingFields['Phone Number'] || '');
+    if (isNewDone && (!doneTextAlreadySent || !doneEmailAlreadySent)) {
+      const customerPhone = !doneTextAlreadySent ? String(existingFields['Phone Number'] || '') : undefined;
+      const customerEmail = !doneEmailAlreadySent ? String(existingFields['Email'] || '') : undefined;
       const customerName = String(existingFields['Name'] || '');
-      if (customerPhone) {
-        const msg = `Hey ${customerName}, your custom Glowblocks set is ready for pickup!`;
-        const sent = await sendSMS(customerPhone, msg);
-        if (sent) {
-          await fetch(getAirtableUrl(), {
-            method: 'PATCH',
-            headers: getHeaders(),
-            body: JSON.stringify({
-              records: [{ id: String(id), fields: { 'Done Text Sent': true } }],
-            }),
-          });
-        }
+      const firstName = customerName.trim().split(' ')[0];
+      const isPickup = orderType.toLowerCase() === 'pickup';
+      const smsMsg = isPickup
+        ? `Hey ${customerName}, your custom Glowblocks set is ready for pickup!`
+        : `Hey ${firstName}, your GlowBlocks order is complete and being prepared for shipment! We'll send tracking info once it ships.`;
+      const result = await notify({
+        email: customerEmail || undefined,
+        phone: customerPhone || undefined,
+        emailSubject: isPickup ? 'Your GlowBlocks are ready for pickup!' : 'Your GlowBlocks order is complete!',
+        emailHtml: isPickup ? donePickupEmail(firstName) : doneShipEmail(firstName),
+        smsMessage: smsMsg,
+      });
+      const flagUpdates: Record<string, boolean> = {};
+      if (result.smsSent) flagUpdates['Done Text Sent'] = true;
+      if (result.emailSent) flagUpdates['Done Email Sent'] = true;
+      if (Object.keys(flagUpdates).length > 0) {
+        await fetch(getAirtableUrl(), {
+          method: 'PATCH',
+          headers: getHeaders(),
+          body: JSON.stringify({
+            records: [{ id: String(id), fields: flagUpdates }],
+          }),
+        });
       }
     }
 

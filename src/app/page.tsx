@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import FloatingBlocks from "@/components/FloatingBlocks";
 import ReviewCarousel from "@/components/ReviewCarousel";
@@ -89,6 +90,30 @@ export default function Home() {
           <Link href="/reviews" className="text-purple-400 hover:text-purple-300 font-medium transition-colors">
             Read all reviews &rarr;
           </Link>
+        </div>
+      </section>
+
+      {/* Meet the Creator */}
+      <section className="py-12 sm:py-16 px-4">
+        <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center gap-8">
+          <div className="shrink-0">
+            <Image
+              src="/images/founder.jpg"
+              alt="Malachi Patrick — Founder of GlowBlocks"
+              width={160}
+              height={160}
+              className="rounded-2xl object-cover border-2 border-purple-500/40 shadow-lg shadow-purple-500/10"
+            />
+          </div>
+          <div className="text-center sm:text-left space-y-3">
+            <h2 className="text-2xl font-bold gradient-text">Meet the Creator</h2>
+            <p className="text-gray-300 leading-relaxed">
+              Hey, I&apos;m Malachi. I design and build every part of GlowBlocks — from the electronics inside each tile to the software that powers the glow. What started as an idea in my room has grown into something I&apos;m really proud of.
+            </p>
+            <Link href="/about" className="inline-block text-purple-400 hover:text-purple-300 font-medium transition-colors">
+              Read more about GlowBlocks &rarr;
+            </Link>
+          </div>
         </div>
       </section>
     </div>

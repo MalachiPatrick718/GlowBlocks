@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendSMS } from '@/lib/sms';
+import { notify } from '@/lib/notify';
+import { inProgressEmail, donePickupEmail, doneShipEmail } from '@/lib/email-templates';
 
 const webhookSecret = process.env.POPUP_STATUS_WEBHOOK_SECRET || '';
 const airtableApiKey = process.env.AIRTABLE_API_KEY || '';
@@ -19,31 +20,27 @@ function getAirtableHeaders() {
   };
 }
 
-async function hasTextAlreadySent(recordId: string, field: string): Promise<boolean> {
-  if (!airtableApiKey || !airtableBaseId || !recordId) return false;
-
+async function getRecord(recordId: string): Promise<Record<string, unknown> | null> {
+  if (!airtableApiKey || !airtableBaseId || !recordId) return null;
   const res = await fetch(getAirtableUrl(recordId), {
     headers: getAirtableHeaders(),
     cache: 'no-store',
   });
-  if (!res.ok) return false;
-
+  if (!res.ok) return null;
   const record = await res.json();
-  const value = record?.fields?.[field];
-  return value === true || value === 'true' || value === 'Yes';
+  return record?.fields || null;
 }
 
-async function markTextSent(recordId: string, field: string): Promise<void> {
-  if (!airtableApiKey || !airtableBaseId || !recordId) return;
+function isTruthy(val: unknown): boolean {
+  return val === true || val === 'true' || val === 'Yes';
+}
 
+async function setFlags(recordId: string, flags: Record<string, boolean>): Promise<void> {
+  if (!airtableApiKey || !airtableBaseId || !recordId) return;
   await fetch(getAirtableUrl(recordId), {
     method: 'PATCH',
     headers: getAirtableHeaders(),
-    body: JSON.stringify({
-      fields: {
-        [field]: true,
-      },
-    }),
+    body: JSON.stringify({ fields: flags }),
   });
 }
 
@@ -58,56 +55,77 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { status, customerName, customLetters, phoneNumber, recordId } = await req.json();
-    if (!status || !customerName || !customLetters || !phoneNumber) {
+    const { status, customerName, phoneNumber, recordId } = await req.json();
+    if (!status || !customerName || !phoneNumber) {
       return NextResponse.json({ error: 'Missing required payload fields' }, { status: 400 });
     }
 
     const statusLower = String(status).toLowerCase();
-
-    if (statusLower === 'in progress') {
-      const sentField = 'In Progress Text Sent';
-      if (recordId && await hasTextAlreadySent(String(recordId), sentField)) {
-        return NextResponse.json({ skipped: true, reason: 'In Progress SMS already sent for this order' });
-      }
-
-      const firstName = String(customerName).trim().split(' ')[0];
-      const message = `Hey ${firstName}, we're working on your GlowBlocks order now! We'll let you know when it's ready.`;
-      const sent = await sendSMS(String(phoneNumber), message);
-
-      if (!sent) {
-        return NextResponse.json({ error: 'Failed to send SMS' }, { status: 500 });
-      }
-
-      if (recordId) {
-        await markTextSent(String(recordId), sentField);
-      }
-
-      return NextResponse.json({ success: true });
-    }
-
-    if (statusLower !== 'done') {
+    if (statusLower !== 'in progress' && statusLower !== 'done') {
       return NextResponse.json({ skipped: true, reason: 'Status is not Done or In Progress' });
     }
 
-    if (recordId && await hasTextAlreadySent(String(recordId), 'Done Text Sent')) {
-      return NextResponse.json({ skipped: true, reason: 'Done SMS already sent for this order' });
+    // Fetch full record to get email and order type
+    const fields = recordId ? await getRecord(String(recordId)) : null;
+    const customerEmail = String((fields?.['Email'] as string) || '');
+    const orderType = String((fields?.['Order Type'] as string) || '');
+    const firstName = String(customerName).trim().split(' ')[0];
+    const isPickup = orderType.toLowerCase() === 'pickup';
+
+    if (statusLower === 'in progress') {
+      const textSent = fields ? isTruthy(fields['In Progress Text Sent']) : false;
+      const emailSent = fields ? isTruthy(fields['In Progress Email Sent']) : false;
+      if (textSent && emailSent) {
+        return NextResponse.json({ skipped: true, reason: 'In Progress notifications already sent' });
+      }
+
+      const result = await notify({
+        email: !emailSent && customerEmail ? customerEmail : undefined,
+        phone: !textSent ? String(phoneNumber) : undefined,
+        emailSubject: "We're working on your GlowBlocks!",
+        emailHtml: inProgressEmail(firstName),
+        smsMessage: `Hey ${firstName}, we're working on your GlowBlocks order now! We'll let you know when it's ready.`,
+      });
+
+      if (recordId) {
+        const flagUpdates: Record<string, boolean> = {};
+        if (result.smsSent) flagUpdates['In Progress Text Sent'] = true;
+        if (result.emailSent) flagUpdates['In Progress Email Sent'] = true;
+        if (Object.keys(flagUpdates).length > 0) await setFlags(String(recordId), flagUpdates);
+      }
+
+      return NextResponse.json({ success: true, ...result });
     }
 
-    const message = `Hey ${customerName}, your custom Glowblocks set is ready for pickup!`;
-    const sent = await sendSMS(String(phoneNumber), message);
-
-    if (!sent) {
-      return NextResponse.json({ error: 'Failed to send SMS' }, { status: 500 });
+    // status === 'done'
+    const textSent = fields ? isTruthy(fields['Done Text Sent']) : false;
+    const emailSent = fields ? isTruthy(fields['Done Email Sent']) : false;
+    if (textSent && emailSent) {
+      return NextResponse.json({ skipped: true, reason: 'Done notifications already sent' });
     }
+
+    const smsMsg = isPickup
+      ? `Hey ${customerName}, your custom Glowblocks set is ready for pickup!`
+      : `Hey ${firstName}, your GlowBlocks order is complete and being prepared for shipment! We'll send tracking info once it ships.`;
+
+    const result = await notify({
+      email: !emailSent && customerEmail ? customerEmail : undefined,
+      phone: !textSent ? String(phoneNumber) : undefined,
+      emailSubject: isPickup ? 'Your GlowBlocks are ready for pickup!' : 'Your GlowBlocks order is complete!',
+      emailHtml: isPickup ? donePickupEmail(firstName) : doneShipEmail(firstName),
+      smsMessage: smsMsg,
+    });
 
     if (recordId) {
-      await markTextSent(String(recordId), 'Done Text Sent');
+      const flagUpdates: Record<string, boolean> = {};
+      if (result.smsSent) flagUpdates['Done Text Sent'] = true;
+      if (result.emailSent) flagUpdates['Done Email Sent'] = true;
+      if (Object.keys(flagUpdates).length > 0) await setFlags(String(recordId), flagUpdates);
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, ...result });
   } catch (error) {
     console.error('Popup status webhook error:', error);
-    return NextResponse.json({ error: 'Failed to send popup status SMS' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to send popup status notification' }, { status: 500 });
   }
 }
