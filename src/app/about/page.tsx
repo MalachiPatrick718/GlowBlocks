@@ -28,7 +28,7 @@ export default function AboutPage() {
           <div className="space-y-4 text-center sm:text-left">
             <h2 className="text-2xl font-bold text-white">Meet the Creator</h2>
             <p className="text-gray-300 leading-relaxed">
-              Hey, I&apos;m Malachi — founder of GlowBlocks Studio and the person who built every single one of these by hand.
+              Hey, I&apos;m Malachi — founder of GlowBlocks Studio!
             </p>
             <p className="text-gray-300 leading-relaxed">
               GlowBlocks came from a place of wanting to create something that had never existed before. Not another LED sign, not another custom name plaque — something that actually does something. Something that feels alive. Place two tiles together and they glow. Pull them apart and they go dark. No app, no WiFi, no setup. Just magic you can hold in your hands.
