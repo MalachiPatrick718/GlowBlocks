@@ -805,6 +805,17 @@ function PopupOrdersContent() {
               )
             )}
 
+            {(order.status || '').toLowerCase() === 'shipped' && (
+              <button
+                type="button"
+                onClick={() => saveStatus(order.id, 'Delivered')}
+                disabled={savingOrderId === order.id}
+                className="px-4 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingOrderId === order.id ? 'Updating...' : 'Mark as Delivered'}
+              </button>
+            )}
+
             <div className="space-y-2 text-sm">
               <p className="text-gray-300">Colors by letter</p>
               <div className="rounded-lg bg-black/40 border border-gray-800 p-3 text-xs text-gray-300 space-y-1">

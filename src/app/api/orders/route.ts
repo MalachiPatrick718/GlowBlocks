@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { notify } from '@/lib/notify';
-import { inProgressEmail, doneShipEmail } from '@/lib/email-templates';
+import { inProgressEmail, doneShipEmail, deliveredEmail } from '@/lib/email-templates';
 
 const apiKey = process.env.AIRTABLE_API_KEY;
 const baseId = process.env.AIRTABLE_BASE_ID;
@@ -233,7 +233,7 @@ export async function PATCH(req: NextRequest) {
     // Send notifications on status changes
     if (status) {
       const statusLower = String(status).toLowerCase();
-      if (statusLower === 'processing' || statusLower === 'ready to ship') {
+      if (statusLower === 'processing' || statusLower === 'ready to ship' || statusLower === 'delivered') {
         try {
           const recordRes = await fetch(`${getAirtableUrl()}/${encodeURIComponent(String(id))}`, {
             headers: getHeaders(),
@@ -287,6 +287,24 @@ export async function PATCH(req: NextRequest) {
                   body: JSON.stringify({ records: [{ id: String(id), fields: flagUpdates }] }),
                 });
               }
+            }
+
+            if (statusLower === 'delivered' && !isTruthy(f['Delivery Notification Sent'])) {
+              const today = new Date().toISOString().split('T')[0];
+              const result = await notify({
+                email: customerEmail,
+                phone: customerPhone,
+                emailSubject: 'Your GlowBlocks have arrived!',
+                emailHtml: deliveredEmail(firstName),
+                smsMessage: `Hey ${firstName}, your GlowBlocks have been delivered! We hope you love them!`,
+              });
+              const flagUpdates: Record<string, unknown> = { 'Delivered Date': today };
+              if (result.emailSent || result.smsSent) flagUpdates['Delivery Notification Sent'] = true;
+              await fetch(getAirtableUrl(), {
+                method: 'PATCH',
+                headers: getHeaders(),
+                body: JSON.stringify({ records: [{ id: String(id), fields: flagUpdates }] }),
+              });
             }
           }
         } catch (err) {

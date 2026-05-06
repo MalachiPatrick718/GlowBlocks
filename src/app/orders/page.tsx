@@ -522,6 +522,17 @@ function OrdersContent() {
                 )
               )}
 
+              {(order.status || '').toLowerCase() === 'shipped' && (
+                <button
+                  type="button"
+                  onClick={() => saveStatus(order.id, 'Delivered')}
+                  disabled={savingOrderId === order.id}
+                  className="px-4 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingOrderId === order.id ? 'Updating...' : 'Mark as Delivered'}
+                </button>
+              )}
+
               <div className="flex items-center gap-3">
                 <a
                   href={`/packing-label?id=${encodeURIComponent(order.id)}&source=online&key=${encodeURIComponent(key)}`}

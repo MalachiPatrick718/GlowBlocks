@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { POPUP_COLOR_MAP } from '@/data/popupColorCatalog';
 import { notify } from '@/lib/notify';
-import { popupOrderConfirmationEmail, inProgressEmail, donePickupEmail, doneShipEmail } from '@/lib/email-templates';
+import { popupOrderConfirmationEmail, inProgressEmail, donePickupEmail, doneShipEmail, deliveredEmail } from '@/lib/email-templates';
 
 const apiKey = process.env.AIRTABLE_API_KEY;
 const baseId = process.env.AIRTABLE_BASE_ID;
@@ -718,6 +718,35 @@ export async function PATCH(req: NextRequest) {
           }),
         });
       }
+    }
+
+    // Send "delivered" notification when status → Delivered
+    const isNewDelivered = String(status).toLowerCase() === 'delivered'
+      && existingStatus.toLowerCase() !== 'delivered';
+    const deliveryAlreadySent = isTruthy(existingFields['Delivery Notification Sent']);
+
+    if (isNewDelivered && !deliveryAlreadySent) {
+      const customerPhone = String(existingFields['Phone Number'] || '') || undefined;
+      const customerEmail = String(existingFields['Email'] || '') || undefined;
+      const customerName = String(existingFields['Name'] || '');
+      const firstName = customerName.trim().split(' ')[0];
+      const today = new Date().toISOString().split('T')[0];
+      const result = await notify({
+        email: customerEmail,
+        phone: customerPhone,
+        emailSubject: 'Your GlowBlocks have arrived!',
+        emailHtml: deliveredEmail(firstName),
+        smsMessage: `Hey ${firstName}, your GlowBlocks have been delivered! We hope you love them!`,
+      });
+      const deliveredFlags: Record<string, unknown> = { 'Delivered Date': today };
+      if (result.emailSent || result.smsSent) deliveredFlags['Delivery Notification Sent'] = true;
+      await fetch(getAirtableUrl(), {
+        method: 'PATCH',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          records: [{ id: String(id), fields: deliveredFlags }],
+        }),
+      });
     }
 
     return NextResponse.json({ success: true });
