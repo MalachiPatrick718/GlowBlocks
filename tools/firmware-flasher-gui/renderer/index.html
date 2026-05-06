@@ -85,8 +85,12 @@
       <!-- Batch Letter Selection (only shown in batch mode after saving) -->
       <section class="card" id="batch-letters-section" style="display: none;">
         <h2>Select Letter to Assign Color</h2>
+        <p style="color: #888; font-size: 0.85em; margin-bottom: 8px;">Click a letter to assign its color individually, or apply one color to all.</p>
         <div id="letter-buttons" class="letter-buttons"></div>
-        <button id="back-to-input" class="btn-secondary">Change Letters</button>
+        <div style="display: flex; gap: 8px; margin-top: 12px;">
+          <button id="apply-color-all" class="btn-primary">Apply Color to All</button>
+          <button id="back-to-input" class="btn-secondary">Change Letters</button>
+        </div>
       </section>
 
       <!-- Color Selection Section -->

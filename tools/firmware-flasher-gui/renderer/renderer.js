@@ -9,8 +9,8 @@ let presets = [];
 let currentMode = 'single'; // 'single' or 'batch'
 let batchState = {
   letters: [],
-  assignments: {}, // { 'M': { name, r, g, b }, ... }
-  currentLetter: null,
+  assignments: {}, // { 0: { name, r, g, b }, 1: { ... }, ... } — index-based for duplicate letter support
+  currentIndex: null,
   uploadIndex: 0
 };
 
@@ -57,6 +57,7 @@ const batchLettersInput = document.getElementById('batch-letters');
 const saveLettersBtn = document.getElementById('save-letters');
 const letterButtonsContainer = document.getElementById('letter-buttons');
 const backToInputBtn = document.getElementById('back-to-input');
+const applyColorAllBtn = document.getElementById('apply-color-all');
 const currentLetterDisplay = document.getElementById('current-letter-display');
 const assignColorBtn = document.getElementById('assign-color-btn');
 const assignLetterLabel = document.getElementById('assign-letter-label');
@@ -144,6 +145,7 @@ function setupEventListeners() {
   // Batch buttons
   saveLettersBtn.addEventListener('click', handleSaveLetters);
   backToInputBtn.addEventListener('click', handleBackToInput);
+  applyColorAllBtn.addEventListener('click', handleApplyColorToAll);
   assignColorBtn.addEventListener('click', handleAssignColor);
   uploadNextBtn.addEventListener('click', handleBatchUploadNext);
   skipBatchBtn.addEventListener('click', handleBatchSkip);
@@ -250,7 +252,7 @@ function switchMode(mode) {
     // Reset batch state
     batchState.letters = [];
     batchState.assignments = {};
-    batchState.currentLetter = null;
+    batchState.currentIndex = null;
     batchState.uploadIndex = 0;
     batchLettersInput.value = '';
   }
@@ -502,7 +504,7 @@ function handleSaveLetters() {
   // Save letters and show letter selection UI
   batchState.letters = letters.split('');
   batchState.assignments = {};
-  batchState.currentLetter = null;
+  batchState.currentIndex = null;
 
   renderLetterButtons();
 
@@ -512,16 +514,16 @@ function handleSaveLetters() {
 }
 
 function renderLetterButtons() {
-  const html = batchState.letters.map(letter => {
-    const assigned = batchState.assignments[letter];
-    const activeClass = letter === batchState.currentLetter ? ' active' : '';
+  const html = batchState.letters.map((letter, idx) => {
+    const assigned = batchState.assignments[idx];
+    const activeClass = idx === batchState.currentIndex ? ' active' : '';
     const assignedClass = assigned ? ' assigned' : '';
     const colorIndicator = assigned
       ? `<div class="letter-color-indicator" style="background: rgb(${assigned.r},${assigned.g},${assigned.b})"></div>`
       : '';
 
     return `
-      <button class="letter-btn${activeClass}${assignedClass}" data-letter="${letter}">
+      <button class="letter-btn${activeClass}${assignedClass}" data-index="${idx}">
         ${letter}
         ${colorIndicator}
       </button>
@@ -532,22 +534,23 @@ function renderLetterButtons() {
 
   // Add click handlers
   document.querySelectorAll('.letter-btn').forEach(btn => {
-    btn.addEventListener('click', () => handleLetterClick(btn.dataset.letter));
+    btn.addEventListener('click', () => handleLetterClick(parseInt(btn.dataset.index)));
   });
 }
 
-function handleLetterClick(letter) {
-  batchState.currentLetter = letter;
-  currentLetterDisplay.textContent = letter;
-  assignLetterLabel.textContent = letter;
+function handleLetterClick(index) {
+  batchState.currentIndex = index;
+  const letter = batchState.letters[index];
+  currentLetterDisplay.textContent = `${letter} (#${index + 1})`;
+  assignLetterLabel.textContent = `${letter} (#${index + 1})`;
 
   // Show assignment section
   batchLettersSection.style.display = 'none';
   batchAssignmentSection.style.display = 'block';
 
-  // If letter already has a color, show it
-  if (batchState.assignments[letter]) {
-    const color = batchState.assignments[letter];
+  // If this position already has a color, show it
+  if (batchState.assignments[index]) {
+    const color = batchState.assignments[index];
     showMessage(batchAssignmentStatus, 'info', `Current color: ${color.name}`);
   } else {
     showMessage(batchAssignmentStatus, 'info', 'Select a color and click "Assign Color"');
@@ -557,7 +560,7 @@ function handleLetterClick(letter) {
 }
 
 function updateAssignButton() {
-  if (!batchState.currentLetter) {
+  if (batchState.currentIndex === null) {
     assignColorBtn.disabled = true;
     return;
   }
@@ -565,22 +568,23 @@ function updateAssignButton() {
 }
 
 function handleAssignColor() {
-  if (!selectedColor || !batchState.currentLetter) return;
+  if (!selectedColor || batchState.currentIndex === null) return;
 
-  // Assign color to current letter
-  batchState.assignments[batchState.currentLetter] = { ...selectedColor };
+  const letter = batchState.letters[batchState.currentIndex];
+  // Assign color to current index position
+  batchState.assignments[batchState.currentIndex] = { ...selectedColor };
 
-  showMessage(batchAssignmentStatus, 'success', `✓ Assigned ${selectedColor.name} to ${batchState.currentLetter}`);
+  showMessage(batchAssignmentStatus, 'success', `✓ Assigned ${selectedColor.name} to ${letter} (#${batchState.currentIndex + 1})`);
 
   // Go back to letter selection after 1 second
   setTimeout(() => {
     batchAssignmentSection.style.display = 'none';
     batchLettersSection.style.display = 'block';
-    batchState.currentLetter = null;
+    batchState.currentIndex = null;
     renderLetterButtons();
 
-    // Check if all letters are assigned
-    const allAssigned = batchState.letters.every(l => batchState.assignments[l]);
+    // Check if all positions are assigned
+    const allAssigned = batchState.letters.every((_, idx) => batchState.assignments[idx]);
     if (allAssigned) {
       showMessage(batchAssignmentStatus, 'success', '✓ All letters assigned! Ready to upload.');
       // Show upload area
@@ -590,13 +594,33 @@ function handleAssignColor() {
   }, 1000);
 }
 
+function handleApplyColorToAll() {
+  if (!selectedColor) {
+    showMessage(batchAssignmentStatus, 'error', 'Select a color first');
+    return;
+  }
+
+  batchState.letters.forEach((_, idx) => {
+    batchState.assignments[idx] = { ...selectedColor };
+  });
+
+  renderLetterButtons();
+  showMessage(batchAssignmentStatus, 'success', `✓ Applied ${selectedColor.name} to all letters. Ready to upload.`);
+
+  // Start upload after brief delay
+  setTimeout(() => {
+    batchLettersSection.style.display = 'none';
+    startBatchUpload();
+  }, 1000);
+}
+
 function handleBackToInput() {
   batchInputSection.style.display = 'block';
   batchLettersSection.style.display = 'none';
   batchAssignmentSection.style.display = 'none';
   batchState.letters = [];
   batchState.assignments = {};
-  batchState.currentLetter = null;
+  batchState.currentIndex = null;
 }
 
 function startBatchUpload() {
@@ -608,7 +632,7 @@ function startBatchUpload() {
 
 function updateBatchUploadPrompt() {
   const currentLetter = batchState.letters[batchState.uploadIndex];
-  const color = batchState.assignments[currentLetter];
+  const color = batchState.assignments[batchState.uploadIndex];
 
   document.getElementById('prompt-letter').textContent = currentLetter;
   document.getElementById('prompt-color').textContent = color.name;
@@ -616,7 +640,7 @@ function updateBatchUploadPrompt() {
 
   // Render upload progress list
   const listHtml = batchState.letters.map((letter, idx) => {
-    const color = batchState.assignments[letter];
+    const color = batchState.assignments[idx];
     let status;
     if (idx < batchState.uploadIndex) {
       status = '<span class="batch-completed">✓ Uploaded</span>';
@@ -640,7 +664,7 @@ async function handleBatchUploadNext() {
   }
 
   const currentLetter = batchState.letters[batchState.uploadIndex];
-  const color = batchState.assignments[currentLetter];
+  const color = batchState.assignments[batchState.uploadIndex];
 
   uploadNextBtn.disabled = true;
   skipBatchBtn.disabled = true;
@@ -748,8 +772,7 @@ function handlePresetClick(presetId) {
 
     // Auto-assign preset colors
     preset.colors.forEach((color, idx) => {
-      const letter = batchState.letters[idx];
-      batchState.assignments[letter] = { ...color };
+      batchState.assignments[idx] = { ...color };
     });
 
     // Show letter buttons
