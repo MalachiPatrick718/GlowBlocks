@@ -24,6 +24,126 @@ interface ColorEntry {
   colorName?: string | null;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parsePopupRecord(record: any) {
+  const fields = record.fields || {};
+  let colors: ColorEntry[] = [];
+  try {
+    const parsed = JSON.parse(fields['Custom Colors'] || '{}');
+    const list = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed?.colorsByLetter)
+        ? parsed.colorsByLetter
+        : [];
+    if (list.length > 0) {
+      colors = list
+        .filter((item: { letter?: string }) => item?.letter && item.letter !== ' ')
+        .map((item: { letter?: string; colorHex?: string; colorName?: string | null }) => ({
+          letter: item.letter || '',
+          colorHex: item.colorHex || '#FFFFFF',
+          colorName: item.colorName || null,
+        }));
+    } else if (parsed?.letterColors && Array.isArray(parsed.letterColors)) {
+      const text = fields['Name/Word'] || '';
+      colors = text.split('').map((ch: string, idx: number) => ({
+        letter: ch,
+        colorHex: parsed.letterColors[idx] || '#FFFFFF',
+        colorName: null,
+      })).filter((c: ColorEntry) => c.letter !== ' ');
+    }
+  } catch {}
+  return {
+    text: fields['Name/Word'] || '',
+    colorMode: fields['Color Set'] || '',
+    colors,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function buildPopupOrder(record: any) {
+  const fields = record.fields || {};
+  const orderNumber = fields['Order Number'] || '';
+
+  // Fetch ALL records with the same order number
+  let allRecords = [record];
+  if (orderNumber) {
+    const formula = encodeURIComponent(`{Order Number}="${orderNumber}"`);
+    const listUrl = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(popupTableName)}?filterByFormula=${formula}`;
+    try {
+      const listRes = await fetch(listUrl, { headers: getHeaders(), next: { revalidate: 0 } });
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        if (listData.records && listData.records.length > 0) {
+          allRecords = listData.records;
+        }
+      }
+    } catch {}
+  }
+
+  const sets = allRecords.map(parsePopupRecord);
+
+  return {
+    source: 'popup' as const,
+    customerName: fields['Name'] || '',
+    phone: fields['Phone Number'] || '',
+    email: fields['Email'] || '',
+    address: fields['Address'] || '',
+    text: sets.map((s) => s.text).join(' / '),
+    orderNumber,
+    orderType: fields['Order Type'] || '',
+    sets,
+    date: record.createdTime?.split('T')[0] || '',
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildOnlineOrder(record: any) {
+  const fields = record.fields || {};
+  let colors: ColorEntry[] = [];
+  let orderText = fields['Order Text'] || '';
+  try {
+    const orderData = JSON.parse(fields['Order Data'] || '{}');
+    if (orderData.items && Array.isArray(orderData.items)) {
+      for (const item of orderData.items) {
+        const text = item.text || '';
+        const itemColors = item.colors || [];
+        for (let i = 0; i < text.length; i++) {
+          if (text[i] === ' ') continue;
+          colors.push({
+            letter: text[i],
+            colorHex: itemColors[i] || '#FFFFFF',
+            colorName: null,
+          });
+        }
+      }
+      if (!orderText) {
+        orderText = orderData.items.map((item: { text: string }) => item.text).join(' ');
+      }
+    }
+  } catch {}
+
+  return {
+    source: 'online' as const,
+    customerName: fields['Customer Name'] || '',
+    email: fields['Email'] || '',
+    address: fields['Address'] || '',
+    text: orderText,
+    items: fields['Items'] || fields['Line Items'] || '',
+    shippingMethod: fields['Shipping Method'] || '',
+    total: fields['Total'] || '',
+    colors,
+    date: fields['Date'] || record.createdTime?.split('T')[0] || '',
+  };
+}
+
+async function fetchRecord(source: string, id: string) {
+  const tableName = source === 'popup' ? popupTableName : onlineTableName;
+  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}/${encodeURIComponent(id)}`;
+  const res = await fetch(url, { headers: getHeaders(), next: { revalidate: 0 } });
+  if (!res.ok) return null;
+  return res.json();
+}
+
 export async function GET(req: NextRequest) {
   try {
     if (!apiKey || !baseId) {
@@ -33,6 +153,36 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Multi-order mode: ?orders=popup:recXXX,online:recYYY
+    const ordersParam = req.nextUrl.searchParams.get('orders');
+    if (ordersParam) {
+      const entries = ordersParam.split(',').map((e) => {
+        const [source, id] = e.split(':');
+        return { source, id };
+      }).filter((e) => e.source && e.id);
+
+      if (entries.length === 0) {
+        return NextResponse.json({ error: 'No valid order entries' }, { status: 400 });
+      }
+
+      const results = await Promise.all(
+        entries.map(async ({ source, id }) => {
+          const record = await fetchRecord(source, id);
+          if (!record) return null;
+          if (source === 'popup') return buildPopupOrder(record);
+          return buildOnlineOrder(record);
+        })
+      );
+
+      const orders = results.filter(Boolean);
+      if (orders.length === 0) {
+        return NextResponse.json({ error: 'No records found' }, { status: 404 });
+      }
+
+      return NextResponse.json({ multi: true, orders });
+    }
+
+    // Single-order mode (backward compat)
     const id = req.nextUrl.searchParams.get('id');
     const source = req.nextUrl.searchParams.get('source');
 
@@ -40,125 +190,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Missing id or source param' }, { status: 400 });
     }
 
-    const tableName = source === 'popup' ? popupTableName : onlineTableName;
-    const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}/${encodeURIComponent(id)}`;
-
-    const res = await fetch(url, {
-      headers: getHeaders(),
-      next: { revalidate: 0 },
-    });
-
-    if (!res.ok) {
+    const record = await fetchRecord(source, id);
+    if (!record) {
       return NextResponse.json({ error: 'Record not found' }, { status: 404 });
     }
 
-    const record = await res.json();
-    const fields = record.fields || {};
-
     if (source === 'popup') {
-      const orderNumber = fields['Order Number'] || '';
-
-      // Fetch ALL records with the same order number
-      let allRecords = [record];
-      if (orderNumber) {
-        const formula = encodeURIComponent(`{Order Number}="${orderNumber}"`);
-        const listUrl = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(popupTableName)}?filterByFormula=${formula}`;
-        try {
-          const listRes = await fetch(listUrl, { headers: getHeaders(), next: { revalidate: 0 } });
-          if (listRes.ok) {
-            const listData = await listRes.json();
-            if (listData.records && listData.records.length > 0) {
-              allRecords = listData.records;
-            }
-          }
-        } catch {}
-      }
-
-      // Build sets array from all records
-      const sets = allRecords.map((rec: { fields?: Record<string, string>; createdTime?: string }) => {
-        const f = rec.fields || {};
-        let colors: ColorEntry[] = [];
-        try {
-          const parsed = JSON.parse(f['Custom Colors'] || '{}');
-          const list = Array.isArray(parsed)
-            ? parsed
-            : Array.isArray(parsed?.colorsByLetter)
-              ? parsed.colorsByLetter
-              : [];
-          if (list.length > 0) {
-            colors = list
-              .filter((item: { letter?: string }) => item?.letter && item.letter !== ' ')
-              .map((item: { letter?: string; colorHex?: string; colorName?: string | null }) => ({
-                letter: item.letter || '',
-                colorHex: item.colorHex || '#FFFFFF',
-                colorName: item.colorName || null,
-              }));
-          } else if (parsed?.letterColors && Array.isArray(parsed.letterColors)) {
-            const text = f['Name/Word'] || '';
-            colors = text.split('').map((ch: string, idx: number) => ({
-              letter: ch,
-              colorHex: parsed.letterColors[idx] || '#FFFFFF',
-              colorName: null,
-            })).filter((c: ColorEntry) => c.letter !== ' ');
-          }
-        } catch {}
-        return {
-          text: f['Name/Word'] || '',
-          colorMode: f['Color Set'] || '',
-          colors,
-        };
-      });
-
-      return NextResponse.json({
-        source: 'popup',
-        customerName: fields['Name'] || '',
-        phone: fields['Phone Number'] || '',
-        email: fields['Email'] || '',
-        address: fields['Address'] || '',
-        text: sets.map((s: { text: string }) => s.text).join(' / '),
-        orderNumber,
-        orderType: fields['Order Type'] || '',
-        sets,
-        date: record.createdTime?.split('T')[0] || '',
-      });
+      return NextResponse.json(await buildPopupOrder(record));
     } else {
-      // Online order
-      let colors: ColorEntry[] = [];
-      let orderText = fields['Order Text'] || '';
-      try {
-        const orderData = JSON.parse(fields['Order Data'] || '{}');
-        if (orderData.items && Array.isArray(orderData.items)) {
-          // Build colors from items data
-          for (const item of orderData.items) {
-            const text = item.text || '';
-            const itemColors = item.colors || [];
-            for (let i = 0; i < text.length; i++) {
-              if (text[i] === ' ') continue;
-              colors.push({
-                letter: text[i],
-                colorHex: itemColors[i] || '#FFFFFF',
-                colorName: null,
-              });
-            }
-          }
-          if (!orderText) {
-            orderText = orderData.items.map((item: { text: string }) => item.text).join(' ');
-          }
-        }
-      } catch {}
-
-      return NextResponse.json({
-        source: 'online',
-        customerName: fields['Customer Name'] || '',
-        email: fields['Email'] || '',
-        address: fields['Address'] || '',
-        text: orderText,
-        items: fields['Items'] || fields['Line Items'] || '',
-        shippingMethod: fields['Shipping Method'] || '',
-        total: fields['Total'] || '',
-        colors,
-        date: fields['Date'] || record.createdTime?.split('T')[0] || '',
-      });
+      return NextResponse.json(buildOnlineOrder(record));
     }
   } catch (error) {
     console.error('Packing label API error:', error);

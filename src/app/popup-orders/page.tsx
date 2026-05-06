@@ -175,6 +175,44 @@ function PopupOrdersContent() {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const baseStatusOptions = ['Not Started', 'In Progress', 'Done'];
 
+  // Multi-order packing slip selection (persisted in localStorage)
+  const SLIP_STORAGE_KEY = 'glowblocks-slip-selection';
+  const [slipSelection, setSlipSelection] = useState<{ id: string; source: string }[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SLIP_STORAGE_KEY);
+      if (stored) setSlipSelection(JSON.parse(stored));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    // Listen for changes from the other admin page
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === SLIP_STORAGE_KEY) {
+        try { setSlipSelection(JSON.parse(e.newValue || '[]')); } catch {}
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  const toggleSlipSelection = (id: string) => {
+    setSlipSelection(prev => {
+      const exists = prev.some(s => s.id === id);
+      const next = exists ? prev.filter(s => s.id !== id) : [...prev, { id, source: 'popup' }];
+      localStorage.setItem(SLIP_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const clearSlipSelection = () => {
+    setSlipSelection([]);
+    localStorage.removeItem(SLIP_STORAGE_KEY);
+  };
+
+  const slipSelectedIds = new Set(slipSelection.map(s => s.id));
+
   const playChime = useCallback(() => {
     try {
       const ctx = new AudioContext();
@@ -505,9 +543,16 @@ function PopupOrdersContent() {
         {filteredOrders.map((order) => {
           const colorLines = getColorLines(order);
           return (
-          <div key={order.id} className="rounded-2xl border border-gray-800 bg-gray-950 p-5 space-y-3">
+          <div key={order.id} className={`rounded-2xl border ${slipSelectedIds.has(order.id) ? 'border-purple-500 ring-1 ring-purple-500/40' : 'border-gray-800'} bg-gray-950 p-5 space-y-3`}>
             <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-              <div>
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={slipSelectedIds.has(order.id)}
+                  onChange={() => toggleSlipSelection(order.id)}
+                  className="mt-2 w-4 h-4 rounded border-gray-600 bg-gray-800 text-purple-500 focus:ring-purple-500 shrink-0 cursor-pointer"
+                />
+                <div>
                 <div className="flex items-center gap-3">
                   <p className="text-3xl font-black text-white">{order.orderNumber || '--'}</p>
                   {order.onSiteEligible === true && (
@@ -542,6 +587,7 @@ function PopupOrdersContent() {
                   })()}
                 </div>
                 <p className="text-xs text-gray-500">Order Number</p>
+              </div>
               </div>
               {order.total !== undefined && (
                 <div className="text-right">
@@ -784,6 +830,33 @@ function PopupOrdersContent() {
           );
         })}
       </div>
+
+      {/* Combined packing slip floating bar */}
+      {slipSelection.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-gray-950/95 border-t border-purple-700 backdrop-blur-sm px-4 py-3">
+          <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+            <p className="text-sm text-gray-300">
+              <span className="font-bold text-purple-400">{slipSelection.length}</span> order{slipSelection.length !== 1 ? 's' : ''} selected for packing slip
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={clearSlipSelection}
+                className="px-3 py-1.5 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold transition-colors"
+              >
+                Clear
+              </button>
+              <a
+                href={`/packing-label?orders=${encodeURIComponent(slipSelection.map(s => `${s.source}:${s.id}`).join(','))}&key=${encodeURIComponent(key)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition-colors"
+              >
+                Create Combined Packing Slip
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
