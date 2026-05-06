@@ -82,6 +82,23 @@ async function buildPopupOrder(record: any) {
 
   const sets = allRecords.map(parsePopupRecord);
 
+  // Aggregate pricing across all sets
+  let subtotal = 0;
+  let customColorFee = 0;
+  let discount = 0;
+  let shipping = 0;
+  let tax = 0;
+  let total = 0;
+  for (const rec of allRecords) {
+    const f = rec.fields || {};
+    subtotal += parseFloat(f['Subtotal'] || '0') || 0;
+    customColorFee += parseFloat(f['Custom Color Fee'] || '0') || 0;
+    discount += parseFloat(f['Discount'] || '0') || 0;
+    shipping += parseFloat(f['Shipping Fee'] || '0') || 0;
+    tax += parseFloat(f['Tax'] || '0') || 0;
+    total += parseFloat(f['Total'] || '0') || 0;
+  }
+
   return {
     source: 'popup' as const,
     customerName: fields['Name'] || '',
@@ -93,6 +110,7 @@ async function buildPopupOrder(record: any) {
     orderType: fields['Order Type'] || '',
     sets,
     date: record.createdTime?.split('T')[0] || '',
+    pricing: { subtotal, customColorFee, discount, shipping, tax, total },
   };
 }
 
@@ -122,6 +140,8 @@ function buildOnlineOrder(record: any) {
     }
   } catch {}
 
+  const totalVal = parseFloat(fields['Total'] || '0') || 0;
+
   return {
     source: 'online' as const,
     customerName: fields['Customer Name'] || '',
@@ -133,6 +153,7 @@ function buildOnlineOrder(record: any) {
     total: fields['Total'] || '',
     colors,
     date: fields['Date'] || record.createdTime?.split('T')[0] || '',
+    pricing: { subtotal: totalVal, customColorFee: 0, discount: 0, shipping: 0, tax: 0, total: totalVal },
   };
 }
 

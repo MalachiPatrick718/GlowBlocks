@@ -15,6 +15,15 @@ interface SetEntry {
   colors: ColorEntry[];
 }
 
+interface PricingData {
+  subtotal: number;
+  customColorFee: number;
+  discount: number;
+  shipping: number;
+  tax: number;
+  total: number;
+}
+
 interface LabelData {
   source: string;
   customerName: string;
@@ -31,6 +40,7 @@ interface LabelData {
   colors: ColorEntry[];
   sets?: SetEntry[];
   date?: string;
+  pricing?: PricingData;
 }
 
 export default function PackingLabelPage() {
@@ -41,34 +51,61 @@ export default function PackingLabelPage() {
   );
 }
 
-function hexToRgb(hex: string): string | null {
-  if (!hex || !/^#[0-9A-Fa-f]{6}$/.test(hex)) return null;
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `${r}, ${g}, ${b}`;
-}
-
 function BlockRow({ colors }: { colors: ColorEntry[] }) {
   return (
     <div className="flex justify-center gap-2 flex-wrap">
-      {colors.map((c, idx) => {
-        const rgb = hexToRgb(c.colorHex);
-        const colorLabel = c.colorName || (rgb ? `(${rgb})` : c.colorHex);
-        return (
-          <div key={idx} className="flex flex-col items-center gap-1">
-            <div
-              className="w-12 h-12 rounded-lg flex items-center justify-center text-xl font-black"
-              style={{ backgroundColor: '#1a1a1a', color: c.colorHex }}
-            >
-              {c.letter}
-            </div>
-            <span className="text-[10px] text-gray-400 max-w-[3.5rem] text-center leading-tight truncate">
-              {colorLabel}
-            </span>
-          </div>
-        );
-      })}
+      {colors.map((c, idx) => (
+        <div
+          key={idx}
+          className="w-12 h-12 rounded-lg flex items-center justify-center text-xl font-black"
+          style={{ backgroundColor: '#1a1a1a', color: c.colorHex }}
+        >
+          {c.letter}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function fmt(n: number): string {
+  return `$${n.toFixed(2)}`;
+}
+
+function PricingBreakdown({ pricing }: { pricing: PricingData }) {
+  return (
+    <div className="text-sm text-center mt-4 space-y-1">
+      <div className="flex justify-between max-w-[14rem] mx-auto">
+        <span className="text-gray-500">Subtotal</span>
+        <span>{fmt(pricing.subtotal)}</span>
+      </div>
+      {pricing.customColorFee > 0 && (
+        <div className="flex justify-between max-w-[14rem] mx-auto">
+          <span className="text-gray-500">Custom Color Fee</span>
+          <span>{fmt(pricing.customColorFee)}</span>
+        </div>
+      )}
+      {pricing.discount > 0 && (
+        <div className="flex justify-between max-w-[14rem] mx-auto">
+          <span className="text-gray-500">Discount</span>
+          <span className="text-green-600">-{fmt(pricing.discount)}</span>
+        </div>
+      )}
+      {pricing.shipping > 0 && (
+        <div className="flex justify-between max-w-[14rem] mx-auto">
+          <span className="text-gray-500">Shipping</span>
+          <span>{fmt(pricing.shipping)}</span>
+        </div>
+      )}
+      {pricing.tax > 0 && (
+        <div className="flex justify-between max-w-[14rem] mx-auto">
+          <span className="text-gray-500">Tax</span>
+          <span>{fmt(pricing.tax)}</span>
+        </div>
+      )}
+      <div className="flex justify-between max-w-[14rem] mx-auto font-bold pt-1 border-t border-gray-200">
+        <span>Total</span>
+        <span>{fmt(pricing.total)}</span>
+      </div>
     </div>
   );
 }
@@ -80,19 +117,18 @@ function getColors(data: LabelData): { text: string; colors: ColorEntry[] }[] {
   return [{ text: data.text || '-', colors: data.colors }];
 }
 
-function SlipSection({ data, showDivider }: { data: LabelData; showDivider: boolean }) {
+function SlipSection({ data, showDivider, showPricing }: { data: LabelData; showDivider: boolean; showPricing: boolean }) {
   const sections = getColors(data);
   return (
     <div style={{ breakInside: 'avoid' }}>
       {showDivider && <hr className="border-gray-300 border-dashed my-8" />}
 
+      <p className="text-lg font-bold text-black text-center mb-4">
+        {data.customerName || '-'}
+      </p>
+
       {sections.map((section, idx) => (
         <div key={idx} className={idx > 0 ? 'mt-6' : ''}>
-          {idx === 0 && (
-            <p className="text-sm text-gray-500 text-center mb-4">
-              {data.customerName || '-'}
-            </p>
-          )}
           {section.colors.length > 0 ? (
             <BlockRow colors={section.colors} />
           ) : (
@@ -102,6 +138,10 @@ function SlipSection({ data, showDivider }: { data: LabelData; showDivider: bool
           )}
         </div>
       ))}
+
+      {showPricing && data.pricing && (
+        <PricingBreakdown pricing={data.pricing} />
+      )}
     </div>
   );
 }
@@ -223,11 +263,38 @@ function PackingLabelContent() {
       </div>
 
       <div className="max-w-[7in] mx-auto my-8 print:my-0 bg-white print:shadow-none border border-gray-200 print:border-none rounded-lg print:rounded-none p-10 font-sans text-black">
-        <h1 className="brand-title text-4xl text-center mb-8">GlowBlocks Studio</h1>
+        <h1 className="brand-title text-4xl text-center mb-1">GlowBlocks Studio</h1>
+        <p className="text-sm text-gray-400 text-center tracking-widest uppercase mb-8">Packing Slip</p>
 
         {dataList.map((data, idx) => (
-          <SlipSection key={idx} data={data} showDivider={idx > 0} />
+          <SlipSection
+            key={idx}
+            data={data}
+            showDivider={idx > 0}
+            showPricing
+          />
         ))}
+
+        {dataList.length > 1 && (() => {
+          const combined: PricingData = { subtotal: 0, customColorFee: 0, discount: 0, shipping: 0, tax: 0, total: 0 };
+          for (const d of dataList) {
+            if (d.pricing) {
+              combined.subtotal += d.pricing.subtotal;
+              combined.customColorFee += d.pricing.customColorFee;
+              combined.discount += d.pricing.discount;
+              combined.shipping += d.pricing.shipping;
+              combined.tax += d.pricing.tax;
+              combined.total += d.pricing.total;
+            }
+          }
+          return (
+            <>
+              <hr className="border-gray-300 border-dashed my-8" />
+              <p className="text-lg font-bold text-black text-center mb-2">Combined Total</p>
+              <PricingBreakdown pricing={combined} />
+            </>
+          );
+        })()}
       </div>
     </>
   );
