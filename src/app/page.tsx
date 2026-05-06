@@ -108,7 +108,7 @@ export default function Home() {
           <div className="text-center sm:text-left space-y-3">
             <h2 className="text-2xl font-bold gradient-text">Meet the Creator</h2>
             <p className="text-gray-300 leading-relaxed">
-              Hey, I&apos;m Malachi — founder of GlowBlocks Studio! No app, no WiFi, no setup. Just magic you can hold in your hands!
+              Hey, I&apos;m Malachi — the founder, designer, and builder behind GlowBlocks Studio. I hand-assemble every single Glowblock right here in Englewood, New Jersey. No app, no WiFi, no setup. Just magic you can hold in your hands.
             </p>
             <Link href="/about" className="inline-block text-purple-400 hover:text-purple-300 font-medium transition-colors">
               Read more about GlowBlocks &rarr;

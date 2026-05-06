@@ -28,13 +28,22 @@ export default function AboutPage() {
           <div className="space-y-4 text-center sm:text-left">
             <h2 className="text-2xl font-bold text-white">Meet the Creator</h2>
             <p className="text-gray-300 leading-relaxed">
-              Hey, I&apos;m Malachi — founder of GlowBlocks Studio!
+              Hey, I&apos;m Malachi — the founder, designer, and builder behind GlowBlocks Studio.
             </p>
             <p className="text-gray-300 leading-relaxed">
-              GlowBlocks came from a place of wanting to create something that had never existed before. Not another LED sign, not another custom name plaque — something that actually does something. Something that feels alive. Place two tiles together and they glow. Pull them apart and they go dark. No app, no WiFi, no setup. Just magic you can hold in your hands.
+              GlowBlocks started with a simple question I could not get out of my head: What is something unique, fun and interesting that I can create that different groups and individuals would enjoy! I spent two years prototyping, redesigning, failing, and rebuilding until that question became a real product — one that I am genuinely proud of. Not another LED sign, not another custom name plaque — something that actually does something. Something that feels alive. Place two tiles together and they glow. Pull them apart and they go dark. No app, no WiFi, no setup. Just magic you can hold in your hands.
             </p>
             <p className="text-gray-300 leading-relaxed">
-              What started as one idea in a notebook has turned into a full product line in the making. GlowBlocks Letters is just the beginning. GlowBlocks Words is coming — an interactive learning toy designed to help toddlers and young children spell and read through play. GlowBlocks Numbers will bring the same magic to math. And GlowBlocks Braille is something I am deeply passionate about — bringing this experience to people with visual impairments so that everyone gets to feel what it is like when something lights up just because you brought it close. Every version of GlowBlocks shares the same DNA — things that know when they are together. That idea is bigger than a product. It is a platform. And we are just getting started.
+              I design every circuit board, write every line of firmware, model every enclosure, and hand-assemble every single Glowblock right here in Englewood, New Jersey. When you order from GlowBlocks Studio you are not buying something off a shelf. You are getting something a real person built specifically for you.
+            </p>
+            <p className="text-gray-300 leading-relaxed">
+              What started as one idea typed out in Notion has turned into a full product line in the making. GlowBlocks are just the beginning. Glowblocks: Words are coming — an interactive learning toy designed to help toddlers and young children spell and read through play. Glowblocks: Numbers will bring the same magic to math, bringing fun around simple arithmetic.
+            </p>
+            <p className="text-gray-300 leading-relaxed">
+              Every version of GlowBlocks shares the same DNA — Connected we Glow! My goal goes beyond retail. I want to prove that an independent studio can build something genuinely magical — something that belongs on a nightstand next to the things that matter most to you, in classrooms where kids are learning to read, and in the hands of anyone who deserves to feel that moment when their Glowblocks come alive.
+            </p>
+            <p className="text-gray-300 leading-relaxed">
+              That idea is bigger than a product. It is a platform. And we are just getting started.
             </p>
             <p className="text-gray-300 leading-relaxed italic">
               Built by hand. Designed to feel like magic.
