@@ -71,17 +71,105 @@ function ColorGrid({ colors }: { colors: ColorEntry[] }) {
   );
 }
 
-function OrderSection({ data, showDivider }: { data: LabelData; showDivider: boolean }) {
+function CustomerInfo({ data }: { data: LabelData }) {
+  const deliveryLabel = data.source === 'popup'
+    ? ((data.orderType || '').toLowerCase().includes('pickup') ? 'Pick Up' : 'Ship to Customer')
+    : (data.shippingMethod || 'Ship');
+
+  return (
+    <table className="w-full text-sm mb-6">
+      <tbody>
+        <tr>
+          <td className="py-1.5 pr-4 font-semibold text-gray-500 w-28 align-top">Customer</td>
+          <td className="py-1.5">{data.customerName || '-'}</td>
+        </tr>
+        <tr>
+          <td className="py-1.5 pr-4 font-semibold text-gray-500 align-top">Delivery</td>
+          <td className="py-1.5">{deliveryLabel}</td>
+        </tr>
+        {data.address && (
+          <tr>
+            <td className="py-1.5 pr-4 font-semibold text-gray-500 align-top">Address</td>
+            <td className="py-1.5">{data.address}</td>
+          </tr>
+        )}
+        {data.phone && (
+          <tr>
+            <td className="py-1.5 pr-4 font-semibold text-gray-500 align-top">Phone</td>
+            <td className="py-1.5">{data.phone}</td>
+          </tr>
+        )}
+        {data.email && (
+          <tr>
+            <td className="py-1.5 pr-4 font-semibold text-gray-500 align-top">Email</td>
+            <td className="py-1.5">{data.email}</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  );
+}
+
+function OrderColors({ data, showHeader }: { data: LabelData; showHeader: boolean }) {
+  return (
+    <div>
+      {/* Popup sets */}
+      {data.source === 'popup' && data.sets && data.sets.length > 0 && (
+        <>
+          {data.sets.map((set, setIdx) => (
+            <div key={setIdx}>
+              {(showHeader || setIdx > 0) && <hr className="border-gray-200 mb-4" />}
+              <div className="flex items-baseline gap-3 mb-2">
+                <p className="text-2xl font-black tracking-[0.15em]">{set.text}</p>
+                {set.colorMode && (
+                  <span className="text-xs text-gray-400">{set.colorMode}</span>
+                )}
+                {data.orderNumber && (
+                  <span className="text-xs text-gray-400">#{data.orderNumber}</span>
+                )}
+              </div>
+              {set.colors.length > 0 && (
+                <div className="mb-4">
+                  <ColorGrid colors={set.colors} />
+                </div>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* Online order */}
+      {data.source === 'online' && (
+        <>
+          {showHeader && <hr className="border-gray-200 mb-4" />}
+          <div className="flex items-baseline gap-3 mb-2">
+            <p className="text-2xl font-black tracking-[0.15em]">{data.text || '-'}</p>
+          </div>
+          {data.colors.length > 0 && (
+            <div className="mb-4">
+              <ColorGrid colors={data.colors} />
+            </div>
+          )}
+          {data.items && (
+            <div className="text-sm space-y-1 mb-4">
+              {data.items.split(' | ').map((item, idx) => (
+                <p key={idx} className="text-gray-500">{item}</p>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function OrderSection({ data }: { data: LabelData }) {
   const deliveryLabel = data.source === 'popup'
     ? ((data.orderType || '').toLowerCase().includes('pickup') ? 'Pick Up' : 'Ship to Customer')
     : (data.shippingMethod || 'Ship');
 
   return (
     <div>
-      {showDivider && (
-        <div className="my-8 border-t-2 border-dashed border-gray-300" />
-      )}
-
       {/* Order Text */}
       <div className="text-center mb-8">
         <p className="text-4xl font-black tracking-[0.25em] leading-relaxed">
@@ -295,9 +383,33 @@ function PackingLabelContent() {
       <div className="max-w-[7in] mx-auto my-8 print:my-0 bg-white print:shadow-none border border-gray-200 print:border-none rounded-lg print:rounded-none p-10 font-sans text-black">
         <h1 className="brand-title text-4xl text-center mb-8">GlowBlocks Studio</h1>
 
-        {dataList.map((data, idx) => (
-          <OrderSection key={idx} data={data} showDivider={idx > 0} />
-        ))}
+        {dataList.length === 1 ? (
+          /* Single order — full layout */
+          <OrderSection data={dataList[0]} />
+        ) : (
+          /* Multi-order — customer info once, then compact color sections */
+          <>
+            {/* Combined title */}
+            <div className="text-center mb-6">
+              <p className="text-3xl font-black tracking-[0.15em] leading-relaxed">
+                {dataList.map(d => d.text).join(' / ')}
+              </p>
+              <p className="mt-1 text-sm text-gray-400">
+                {dataList.length} orders combined
+              </p>
+            </div>
+
+            <hr className="border-gray-200 mb-6" />
+
+            {/* Customer info from first order */}
+            <CustomerInfo data={dataList[0]} />
+
+            {/* Each order's words + colors */}
+            {dataList.map((data, idx) => (
+              <OrderColors key={idx} data={data} showHeader={idx > 0} />
+            ))}
+          </>
+        )}
       </div>
     </>
   );
