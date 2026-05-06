@@ -49,20 +49,22 @@ function hexToRgb(hex: string): string | null {
   return `${r}, ${g}, ${b}`;
 }
 
-function ColorGrid({ colors }: { colors: ColorEntry[] }) {
+function BlockRow({ colors }: { colors: ColorEntry[] }) {
   return (
-    <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+    <div className="flex justify-center gap-2 flex-wrap">
       {colors.map((c, idx) => {
         const rgb = hexToRgb(c.colorHex);
+        const colorLabel = c.colorName || (rgb ? `(${rgb})` : c.colorHex);
         return (
-          <div key={idx} className="flex items-center gap-2.5">
-            <span
-              className="w-5 h-5 rounded border border-gray-200 shrink-0"
+          <div key={idx} className="flex flex-col items-center gap-1">
+            <div
+              className="w-12 h-12 rounded-lg border border-gray-200 flex items-center justify-center text-white text-xl font-black shadow-sm"
               style={{ backgroundColor: c.colorHex }}
-            />
-            <span className="font-semibold">{c.letter}</span>
-            <span className="text-gray-500">
-              {c.colorName || (rgb ? `(${rgb})` : c.colorHex)}
+            >
+              {c.letter}
+            </div>
+            <span className="text-[10px] text-gray-400 max-w-[3.5rem] text-center leading-tight truncate">
+              {colorLabel}
             </span>
           </div>
         );
@@ -86,17 +88,17 @@ function SlipSection({ data, showDivider }: { data: LabelData; showDivider: bool
 
       {sections.map((section, idx) => (
         <div key={idx} className={idx > 0 ? 'mt-6' : ''}>
-          <p className="text-3xl font-black tracking-[0.2em] text-center mb-1">
-            {section.text}
-          </p>
           {idx === 0 && (
             <p className="text-sm text-gray-500 text-center mb-4">
               {data.customerName || '-'}
             </p>
           )}
-          {idx > 0 && <div className="mb-4" />}
-          {section.colors.length > 0 && (
-            <ColorGrid colors={section.colors} />
+          {section.colors.length > 0 ? (
+            <BlockRow colors={section.colors} />
+          ) : (
+            <p className="text-3xl font-black tracking-[0.2em] text-center">
+              {section.text}
+            </p>
           )}
         </div>
       ))}
