@@ -55,13 +55,13 @@ function BlockRow({ colors }: { colors: ColorEntry[] }) {
   return (
     <div className="flex justify-center gap-2 flex-wrap">
       {colors.map((c, idx) => (
-        <div
+        <span
           key={idx}
-          className="w-12 h-12 rounded-lg flex items-center justify-center text-xl font-black"
-          style={{ backgroundColor: '#1a1a1a', color: c.colorHex }}
+          className="text-3xl font-black"
+          style={{ color: c.colorHex }}
         >
           {c.letter}
-        </div>
+        </span>
       ))}
     </div>
   );
