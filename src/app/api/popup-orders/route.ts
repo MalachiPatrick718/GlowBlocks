@@ -162,18 +162,22 @@ async function checkStockEligibility(orderText: string): Promise<boolean> {
   return true;
 }
 
+interface SetData {
+  text: string;
+  letterColors: string[];
+  colorNumbers: (number | null)[];
+  colorMode: string;
+  presetName: string | null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     if (!apiKey || !baseId) {
       return NextResponse.json({ error: 'Airtable is not configured' }, { status: 500 });
     }
 
+    const body = await req.json();
     const {
-      text,
-      letterColors,
-      colorNumbers,
-      colorMode,
-      presetName,
       customerName,
       phoneNumber,
       email,
@@ -182,9 +186,20 @@ export async function POST(req: NextRequest) {
       paymentMethod,
       discountCode,
       smsOptInAt,
-    } = await req.json();
+    } = body;
 
-    if (!text || !customerName) {
+    // Support multi-set or single-set (backward compat)
+    const sets: SetData[] = Array.isArray(body.sets) && body.sets.length > 0
+      ? body.sets
+      : [{
+          text: body.text,
+          letterColors: body.letterColors,
+          colorNumbers: body.colorNumbers,
+          colorMode: body.colorMode,
+          presetName: body.presetName,
+        }];
+
+    if (!sets[0].text || !customerName) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -195,119 +210,130 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Shipping address is required for shipping orders' }, { status: 400 });
     }
 
-    // Calculate pricing with tiered rates
-    // paymentMethod: 'mobile' | 'kiosk-card' | 'cash' (legacy 'card' treated as 'mobile')
     const normalizedPayment = paymentMethod === 'card' ? 'mobile' : (paymentMethod || 'mobile');
     const isCash = normalizedPayment === 'cash';
-    const letterCount = text.length;
-    const pricePerLetter = getPricePerLetter(letterCount);
-    const letterSubtotal = letterCount * pricePerLetter;
-    const customColorFee = colorMode === 'custom' ? 2.00 : 0;
-    const subtotalBeforeDiscount = letterSubtotal + customColorFee;
-    const discount = subtotalBeforeDiscount * 0.10;
-    const discountedSubtotal = subtotalBeforeDiscount - discount;
     const normalizedDiscountCode = String(discountCode || '').trim().toUpperCase();
     const freeShippingCode = ['POP', 'MARTEL'].includes(normalizedDiscountCode);
+
+    // Combined pricing across all sets
+    const totalLetterCount = sets.reduce((sum, s) => sum + s.text.length, 0);
+    const pricePerLetter = getPricePerLetter(totalLetterCount);
+    const letterSubtotal = totalLetterCount * pricePerLetter;
+    const totalCustomColorFee = sets.reduce((sum, s) => sum + (s.colorMode === 'custom' ? 2.00 : 0), 0);
+    const subtotalBeforeDiscount = letterSubtotal + totalCustomColorFee;
+    const discount = subtotalBeforeDiscount * 0.10;
+    const discountedSubtotal = subtotalBeforeDiscount - discount;
     const shippingFee = normalizedDeliveryMethod === 'pick-up' || freeShippingCode ? 0 : (isCash ? 6.00 : 5.99);
-    const subtotal = discountedSubtotal;
     const tax = isCash ? 0 : discountedSubtotal * taxRate;
     const total = discountedSubtotal + tax + shippingFee;
 
-    // Map payment method label for Airtable
     const paymentMethodLabel = normalizedPayment === 'mobile' ? 'Mobile'
       : normalizedPayment === 'kiosk-card' ? 'Kiosk Card'
       : 'Cash';
 
-    const colorsByLetter = text.split('').map((char: string, idx: number) => {
-      const colorNumber = Array.isArray(colorNumbers) ? colorNumbers[idx] : null;
-      const matched = typeof colorNumber === 'number' ? POPUP_COLOR_MAP.get(colorNumber) : null;
-      return {
-        letter: char,
-        colorHex: letterColors?.[idx] || '#FFFFFF',
-        colorNumber: colorNumber || null,
-        colorName: matched?.name || null,
-      };
-    });
+    // Build Airtable records — one per set, shared order number
+    const recordIds: string[] = [];
+    for (let si = 0; si < sets.length; si++) {
+      const s = sets[si];
+      const setLetterCount = s.text.length;
+      const setCustomColorFee = s.colorMode === 'custom' ? 2.00 : 0;
+      const setLetterSubtotal = setLetterCount * pricePerLetter;
+      const setSubtotalBeforeDiscount = setLetterSubtotal + setCustomColorFee;
+      const setDiscount = setSubtotalBeforeDiscount * 0.10;
+      const setSubtotal = setSubtotalBeforeDiscount - setDiscount;
+      // Only charge shipping/tax on the first set to avoid double-counting
+      const setShippingFee = si === 0 ? shippingFee : 0;
+      const setTax = si === 0 ? tax : (isCash ? 0 : setSubtotal * taxRate);
+      const setTotal = si === 0 ? total : (setSubtotal + (isCash ? 0 : setSubtotal * taxRate));
 
-    const onSiteEligible = await checkStockEligibility(text);
-
-    const fields: Record<string, string | boolean | number> = {
-      Name: String(customerName).slice(0, 100),
-      'Phone Number': String(phoneNumber).slice(0, 40),
-      Email: String(email || '').slice(0, 100),
-      'SMS Opt-In': smsOptInAt ? String(smsOptInAt) : '',
-      Address: String(address || '').slice(0, 250),
-      'Name/Word': text,
-      'Order Number': orderNumber,
-      'Color Set': colorMode === 'custom' ? 'Custom Numbers' : (presetName || 'Preset Theme'),
-      'Order Type': mappedOrderType,
-      'Custom Colors': JSON.stringify({
-        letterColors: letterColors || [],
-        colorNumbers: colorNumbers || [],
-        colorsByLetter,
-        deliveryMethod: normalizedDeliveryMethod,
-        onSiteEligible,
-      }),
-      'Inventory Deducted': false,
-      'Letter Count': letterCount,
-      'Custom Color Fee': customColorFee,
-      'Shipping Fee': shippingFee,
-      'Subtotal': subtotal,
-      'Tax': tax,
-      'Total': total,
-      'Discount': discount,
-      ...(normalizedDiscountCode ? { 'Discount Code': normalizedDiscountCode } : {}),
-      'Payment Method': paymentMethodLabel,
-      'Payment': 'Awaiting Payment',
-    };
-
-    if (popupOrderStatusValue) {
-      fields['Order Status'] = popupOrderStatusValue;
-    }
-    fields['Pickup Status'] = normalizedDeliveryMethod === 'pick-up' ? 'Not Ready' : 'Not Applicable';
-
-    const airtableRes = await fetch(getAirtableUrl(), {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({
-        records: [
-          {
-            fields,
-          },
-        ],
-      }),
-    });
-
-    if (!airtableRes.ok) {
-      const err = await airtableRes.json();
-      console.error('Popup order Airtable error:', JSON.stringify(err));
-      const detail = err?.error?.message || 'Failed to save popup order';
-      return NextResponse.json({ error: detail }, { status: 500 });
-    }
-
-    const airtableData = await airtableRes.json();
-    const recordId = airtableData.records?.[0]?.id || '';
-
-    // Deduct inventory immediately at order creation
-    const deducted = await deductInventoryForOrder(text);
-    if (deducted && recordId) {
-      await fetch(getAirtableUrl(), {
-        method: 'PATCH',
-        headers: getHeaders(),
-        body: JSON.stringify({
-          records: [{ id: recordId, fields: { 'Inventory Deducted': true } }],
-        }),
+      const colorsByLetter = s.text.split('').map((char: string, idx: number) => {
+        const colorNumber = Array.isArray(s.colorNumbers) ? s.colorNumbers[idx] : null;
+        const matched = typeof colorNumber === 'number' ? POPUP_COLOR_MAP.get(colorNumber) : null;
+        return {
+          letter: char,
+          colorHex: s.letterColors?.[idx] || '#FFFFFF',
+          colorNumber: colorNumber || null,
+          colorName: matched?.name || null,
+        };
       });
-    } else if (!deducted) {
-      console.error('Failed to deduct inventory for popup order:', orderNumber);
+
+      const onSiteEligible = await checkStockEligibility(s.text);
+
+      const fields: Record<string, string | boolean | number> = {
+        Name: String(customerName).slice(0, 100),
+        'Phone Number': String(phoneNumber || '').slice(0, 40),
+        Email: String(email || '').slice(0, 100),
+        'SMS Opt-In': smsOptInAt ? String(smsOptInAt) : '',
+        Address: String(address || '').slice(0, 250),
+        'Name/Word': s.text,
+        'Order Number': orderNumber,
+        'Color Set': s.colorMode === 'custom' ? 'Custom Numbers' : (s.presetName || 'Preset Theme'),
+        'Order Type': mappedOrderType,
+        'Custom Colors': JSON.stringify({
+          letterColors: s.letterColors || [],
+          colorNumbers: s.colorNumbers || [],
+          colorsByLetter,
+          deliveryMethod: normalizedDeliveryMethod,
+          onSiteEligible,
+        }),
+        'Inventory Deducted': false,
+        'Letter Count': setLetterCount,
+        'Custom Color Fee': setCustomColorFee,
+        'Shipping Fee': setShippingFee,
+        'Subtotal': setSubtotal,
+        'Tax': setTax,
+        'Total': setTotal,
+        'Discount': setDiscount,
+        ...(normalizedDiscountCode ? { 'Discount Code': normalizedDiscountCode } : {}),
+        'Payment Method': paymentMethodLabel,
+        'Payment': 'Awaiting Payment',
+      };
+
+      if (popupOrderStatusValue) {
+        fields['Order Status'] = popupOrderStatusValue;
+      }
+      fields['Pickup Status'] = normalizedDeliveryMethod === 'pick-up' ? 'Not Ready' : 'Not Applicable';
+
+      const airtableRes = await fetch(getAirtableUrl(), {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ records: [{ fields }] }),
+      });
+
+      if (!airtableRes.ok) {
+        const err = await airtableRes.json();
+        console.error('Popup order Airtable error:', JSON.stringify(err));
+        const detail = err?.error?.message || 'Failed to save popup order';
+        return NextResponse.json({ error: detail }, { status: 500 });
+      }
+
+      const airtableData = await airtableRes.json();
+      const recordId = airtableData.records?.[0]?.id || '';
+      recordIds.push(recordId);
+
+      // Deduct inventory per set
+      const deducted = await deductInventoryForOrder(s.text);
+      if (deducted && recordId) {
+        await fetch(getAirtableUrl(), {
+          method: 'PATCH',
+          headers: getHeaders(),
+          body: JSON.stringify({
+            records: [{ id: recordId, fields: { 'Inventory Deducted': true } }],
+          }),
+        });
+      } else if (!deducted) {
+        console.error('Failed to deduct inventory for popup order:', orderNumber, s.text);
+      }
     }
 
     // Send confirmation SMS
     if (phoneNumber && String(phoneNumber).replace(/\D/g, '').length >= 10) {
       const firstName = String(customerName).trim().split(' ')[0];
+      const setCount = sets.length;
+      const setsLabel = setCount > 1 ? `${setCount} sets` : 'your set';
       const msg = normalizedDeliveryMethod === 'pick-up'
-        ? `Hey ${firstName}, thanks for your GlowBlocks order! Your order number is ${orderNumber}. We'll text you when your set is ready for pickup!`
-        : `Hey ${firstName}, thanks for your GlowBlocks order! Your order has been received. Be on the lookout for your GlowBlocks set in 5-7 business days!`;
+        ? `Hey ${firstName}, thanks for your GlowBlocks order! Your order number is ${orderNumber} (${setsLabel}). We'll text you when your order is ready for pickup!`
+        : `Hey ${firstName}, thanks for your GlowBlocks order (${setsLabel})! Your order has been received. Be on the lookout for your GlowBlocks in 5-7 business days!`;
       sendSMS(String(phoneNumber), msg).catch((err) =>
         console.error('Failed to send order confirmation SMS:', err)
       );
@@ -316,15 +342,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       orderNumber,
-      recordId,
+      recordId: recordIds[0] || '',
+      recordIds,
+      setCount: sets.length,
       pricing: {
-        letterCount,
+        letterCount: totalLetterCount,
         pricePerLetter,
         letterSubtotal,
-        customColorFee,
+        customColorFee: totalCustomColorFee,
         discount,
         shippingFee,
-        subtotal,
+        subtotal: discountedSubtotal,
         tax,
         taxRate,
         total,

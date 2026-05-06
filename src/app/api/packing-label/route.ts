@@ -56,32 +56,58 @@ export async function GET(req: NextRequest) {
     const fields = record.fields || {};
 
     if (source === 'popup') {
-      // Parse color data
-      let colors: ColorEntry[] = [];
-      try {
-        const parsed = JSON.parse(fields['Custom Colors'] || '{}');
-        const list = Array.isArray(parsed)
-          ? parsed
-          : Array.isArray(parsed?.colorsByLetter)
-            ? parsed.colorsByLetter
-            : [];
-        if (list.length > 0) {
-          colors = list
-            .filter((item: { letter?: string }) => item?.letter && item.letter !== ' ')
-            .map((item: { letter?: string; colorHex?: string; colorName?: string | null }) => ({
-              letter: item.letter || '',
-              colorHex: item.colorHex || '#FFFFFF',
-              colorName: item.colorName || null,
-            }));
-        } else if (parsed?.letterColors && Array.isArray(parsed.letterColors)) {
-          const text = fields['Name/Word'] || '';
-          colors = text.split('').map((ch: string, idx: number) => ({
-            letter: ch,
-            colorHex: parsed.letterColors[idx] || '#FFFFFF',
-            colorName: null,
-          })).filter((c: ColorEntry) => c.letter !== ' ');
-        }
-      } catch {}
+      const orderNumber = fields['Order Number'] || '';
+
+      // Fetch ALL records with the same order number
+      let allRecords = [record];
+      if (orderNumber) {
+        const formula = encodeURIComponent(`{Order Number}="${orderNumber}"`);
+        const listUrl = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(popupTableName)}?filterByFormula=${formula}`;
+        try {
+          const listRes = await fetch(listUrl, { headers: getHeaders(), next: { revalidate: 0 } });
+          if (listRes.ok) {
+            const listData = await listRes.json();
+            if (listData.records && listData.records.length > 0) {
+              allRecords = listData.records;
+            }
+          }
+        } catch {}
+      }
+
+      // Build sets array from all records
+      const sets = allRecords.map((rec: { fields?: Record<string, string>; createdTime?: string }) => {
+        const f = rec.fields || {};
+        let colors: ColorEntry[] = [];
+        try {
+          const parsed = JSON.parse(f['Custom Colors'] || '{}');
+          const list = Array.isArray(parsed)
+            ? parsed
+            : Array.isArray(parsed?.colorsByLetter)
+              ? parsed.colorsByLetter
+              : [];
+          if (list.length > 0) {
+            colors = list
+              .filter((item: { letter?: string }) => item?.letter && item.letter !== ' ')
+              .map((item: { letter?: string; colorHex?: string; colorName?: string | null }) => ({
+                letter: item.letter || '',
+                colorHex: item.colorHex || '#FFFFFF',
+                colorName: item.colorName || null,
+              }));
+          } else if (parsed?.letterColors && Array.isArray(parsed.letterColors)) {
+            const text = f['Name/Word'] || '';
+            colors = text.split('').map((ch: string, idx: number) => ({
+              letter: ch,
+              colorHex: parsed.letterColors[idx] || '#FFFFFF',
+              colorName: null,
+            })).filter((c: ColorEntry) => c.letter !== ' ');
+          }
+        } catch {}
+        return {
+          text: f['Name/Word'] || '',
+          colorMode: f['Color Set'] || '',
+          colors,
+        };
+      });
 
       return NextResponse.json({
         source: 'popup',
@@ -89,11 +115,10 @@ export async function GET(req: NextRequest) {
         phone: fields['Phone Number'] || '',
         email: fields['Email'] || '',
         address: fields['Address'] || '',
-        text: fields['Name/Word'] || '',
-        orderNumber: fields['Order Number'] || '',
+        text: sets.map((s: { text: string }) => s.text).join(' / '),
+        orderNumber,
         orderType: fields['Order Type'] || '',
-        colorMode: fields['Color Set'] || '',
-        colors,
+        sets,
         date: record.createdTime?.split('T')[0] || '',
       });
     } else {

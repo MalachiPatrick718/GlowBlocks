@@ -1,5 +1,6 @@
-const telnyxApiKey = process.env.TELNYX_API_KEY || '';
-const telnyxFromNumber = process.env.TELNYX_FROM_NUMBER || '';
+const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || '';
+const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN || '';
+const twilioFromNumber = process.env.TWILIO_FROM_NUMBER || '';
 
 export function normalizePhone(value: string): string {
   const trimmed = value.trim();
@@ -10,27 +11,31 @@ export function normalizePhone(value: string): string {
 }
 
 export async function sendSMS(to: string, message: string): Promise<boolean> {
-  if (!telnyxApiKey || !telnyxFromNumber) {
-    console.warn('Telnyx is not configured, skipping SMS');
+  if (!twilioAccountSid || !twilioAuthToken || !twilioFromNumber) {
+    console.warn('Twilio is not configured, skipping SMS');
     return false;
   }
 
-  const res = await fetch('https://api.telnyx.com/v2/messages', {
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
+  const auth = Buffer.from(`${twilioAccountSid}:${twilioAuthToken}`).toString('base64');
+
+  const params = new URLSearchParams();
+  params.append('To', normalizePhone(to));
+  params.append('From', twilioFromNumber);
+  params.append('Body', message);
+
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${telnyxApiKey}`,
-      'Content-Type': 'application/json',
+      Authorization: `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
     },
-    body: JSON.stringify({
-      from: telnyxFromNumber,
-      to: normalizePhone(to),
-      text: message,
-    }),
+    body: params.toString(),
   });
 
   if (!res.ok) {
     const err = await res.text();
-    console.error('Telnyx send error:', err);
+    console.error('Twilio send error:', err);
     return false;
   }
 

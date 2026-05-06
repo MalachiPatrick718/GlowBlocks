@@ -8,7 +8,16 @@ import ColorPresets from '@/components/ColorPresets';
 import PopupColorNumberModal from '@/components/PopupColorNumberModal';
 import { POPUP_COLOR_MAP } from '@/data/popupColorCatalog';
 
+interface SavedSet {
+  text: string;
+  letterColors: string[];
+  colorNumbers: (number | null)[];
+  colorMode: 'presets' | 'custom';
+  presetName: string | null;
+}
+
 export default function PopupPage() {
+  const [sets, setSets] = useState<SavedSet[]>([]);
   const [text, setText] = useState('');
   const [letterColors, setLetterColors] = useState<string[]>([]);
   const [colorNumbers, setColorNumbers] = useState<(number | null)[]>([]);
@@ -18,6 +27,7 @@ export default function PopupPage() {
   const [selectedPresetName, setSelectedPresetName] = useState<string | null>(null);
   const [highlightSection, setHighlightSection] = useState<'text' | 'colors' | 'contact' | null>(null);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  const [confirmedSets, setConfirmedSets] = useState<SavedSet[]>([]);
 
   const textRef = useRef<HTMLDivElement>(null);
   const colorsRef = useRef<HTMLDivElement>(null);
@@ -59,18 +69,48 @@ export default function PopupPage() {
 
   const freeShippingCode = ['POP', 'MARTEL'].includes(discountCode.trim().toUpperCase());
 
-  // Calculate live pricing preview
+  // Whether current text+colors form a complete set ready to add
+  const currentSetComplete = nonSpaceLetters.length > 0 && (
+    colorMode === 'presets' ? selectedPresetName !== null
+      : text.split('').every((ch, i) => ch === ' ' || colorNumbers[i] != null)
+  );
+
+  const addSetToList = () => {
+    if (!currentSetComplete) return;
+    setSets(prev => [...prev, { text, letterColors, colorNumbers, colorMode, presetName: selectedPresetName }]);
+    setText('');
+    setLetterColors([]);
+    setColorNumbers([]);
+    setSelectedPresetName(null);
+    setModalIndex(null);
+    setColorMode('presets');
+  };
+
+  const removeSetFromList = (idx: number) => {
+    setSets(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  // All sets for pricing = saved sets + current in-progress set (if complete)
+  const allSetsForPricing = useMemo(() => {
+    const result = [...sets];
+    if (currentSetComplete) {
+      result.push({ text, letterColors, colorNumbers, colorMode, presetName: selectedPresetName });
+    }
+    return result;
+  }, [sets, text, letterColors, colorNumbers, colorMode, selectedPresetName, currentSetComplete]);
+
+  // Calculate live pricing preview across all sets
   const livePrice = useMemo(() => {
-    const count = nonSpaceLetters.length;
-    if (count === 0) return null;
+    const totalCount = allSetsForPricing.reduce((sum, s) => sum + s.text.replace(/\s/g, '').length, 0);
+    if (totalCount === 0) return null;
 
     let pricePerLetter = 12;
-    if (count >= 10) pricePerLetter = 9;
-    else if (count >= 7) pricePerLetter = 10;
-    else if (count >= 4) pricePerLetter = 11;
+    if (totalCount >= 10) pricePerLetter = 9;
+    else if (totalCount >= 7) pricePerLetter = 10;
+    else if (totalCount >= 4) pricePerLetter = 11;
 
-    const letterSubtotal = count * pricePerLetter;
-    const customColorFee = colorMode === 'custom' ? 2.00 : 0;
+    const letterSubtotal = totalCount * pricePerLetter;
+    const customColorFee = allSetsForPricing.reduce((sum, s) => sum + (s.colorMode === 'custom' ? 2.00 : 0), 0);
     const subtotalBeforeDiscount = letterSubtotal + customColorFee;
     const discount = subtotalBeforeDiscount * 0.10;
     const discountedSubtotal = subtotalBeforeDiscount - discount;
@@ -79,8 +119,8 @@ export default function PopupPage() {
     const tax = isCash ? 0 : discountedSubtotal * 0.08875;
     const total = discountedSubtotal + tax + shippingFee;
 
-    return { count, pricePerLetter, letterSubtotal, customColorFee, discount, shippingFee, subtotal: discountedSubtotal, tax, total };
-  }, [nonSpaceLetters, colorMode, paymentMethod, deliveryMethod, freeShippingCode]);
+    return { count: totalCount, setCount: allSetsForPricing.length, pricePerLetter, letterSubtotal, customColorFee, discount, shippingFee, subtotal: discountedSubtotal, tax, total };
+  }, [allSetsForPricing, paymentMethod, deliveryMethod, freeShippingCode]);
 
   const handleTextChange = useCallback((newText: string) => {
     setText(newText);

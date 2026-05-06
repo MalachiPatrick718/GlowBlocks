@@ -9,6 +9,12 @@ interface ColorEntry {
   colorName?: string | null;
 }
 
+interface SetEntry {
+  text: string;
+  colorMode?: string;
+  colors: ColorEntry[];
+}
+
 interface LabelData {
   source: string;
   customerName: string;
@@ -23,6 +29,7 @@ interface LabelData {
   shippingMethod?: string;
   total?: string;
   colors: ColorEntry[];
+  sets?: SetEntry[];
   date?: string;
 }
 
@@ -146,6 +153,9 @@ function PackingLabelContent() {
           {data.source === 'popup' && data.orderNumber && (
             <p className="mt-2 text-lg text-gray-500">Order #{data.orderNumber}</p>
           )}
+          {data.source === 'popup' && data.sets && data.sets.length > 1 && (
+            <p className="mt-1 text-sm text-gray-400">{data.sets.length} sets</p>
+          )}
         </div>
 
         {/* Divider */}
@@ -183,8 +193,44 @@ function PackingLabelContent() {
           </tbody>
         </table>
 
-        {/* Colors */}
-        {data.colors.length > 0 && (
+        {/* Popup multi-set colors */}
+        {data.source === 'popup' && data.sets && data.sets.length > 0 && (
+          <>
+            {data.sets.map((set, setIdx) => (
+              <div key={setIdx}>
+                <hr className="border-gray-200 mb-6" />
+                <div className="flex items-baseline gap-3 mb-3">
+                  <p className="text-2xl font-black tracking-[0.15em]">{set.text}</p>
+                  {set.colorMode && (
+                    <span className="text-xs text-gray-400">{set.colorMode}</span>
+                  )}
+                </div>
+                {set.colors.length > 0 && (
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm mb-6">
+                    {set.colors.map((c, idx) => {
+                      const rgb = hexToRgb(c.colorHex);
+                      return (
+                        <div key={idx} className="flex items-center gap-2.5">
+                          <span
+                            className="w-5 h-5 rounded border border-gray-200 shrink-0"
+                            style={{ backgroundColor: c.colorHex }}
+                          />
+                          <span className="font-semibold">{c.letter}</span>
+                          <span className="text-gray-500">
+                            {c.colorName || (rgb ? `(${rgb})` : c.colorHex)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Online order colors (single set) */}
+        {data.source === 'online' && data.colors.length > 0 && (
           <>
             <hr className="border-gray-200 mb-6" />
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Colors</p>
