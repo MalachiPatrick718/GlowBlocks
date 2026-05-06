@@ -28,13 +28,19 @@ export default function AboutPage() {
           <div className="space-y-4 text-center sm:text-left">
             <h2 className="text-2xl font-bold text-white">Meet the Creator</h2>
             <p className="text-gray-300 leading-relaxed">
-              Hey, I&apos;m Malachi — the person behind GlowBlocks. I started this project because I wanted to create something that felt personal and a little bit magic. Something you could put on a shelf that actually meant something to you. Not a generic sign from a big box store — something custom, something yours.
+              Hey, I&apos;m Malachi — the founder, builder, and one-person team behind GlowBlocks Studio.
             </p>
             <p className="text-gray-300 leading-relaxed">
-              I design every part of the product myself — from the electronics inside each tile to the software that powers the glow. GlowBlocks started as an idea in my room and has grown into something I&apos;m really proud of.
+              GlowBlocks started with a simple question I could not get out of my head: what if objects knew when they were next to each other? What if something as personal as your name could come alive just by being together? I spent two years prototyping, redesigning, failing, and rebuilding until that question became a real product — one that I am genuinely proud of.
             </p>
             <p className="text-gray-300 leading-relaxed">
-              My goal goes beyond just selling a product. I want GlowBlocks to become a platform — from custom decor to educational tools like GlowBlocks: Words, a spelling game for kids. I believe something this simple and personal can make a real difference in people&apos;s lives, whether it&apos;s lighting up a nursery or helping a child learn to read.
+              I design every circuit board, write every line of firmware, model every enclosure in CAD, and hand-assemble every single tile myself right here in Englewood, New Jersey. When you order from GlowBlocks Studio you are not buying something off a shelf. You are getting something a real person built specifically for you.
+            </p>
+            <p className="text-gray-300 leading-relaxed">
+              My goal with GlowBlocks goes beyond retail. I want to prove that a one-person independent studio can build something that feels genuinely magical — something that belongs on a nightstand next to the things that matter most to you. Eventually I will bring GlowBlocks into schools as an educational tool, develop GlowBlocks Words as a learning toy for toddlers, and build a full family of products that all share the same core idea — things that know when they are together.
+            </p>
+            <p className="text-gray-300 leading-relaxed">
+              This is just the beginning.
             </p>
           </div>
         </section>

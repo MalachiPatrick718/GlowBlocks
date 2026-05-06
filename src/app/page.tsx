@@ -108,7 +108,7 @@ export default function Home() {
           <div className="text-center sm:text-left space-y-3">
             <h2 className="text-2xl font-bold gradient-text">Meet the Creator</h2>
             <p className="text-gray-300 leading-relaxed">
-              Hey, I&apos;m Malachi. I design and build every part of GlowBlocks — from the electronics inside each tile to the software that powers the glow. What started as an idea in my room has grown into something I&apos;m really proud of.
+              Hey, I&apos;m Malachi — the founder, builder, and one-person team behind GlowBlocks Studio. I design every circuit board, write every line of firmware, and hand-assemble every single tile myself right here in Englewood, New Jersey.
             </p>
             <Link href="/about" className="inline-block text-purple-400 hover:text-purple-300 font-medium transition-colors">
               Read more about GlowBlocks &rarr;
