@@ -71,195 +71,35 @@ function ColorGrid({ colors }: { colors: ColorEntry[] }) {
   );
 }
 
-function CustomerInfo({ data }: { data: LabelData }) {
-  const deliveryLabel = data.source === 'popup'
-    ? ((data.orderType || '').toLowerCase().includes('pickup') ? 'Pick Up' : 'Ship to Customer')
-    : (data.shippingMethod || 'Ship');
-
-  return (
-    <table className="w-full text-sm mb-6">
-      <tbody>
-        <tr>
-          <td className="py-1.5 pr-4 font-semibold text-gray-500 w-28 align-top">Customer</td>
-          <td className="py-1.5">{data.customerName || '-'}</td>
-        </tr>
-        <tr>
-          <td className="py-1.5 pr-4 font-semibold text-gray-500 align-top">Delivery</td>
-          <td className="py-1.5">{deliveryLabel}</td>
-        </tr>
-        {data.address && (
-          <tr>
-            <td className="py-1.5 pr-4 font-semibold text-gray-500 align-top">Address</td>
-            <td className="py-1.5">{data.address}</td>
-          </tr>
-        )}
-        {data.phone && (
-          <tr>
-            <td className="py-1.5 pr-4 font-semibold text-gray-500 align-top">Phone</td>
-            <td className="py-1.5">{data.phone}</td>
-          </tr>
-        )}
-        {data.email && (
-          <tr>
-            <td className="py-1.5 pr-4 font-semibold text-gray-500 align-top">Email</td>
-            <td className="py-1.5">{data.email}</td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  );
+function getColors(data: LabelData): { text: string; colors: ColorEntry[] }[] {
+  if (data.source === 'popup' && data.sets && data.sets.length > 0) {
+    return data.sets.map((set) => ({ text: set.text, colors: set.colors }));
+  }
+  return [{ text: data.text || '-', colors: data.colors }];
 }
 
-function OrderColors({ data, showHeader }: { data: LabelData; showHeader: boolean }) {
+function SlipSection({ data, showDivider }: { data: LabelData; showDivider: boolean }) {
+  const sections = getColors(data);
   return (
-    <div>
-      {/* Popup sets */}
-      {data.source === 'popup' && data.sets && data.sets.length > 0 && (
-        <>
-          {data.sets.map((set, setIdx) => (
-            <div key={setIdx}>
-              {(showHeader || setIdx > 0) && <hr className="border-gray-200 mb-4" />}
-              <div className="flex items-baseline gap-3 mb-2">
-                <p className="text-2xl font-black tracking-[0.15em]">{set.text}</p>
-                {set.colorMode && (
-                  <span className="text-xs text-gray-400">{set.colorMode}</span>
-                )}
-                {data.orderNumber && (
-                  <span className="text-xs text-gray-400">#{data.orderNumber}</span>
-                )}
-              </div>
-              {set.colors.length > 0 && (
-                <div className="mb-4">
-                  <ColorGrid colors={set.colors} />
-                </div>
-              )}
-            </div>
-          ))}
-        </>
-      )}
+    <div style={{ breakInside: 'avoid' }}>
+      {showDivider && <hr className="border-gray-300 border-dashed my-8" />}
 
-      {/* Online order */}
-      {data.source === 'online' && (
-        <>
-          {showHeader && <hr className="border-gray-200 mb-4" />}
-          <div className="flex items-baseline gap-3 mb-2">
-            <p className="text-2xl font-black tracking-[0.15em]">{data.text || '-'}</p>
-          </div>
-          {data.colors.length > 0 && (
-            <div className="mb-4">
-              <ColorGrid colors={data.colors} />
-            </div>
+      {sections.map((section, idx) => (
+        <div key={idx} className={idx > 0 ? 'mt-6' : ''}>
+          <p className="text-3xl font-black tracking-[0.2em] text-center mb-1">
+            {section.text}
+          </p>
+          {idx === 0 && (
+            <p className="text-sm text-gray-500 text-center mb-4">
+              {data.customerName || '-'}
+            </p>
           )}
-          {data.items && (
-            <div className="text-sm space-y-1 mb-4">
-              {data.items.split(' | ').map((item, idx) => (
-                <p key={idx} className="text-gray-500">{item}</p>
-              ))}
-            </div>
+          {idx > 0 && <div className="mb-4" />}
+          {section.colors.length > 0 && (
+            <ColorGrid colors={section.colors} />
           )}
-        </>
-      )}
-    </div>
-  );
-}
-
-function OrderSection({ data }: { data: LabelData }) {
-  const deliveryLabel = data.source === 'popup'
-    ? ((data.orderType || '').toLowerCase().includes('pickup') ? 'Pick Up' : 'Ship to Customer')
-    : (data.shippingMethod || 'Ship');
-
-  return (
-    <div>
-      {/* Order Text */}
-      <div className="text-center mb-8">
-        <p className="text-4xl font-black tracking-[0.25em] leading-relaxed">
-          {data.text || '-'}
-        </p>
-        {data.source === 'popup' && data.orderNumber && (
-          <p className="mt-2 text-lg text-gray-500">Order #{data.orderNumber}</p>
-        )}
-        {data.source === 'popup' && data.sets && data.sets.length > 1 && (
-          <p className="mt-1 text-sm text-gray-400">{data.sets.length} sets</p>
-        )}
-      </div>
-
-      <hr className="border-gray-200 mb-6" />
-
-      {/* Info Grid */}
-      <table className="w-full text-sm mb-6">
-        <tbody>
-          <tr>
-            <td className="py-1.5 pr-4 font-semibold text-gray-500 w-28 align-top">Customer</td>
-            <td className="py-1.5">{data.customerName || '-'}</td>
-          </tr>
-          <tr>
-            <td className="py-1.5 pr-4 font-semibold text-gray-500 align-top">Delivery</td>
-            <td className="py-1.5">{deliveryLabel}</td>
-          </tr>
-          {data.address && (
-            <tr>
-              <td className="py-1.5 pr-4 font-semibold text-gray-500 align-top">Address</td>
-              <td className="py-1.5">{data.address}</td>
-            </tr>
-          )}
-          {data.phone && (
-            <tr>
-              <td className="py-1.5 pr-4 font-semibold text-gray-500 align-top">Phone</td>
-              <td className="py-1.5">{data.phone}</td>
-            </tr>
-          )}
-          {data.email && (
-            <tr>
-              <td className="py-1.5 pr-4 font-semibold text-gray-500 align-top">Email</td>
-              <td className="py-1.5">{data.email}</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      {/* Popup multi-set colors */}
-      {data.source === 'popup' && data.sets && data.sets.length > 0 && (
-        <>
-          {data.sets.map((set, setIdx) => (
-            <div key={setIdx}>
-              <hr className="border-gray-200 mb-6" />
-              <div className="flex items-baseline gap-3 mb-3">
-                <p className="text-2xl font-black tracking-[0.15em]">{set.text}</p>
-                {set.colorMode && (
-                  <span className="text-xs text-gray-400">{set.colorMode}</span>
-                )}
-              </div>
-              {set.colors.length > 0 && (
-                <div className="mb-6">
-                  <ColorGrid colors={set.colors} />
-                </div>
-              )}
-            </div>
-          ))}
-        </>
-      )}
-
-      {/* Online order colors */}
-      {data.source === 'online' && data.colors.length > 0 && (
-        <>
-          <hr className="border-gray-200 mb-6" />
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Colors</p>
-          <ColorGrid colors={data.colors} />
-        </>
-      )}
-
-      {/* Online order items */}
-      {data.source === 'online' && data.items && (
-        <>
-          <hr className="border-gray-200 my-6" />
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Items</p>
-          <div className="text-sm space-y-1">
-            {data.items.split(' | ').map((item, idx) => (
-              <p key={idx}>{item}</p>
-            ))}
-          </div>
-        </>
-      )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -383,33 +223,9 @@ function PackingLabelContent() {
       <div className="max-w-[7in] mx-auto my-8 print:my-0 bg-white print:shadow-none border border-gray-200 print:border-none rounded-lg print:rounded-none p-10 font-sans text-black">
         <h1 className="brand-title text-4xl text-center mb-8">GlowBlocks Studio</h1>
 
-        {dataList.length === 1 ? (
-          /* Single order — full layout */
-          <OrderSection data={dataList[0]} />
-        ) : (
-          /* Multi-order — customer info once, then compact color sections */
-          <>
-            {/* Combined title */}
-            <div className="text-center mb-6">
-              <p className="text-3xl font-black tracking-[0.15em] leading-relaxed">
-                {dataList.map(d => d.text).join(' / ')}
-              </p>
-              <p className="mt-1 text-sm text-gray-400">
-                {dataList.length} orders combined
-              </p>
-            </div>
-
-            <hr className="border-gray-200 mb-6" />
-
-            {/* Customer info from first order */}
-            <CustomerInfo data={dataList[0]} />
-
-            {/* Each order's words + colors */}
-            {dataList.map((data, idx) => (
-              <OrderColors key={idx} data={data} showHeader={idx > 0} />
-            ))}
-          </>
-        )}
+        {dataList.map((data, idx) => (
+          <SlipSection key={idx} data={data} showDivider={idx > 0} />
+        ))}
       </div>
     </>
   );
