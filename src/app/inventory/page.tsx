@@ -8,6 +8,100 @@ const MAIN_ITEMS = ['P6 Bases', 'PCB'];
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const PCB_REORDER_THRESHOLD = 80;
 
+// Print batch definitions — each batch is one 3D print plate
+const BATCHES: { id: number; letters: Record<string, number> }[] = [
+  { id: 1,  letters: { A: 2, E: 2, I: 1, L: 1, N: 1, O: 1, S: 1, R: 1 } },
+  { id: 2,  letters: { A: 2, E: 2, I: 1, L: 1, N: 1, O: 1, S: 1, T: 1 } },
+  { id: 3,  letters: { A: 1, E: 1, I: 1, L: 1, N: 1, O: 1, R: 1, S: 1, T: 2 } },
+  { id: 4,  letters: { A: 1, E: 1, I: 1, L: 1, N: 1, O: 1, R: 1, S: 1, T: 1, K: 1 } },
+  { id: 5,  letters: { B: 1, C: 1, D: 1, G: 1, H: 1, K: 1, M: 1, P: 1, U: 1, Y: 1 } },
+  { id: 6,  letters: { B: 1, C: 1, D: 1, G: 1, H: 1, M: 1, P: 1, U: 1, Y: 1, F: 1 } },
+  { id: 7,  letters: { B: 1, C: 1, D: 1, H: 1, K: 1, P: 1, U: 1, Y: 1, J: 1, Q: 1 } },
+  { id: 8,  letters: { B: 1, D: 1, G: 1, K: 1, M: 1, F: 1, V: 1, W: 1, X: 1, Z: 1 } },
+  { id: 9,  letters: { C: 1, G: 1, H: 1, M: 1, B: 1, F: 1, Q: 1, V: 1, W: 1, X: 1 } },
+  { id: 10, letters: { R: 2, E: 1, I: 1, L: 1, N: 1, O: 1, A: 1, S: 1, T: 1 } },
+  { id: 11, letters: { U: 1, Y: 1, K: 1, J: 1, Z: 1, W: 1, E: 1, N: 1, A: 1, R: 1 } },
+];
+
+function getBatchLetterList(batch: { letters: Record<string, number> }): string {
+  return Object.entries(batch.letters)
+    .flatMap(([letter, count]) => Array(count).fill(letter))
+    .join(' ');
+}
+
+interface BatchRecommendation {
+  batchId: number;
+  count: number;
+  letters: Record<string, number>;
+  fills: { letter: string; adds: number }[];
+}
+
+function computeRecommendations(
+  inv: Record<string, number | string>,
+  tgts: Record<string, number>,
+): BatchRecommendation[] {
+  // Calculate deficit for each letter (how many more needed to reach target)
+  const deficit: Record<string, number> = {};
+  for (const letter of LETTERS) {
+    const current = Number(inv[letter] || 0);
+    const target = tgts[letter] || 0;
+    if (target > 0 && current < target) {
+      deficit[letter] = target - current;
+    }
+  }
+
+  if (Object.keys(deficit).length === 0) return [];
+
+  // Greedy: pick the batch that fills the most deficit, repeat until no deficit remains
+  const remaining = { ...deficit };
+  const batchCounts: Record<number, number> = {};
+
+  for (let iter = 0; iter < 200; iter++) {
+    // Check if any deficit remains
+    const totalRemaining = Object.values(remaining).reduce((s, v) => s + Math.max(0, v), 0);
+    if (totalRemaining <= 0) break;
+
+    // Score each batch by how many deficit units it fills
+    let bestBatch = -1;
+    let bestScore = 0;
+    for (const batch of BATCHES) {
+      let score = 0;
+      for (const [letter, count] of Object.entries(batch.letters)) {
+        if ((remaining[letter] || 0) > 0) {
+          score += Math.min(count, remaining[letter]);
+        }
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestBatch = batch.id;
+      }
+    }
+
+    if (bestBatch < 0 || bestScore === 0) break;
+
+    // Apply the batch
+    const batch = BATCHES.find(b => b.id === bestBatch)!;
+    batchCounts[bestBatch] = (batchCounts[bestBatch] || 0) + 1;
+    for (const [letter, count] of Object.entries(batch.letters)) {
+      if (remaining[letter] != null) {
+        remaining[letter] -= count;
+      }
+    }
+  }
+
+  // Build recommendation list
+  return Object.entries(batchCounts)
+    .map(([idStr, count]) => {
+      const batchId = Number(idStr);
+      const batch = BATCHES.find(b => b.id === batchId)!;
+      const fills = Object.entries(batch.letters)
+        .filter(([letter]) => (deficit[letter] || 0) > 0)
+        .map(([letter, adds]) => ({ letter, adds: adds * count }));
+      return { batchId, count, letters: batch.letters, fills };
+    })
+    .sort((a, b) => a.batchId - b.batchId);
+}
+
 export default function InventoryPage() {
   return (
     <Suspense>
@@ -59,6 +153,10 @@ function InventoryContent() {
 
     return { eligible: shortages.length === 0, shortages, totalLetters };
   }, [checkerText, inventory]);
+
+  const recommendations = useMemo(() => {
+    return computeRecommendations(inventory, targets);
+  }, [inventory, targets]);
 
   const pcbCount = Number(inventory['PCB'] || 0);
   const pcbNeedsReorder = !loading && key && pcbCount < PCB_REORDER_THRESHOLD;
@@ -234,6 +332,46 @@ function InventoryContent() {
                 )
               )}
             </div>
+
+            {/* Recommended Batches */}
+            {recommendations.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-xl font-semibold text-white">Recommended Batches to Print</h2>
+                <p className="text-sm text-gray-400">Based on letters below their target, these batches will restock inventory most efficiently.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {recommendations.map((rec) => (
+                    <div key={rec.batchId} className="rounded-xl border border-purple-600/30 bg-purple-950/20 p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg font-bold text-white">Batch {rec.batchId}</span>
+                        <span className="px-3 py-1 rounded-full text-sm font-bold bg-purple-600 text-white">
+                          Print {rec.count}x
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {getBatchLetterList({ letters: rec.letters }).split(' ').map((letter, i) => {
+                          const isNeeded = rec.fills.some(f => f.letter === letter);
+                          return (
+                            <span key={i} className={`px-2 py-0.5 rounded text-xs font-mono font-semibold ${isNeeded ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-gray-800 text-gray-500 border border-gray-700'}`}>
+                              {letter}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      {rec.fills.length > 0 && (
+                        <p className="text-xs text-gray-400">
+                          Restocks: {rec.fills.map(f => `${f.letter} +${f.adds}`).join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {recommendations.length === 0 && Object.keys(targets).length > 0 && (
+              <div className="rounded-xl border border-green-600/30 bg-green-950/20 p-4">
+                <p className="text-green-400 font-semibold">All letters are at or above target — no batches needed.</p>
+              </div>
+            )}
 
             <div className="space-y-3">
               <h2 className="text-xl font-semibold text-white">Main Items</h2>
