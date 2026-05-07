@@ -17,6 +17,7 @@ export default function Footer() {
               <Link href="/reviews" className="hover:text-white transition-colors">Reviews</Link>
               <Link href="/faq" className="hover:text-white transition-colors">FAQ</Link>
               <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
+              <Link href="/service" className="hover:text-white transition-colors">Service Request</Link>
               <Link href="/returns" className="hover:text-white transition-colors">Return Policy</Link>
               <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
               <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>

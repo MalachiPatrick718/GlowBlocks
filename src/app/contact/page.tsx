@@ -34,6 +34,10 @@ export default function ContactPage() {
           <p className="text-gray-400">
             Have a question, feedback, or need help with an order? We&apos;d love to hear from you.
           </p>
+          <p className="text-sm text-gray-500">
+            Need battery replacement or servicing?{' '}
+            <a href="/service" className="text-purple-400 hover:text-purple-300 font-medium">Submit a Service Request</a>
+          </p>
         </div>
 
         {status === 'success' ? (
