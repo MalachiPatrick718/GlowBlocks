@@ -354,10 +354,16 @@ export async function POST(req: NextRequest) {
 
       // Notify admin of new order
       const adminPhone = process.env.ADMIN_PHONE;
+      console.log('ADMIN_PHONE env var:', adminPhone ? `set (${adminPhone})` : 'NOT SET');
       if (adminPhone) {
         const wordsList = sets.map((s: { text: string }) => `"${s.text}"`).join(', ');
-        sendSMS(adminPhone, `New popup order #${orderNumber} from ${String(customerName)}: ${wordsList} (${normalizedDeliveryMethod})`)
+        const adminMsg = `New popup order #${orderNumber} from ${String(customerName)}: ${wordsList} (${normalizedDeliveryMethod})`;
+        console.log('Sending admin SMS to:', adminPhone, 'Message:', adminMsg);
+        sendSMS(adminPhone, adminMsg)
+          .then((ok) => console.log('Admin SMS result:', ok))
           .catch((err) => console.error('Failed to send admin order notification:', err));
+      } else {
+        console.log('Skipping admin SMS — ADMIN_PHONE not set');
       }
     }
 
