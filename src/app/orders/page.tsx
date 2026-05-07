@@ -763,6 +763,10 @@ function OrdersContent() {
                   className="inline-block px-4 py-2 rounded-lg bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:text-white text-xs font-semibold transition-colors">
                   Print Packing Slip
                 </a>
+                <a href={`/packing-label?id=${encodeURIComponent(order.id)}&source=${order.source === 'popup' ? 'popup' : 'online'}&key=${encodeURIComponent(key)}&mode=view`} target="_blank" rel="noopener noreferrer"
+                  className="inline-block px-4 py-2 rounded-lg bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:text-white text-xs font-semibold transition-colors">
+                  View Packing Slip
+                </a>
                 {editingOrderId !== order.id && (
                   <>
                     <button type="button" onClick={() => startEdit(order)} className="px-3 py-2 rounded-lg bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:text-white text-xs font-semibold transition-colors">Edit</button>
