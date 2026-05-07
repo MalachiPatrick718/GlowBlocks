@@ -233,9 +233,8 @@ function PackingLabelContent() {
 
         <div className="mt-10 pt-6 border-t border-gray-200 text-center">
           <p className="text-base font-semibold text-black mb-2">Thank you for your order!</p>
-          <p className="text-sm text-gray-500 mb-3">We hope you love your GlowBlocks. Enjoy 10% off your next order:</p>
-          <p className="text-lg font-bold tracking-widest text-purple-600">POP</p>
-          <p className="text-xs text-gray-400 mt-3">glowblocksstudio.com</p>
+          <p className="text-sm text-gray-500 mb-3">We hope you love your GlowBlocks. Enjoy 10% off your next order, use code: <span className="font-bold text-purple-600">POP</span></p>
+          <p className="text-xs text-gray-400 mt-3">glowblocks.shop</p>
         </div>
       </div>
     </>
