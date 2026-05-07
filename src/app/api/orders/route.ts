@@ -8,6 +8,10 @@ const tableName = process.env.AIRTABLE_ORDERS_TABLE || 'Orders';
 const popupTableName = process.env.AIRTABLE_POPUP_ORDERS || process.env.AIRTABLE_POPUP_ORDERS_TABLE || 'Popup';
 const adminKey = process.env.POPUP_ORDERS_ADMIN_KEY;
 
+function titleCase(s: string): string {
+  return s.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
 function getAirtableUrl() {
   return `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`;
 }
@@ -335,7 +339,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const fields: Record<string, string> = {};
-    if (customerName !== undefined) fields['Customer Name'] = String(customerName);
+    if (customerName !== undefined) fields['Customer Name'] = titleCase(String(customerName));
     if (email !== undefined) fields['Email'] = String(email);
     if (address !== undefined) fields['Address'] = String(address);
     if (items !== undefined) fields['Items'] = String(items);

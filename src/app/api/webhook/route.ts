@@ -8,6 +8,10 @@ function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!);
 }
 
+function titleCase(s: string): string {
+  return s.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
 type InventoryRecord = { id: string; fields: { Item?: string; Quantity?: number } };
 
 const COLOR_PRESETS: { label: string; colors: string[] }[] = [
@@ -232,7 +236,7 @@ export async function POST(req: NextRequest) {
             },
             body: JSON.stringify({
               fields: {
-                'Customer Name': customerName,
+                'Customer Name': titleCase(customerName),
                 'Email': customerEmail,
                 'Phone Number': customerPhone,
                 'Address': fullAddress,

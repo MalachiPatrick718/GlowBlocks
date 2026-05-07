@@ -12,6 +12,10 @@ const adminKey = process.env.POPUP_ORDERS_ADMIN_KEY;
 const popupOrderStatusValue = process.env.AIRTABLE_POPUP_ORDER_STATUS || '';
 const taxRate = parseFloat(process.env.POPUP_TAX_RATE || '0.08875');
 
+function titleCase(s: string): string {
+  return s.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
 function getPricePerLetter(letterCount: number): number {
   if (letterCount <= 3) return 12.00;
   if (letterCount <= 6) return 11.00;
@@ -261,7 +265,7 @@ export async function POST(req: NextRequest) {
       const onSiteEligible = await checkStockEligibility(s.text);
 
       const fields: Record<string, string | boolean | number> = {
-        Name: String(customerName).slice(0, 100),
+        Name: titleCase(String(customerName).slice(0, 100)),
         'Phone Number': String(phoneNumber || '').slice(0, 40),
         Email: String(email || '').slice(0, 100),
         'SMS Opt-In': smsOptInAt ? String(smsOptInAt) : '',
@@ -772,7 +776,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const fields: Record<string, string> = {};
-    if (customerName !== undefined) fields['Name'] = String(customerName);
+    if (customerName !== undefined) fields['Name'] = titleCase(String(customerName));
     if (email !== undefined) fields['Email'] = String(email);
     if (phoneNumber !== undefined) fields['Phone Number'] = String(phoneNumber);
     if (address !== undefined) fields['Address'] = String(address);
