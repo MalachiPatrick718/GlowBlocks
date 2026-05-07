@@ -39,6 +39,7 @@ interface UnifiedOrder {
   shippingCost?: string;
   stripeSessionId?: string;
   orderText?: string;
+  orderDataItems?: { text: string; colors: string[]; quantity: number }[];
   // Shared
   boardIds?: (string | null)[];
   trackingNumber?: string;
@@ -98,6 +99,28 @@ function getColorLines(order: UnifiedOrder): ColorByLetter[] {
     }
     return [];
   } catch { return []; }
+}
+
+function getOnlineColorLines(order: UnifiedOrder): ColorByLetter[] {
+  if (!order.orderDataItems || order.orderDataItems.length === 0) return [];
+  const lines: ColorByLetter[] = [];
+  for (const item of order.orderDataItems) {
+    const text = item.text || '';
+    const colors = item.colors || [];
+    for (let i = 0; i < text.length; i++) {
+      const letter = text[i];
+      if (letter === ' ') continue;
+      const colorHex = colors[i] || '#FFFFFF';
+      if (!colorHex || colorHex === '#FFFFFF') {
+        lines.push({ letter, colorHex: '#FFFFFF', displayText: `${letter} - No Color Set` });
+      } else {
+        const rgb = hexToRgbString(colorHex);
+        const displayText = rgb ? `${letter} - (${rgb})` : `${letter} - ${colorHex}`;
+        lines.push({ letter, colorHex, displayText });
+      }
+    }
+  }
+  return lines;
 }
 
 // --- Status helpers ---
@@ -534,7 +557,7 @@ function OrdersContent() {
           const allScanned = scannedCount >= nonSpaceCount && nonSpaceCount > 0;
           const isPickup = order.source === 'popup' && (order.orderType || '').toLowerCase().includes('pickup');
           const statusOptions = isPickup ? PICKUP_STATUSES : SHIP_STATUSES;
-          const colorLines = order.source === 'popup' ? getColorLines(order) : [];
+          const colorLines = order.source === 'popup' ? getColorLines(order) : getOnlineColorLines(order);
 
           return (
             <div key={order.id} className={`rounded-2xl border ${slipSelectedIds.has(order.id) ? 'border-purple-500 ring-1 ring-purple-500/40' : 'border-gray-800'} bg-gray-950 p-5 space-y-3`}>
@@ -724,12 +747,12 @@ function OrdersContent() {
                 </button>
               )}
 
-              {/* Popup color lines */}
-              {order.source === 'popup' && (
+              {/* Color lines */}
+              {colorLines.length > 0 && (
                 <div className="space-y-2 text-sm">
                   <p className="text-gray-300">Colors by letter</p>
                   <div className="rounded-lg bg-black/40 border border-gray-800 p-3 text-xs text-gray-300 space-y-1">
-                    {colorLines.length > 0 ? colorLines.map((item, idx) => <p key={idx}>{item.displayText}</p>) : <p>No Color Set</p>}
+                    {colorLines.map((item, idx) => <p key={idx}>{item.displayText}</p>)}
                   </div>
                 </div>
               )}

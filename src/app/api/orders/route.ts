@@ -56,9 +56,11 @@ export async function GET(req: NextRequest) {
     const orders = (data.records || [])
       .map((record: { id: string; createdTime?: string; fields: Record<string, string> }) => {
         let boardIds: (string | null)[] = [];
+        let orderDataItems: { text: string; colors: string[]; quantity: number }[] = [];
         try {
           const od = JSON.parse(record.fields['Order Data'] || '{}');
           if (Array.isArray(od.boardIds)) boardIds = od.boardIds;
+          if (Array.isArray(od.items)) orderDataItems = od.items;
         } catch {}
 
         return {
@@ -78,6 +80,7 @@ export async function GET(req: NextRequest) {
           labelUrl: record.fields['Label URL'] || '',
           orderText: record.fields['Order Text'] || '',
           boardIds,
+          orderDataItems,
         };
       })
       .sort((a: { date: string }, b: { date: string }) => {
