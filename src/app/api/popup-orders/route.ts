@@ -344,27 +344,31 @@ export async function POST(req: NextRequest) {
         ? String(phoneNumber)
         : undefined;
       const customerEmail = typeof email === 'string' && email.trim() ? email.trim() : undefined;
-      notify({
-        email: customerEmail,
-        phone,
-        emailSubject: 'Your GlowBlocks Order Confirmation',
-        emailHtml: popupOrderConfirmationEmail(firstName, orderNumber, setsLabel, normalizedDeliveryMethod, customerEmail),
-        smsMessage: smsMsg,
-      }).catch((err) => console.error('Failed to send order confirmation:', err));
+      // Send all notifications in parallel and wait for them to complete
+      // (serverless functions terminate after response, so we must await)
+      const notificationPromises: Promise<unknown>[] = [];
+
+      notificationPromises.push(
+        notify({
+          email: customerEmail,
+          phone,
+          emailSubject: 'Your GlowBlocks Order Confirmation',
+          emailHtml: popupOrderConfirmationEmail(firstName, orderNumber, setsLabel, normalizedDeliveryMethod, customerEmail),
+          smsMessage: smsMsg,
+        }).catch((err) => console.error('Failed to send order confirmation:', err))
+      );
 
       // Notify admin of new order
       const adminPhone = process.env.ADMIN_PHONE;
-      console.log('ADMIN_PHONE env var:', adminPhone ? `set (${adminPhone})` : 'NOT SET');
       if (adminPhone) {
         const wordsList = sets.map((s: { text: string }) => `"${s.text}"`).join(', ');
-        const adminMsg = `New popup order #${orderNumber} from ${String(customerName)}: ${wordsList} (${normalizedDeliveryMethod})`;
-        console.log('Sending admin SMS to:', adminPhone, 'Message:', adminMsg);
-        sendSMS(adminPhone, adminMsg)
-          .then((ok) => console.log('Admin SMS result:', ok))
-          .catch((err) => console.error('Failed to send admin order notification:', err));
-      } else {
-        console.log('Skipping admin SMS — ADMIN_PHONE not set');
+        notificationPromises.push(
+          sendSMS(adminPhone, `New popup order #${orderNumber} from ${String(customerName)}: ${wordsList} (${normalizedDeliveryMethod})`)
+            .catch((err) => console.error('Failed to send admin order notification:', err))
+        );
       }
+
+      await Promise.allSettled(notificationPromises);
     }
 
     return NextResponse.json({

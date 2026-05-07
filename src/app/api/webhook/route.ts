@@ -278,7 +278,7 @@ export async function POST(req: NextRequest) {
           console.error('Airtable order save error:', err);
         }
 
-        // Send order confirmation email + SMS
+        // Send order confirmation email + SMS + admin notification
         {
           const firstName = customerName.split(' ')[0] || 'there';
           const totalFormatted = `$${((fullSession.amount_total || 0) / 100).toFixed(2)}`;
@@ -288,24 +288,33 @@ export async function POST(req: NextRequest) {
             )
             .join('');
 
+          const smsPromises: Promise<unknown>[] = [];
+
           if (customerEmail) {
             const html = onlineOrderConfirmationEmail(firstName, itemListHtml, totalFormatted, fullAddress || '', customerEmail);
-            await sendEmail(customerEmail, 'Your GlowBlocks Order Confirmation', html);
+            smsPromises.push(
+              sendEmail(customerEmail, 'Your GlowBlocks Order Confirmation', html)
+            );
           }
 
           if (customerPhone) {
-            sendSMS(customerPhone, `Hey ${firstName}, thanks for your GlowBlocks order! We've received it and are getting started. Expect delivery in 5-7 business days!`)
-              .catch((err) => console.error('Failed to send order confirmation SMS:', err));
+            smsPromises.push(
+              sendSMS(customerPhone, `Hey ${firstName}, thanks for your GlowBlocks order! We've received it and are getting started. Expect delivery in 5-7 business days!`)
+                .catch((err) => console.error('Failed to send order confirmation SMS:', err))
+            );
           }
-        }
 
-        // Notify admin of new order
-        const adminPhone = process.env.ADMIN_PHONE;
-        if (adminPhone) {
-          const orderSummary = items.map((item: { text: string; quantity?: number }) => `"${item.text}" x${item.quantity || 1}`).join(', ');
-          const totalFormatted2 = `$${((fullSession.amount_total || 0) / 100).toFixed(2)}`;
-          sendSMS(adminPhone, `New online order from ${customerName}: ${orderSummary} — ${totalFormatted2}`)
-            .catch((err) => console.error('Failed to send admin order notification:', err));
+          // Notify admin of new order
+          const adminPhone = process.env.ADMIN_PHONE;
+          if (adminPhone) {
+            const orderSummary = items.map((item: { text: string; quantity?: number }) => `"${item.text}" x${item.quantity || 1}`).join(', ');
+            smsPromises.push(
+              sendSMS(adminPhone, `New online order from ${customerName}: ${orderSummary} — ${totalFormatted}`)
+                .catch((err) => console.error('Failed to send admin order notification:', err))
+            );
+          }
+
+          await Promise.allSettled(smsPromises);
         }
 
         // Deduct inventory immediately for online orders
