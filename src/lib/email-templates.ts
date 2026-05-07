@@ -35,6 +35,9 @@ export function popupOrderConfirmationEmail(
       <p style="margin: 8px 0 0; font-size: 14px; color: #6b7280;">${setsLabel}</p>
     </div>
     <p>${deliveryNote}</p>
+    <div style="text-align: center; margin: 24px 0;">
+      <a href="${SITE_URL}/order-status" style="display: inline-block; background: ${BRAND_COLOR}; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">Track Your Order</a>
+    </div>
   `);
 }
 
@@ -53,6 +56,9 @@ export function onlineOrderConfirmationEmail(
     <p><strong>Shipping to:</strong> ${fullAddress || 'N/A'}</p>
     <p><strong>Estimated delivery:</strong> 5-7 business days</p>
     <p style="color: #6b7280; font-size: 13px;">We'll send you a tracking number once your order ships.</p>
+    <div style="text-align: center; margin: 24px 0;">
+      <a href="${SITE_URL}/order-status" style="display: inline-block; background: ${BRAND_COLOR}; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">Track Your Order</a>
+    </div>
   `);
 }
 
