@@ -500,16 +500,25 @@ function OrdersContent() {
   return (
     <div className={`min-h-screen py-8 px-4 transition-colors duration-200 ${light ? 'orders-light' : ''}`}>
       <style jsx>{`
+        /* --- Light mode base --- */
         .orders-light { background: #f8fafc; color: #1e293b; }
         .orders-light .gradient-text { background: linear-gradient(135deg, #c026d3, #9333ea, #6366f1); -webkit-background-clip: text; background-clip: text; }
+
+        /* --- Backgrounds: dark → light --- */
         .orders-light .bg-gray-950 { background: #ffffff; }
         .orders-light .bg-gray-900 { background: #ffffff; }
         .orders-light .bg-gray-900\\/50 { background: #f8fafc; }
         .orders-light .bg-black\\/40 { background: #f1f5f9; }
         .orders-light .bg-gray-800 { background: #f1f5f9; }
+        .orders-light .bg-gray-950\\/95 { background: rgba(255,255,255,0.97); }
+
+        /* --- Borders --- */
         .orders-light .border-gray-800 { border-color: #e2e8f0; }
         .orders-light .border-gray-700 { border-color: #cbd5e1; }
         .orders-light .border-gray-600 { border-color: #cbd5e1; }
+        .orders-light .border-purple-700 { border-color: #c084fc; }
+
+        /* --- Text colors --- */
         .orders-light .text-white { color: #0f172a; }
         .orders-light .text-gray-300 { color: #475569; }
         .orders-light .text-gray-400 { color: #64748b; }
@@ -518,39 +527,76 @@ function OrdersContent() {
         .orders-light .text-red-300 { color: #dc2626; }
         .orders-light .text-red-400 { color: #dc2626; }
         .orders-light .text-green-400 { color: #16a34a; }
+        .orders-light .text-green-200 { color: #166534; }
+        .orders-light .text-purple-200 { color: #6b21a8; }
         .orders-light .text-purple-300 { color: #7c3aed; }
         .orders-light .text-purple-400 { color: #7c3aed; }
         .orders-light .text-blue-300 { color: #2563eb; }
+        .orders-light .text-blue-400 { color: #2563eb; }
         .orders-light .text-cyan-400 { color: #0891b2; }
         .orders-light .text-yellow-400 { color: #ca8a04; }
-        .orders-light .bg-gray-900\\/50 { background: #f8fafc; }
-        .orders-light .hover\\:bg-gray-700:hover { background: #e2e8f0; }
-        .orders-light .hover\\:text-white:hover { color: #0f172a; }
-        .orders-light .hover\\:border-gray-500:hover { border-color: #94a3b8; }
+        .orders-light .text-pink-300 { color: #db2777; }
+
+        /* --- Badge backgrounds (colored pills) --- */
         .orders-light .bg-purple-900\\/50 { background: #f3e8ff; }
         .orders-light .border-purple-600\\/40 { border-color: #c084fc; }
         .orders-light .bg-blue-900\\/50 { background: #dbeafe; }
         .orders-light .border-blue-600\\/40 { border-color: #93c5fd; }
         .orders-light .bg-green-900\\/50 { background: #dcfce7; }
         .orders-light .border-green-600\\/40 { border-color: #86efac; }
+        .orders-light .bg-green-900\\/40 { background: #dcfce7; }
+        .orders-light .border-green-700\\/40 { border-color: #86efac; }
         .orders-light .bg-red-900\\/50 { background: #fef2f2; }
         .orders-light .border-red-600\\/40 { border-color: #fca5a5; }
         .orders-light .bg-yellow-900\\/50 { background: #fefce8; }
         .orders-light .border-yellow-600\\/40 { border-color: #fde68a; }
         .orders-light .bg-cyan-950\\/30 { background: #ecfeff; }
         .orders-light .border-cyan-800\\/40 { border-color: #a5f3fc; }
+        .orders-light .bg-pink-900\\/50 { background: #fce7f3; }
+        .orders-light .border-pink-600\\/40 { border-color: #f9a8d4; }
+
+        /* --- Solid colored buttons --- */
         .orders-light .bg-green-800 { background: #16a34a; }
+        .orders-light .bg-green-700 { background: #15803d; }
+        .orders-light .bg-green-600 { background: #16a34a; }
         .orders-light .bg-purple-800 { background: #7c3aed; }
-        .orders-light .bg-gray-950\\/95 { background: rgba(255,255,255,0.97); }
-        .orders-light .border-purple-700 { border-color: #c084fc; }
-        .orders-light .ring-purple-500\\/40 { --tw-ring-color: rgba(168,85,247,0.3); }
-        .orders-light .bg-green-900\\/40 { background: #dcfce7; }
-        .orders-light .border-green-700\\/40 { border-color: #86efac; }
+        .orders-light .bg-purple-700 { background: #7c3aed; }
+        .orders-light .bg-purple-600 { background: #9333ea; }
+        .orders-light .border-green-600 { border-color: #16a34a; }
+        .orders-light .border-purple-600 { border-color: #7c3aed; }
+
+        /* --- Hover states --- */
+        .orders-light .hover\\:bg-gray-700:hover { background: #e2e8f0; }
+        .orders-light .hover\\:bg-gray-300:hover { background: #d1d5db; }
+        .orders-light .hover\\:text-white:hover { color: #0f172a; }
+        .orders-light .hover\\:border-gray-500:hover { border-color: #94a3b8; }
+        .orders-light .hover\\:border-emerald-500:hover { border-color: #10b981; }
         .orders-light .hover\\:bg-red-900\\/50:hover { background: #fef2f2; }
         .orders-light .hover\\:text-red-300:hover { color: #dc2626; }
         .orders-light .hover\\:border-red-600:hover { border-color: #dc2626; }
-        .orders-light input[type="checkbox"] { background: #f1f5f9; border-color: #cbd5e1; }
+        .orders-light .hover\\:bg-purple-700:hover { background: #7c3aed; }
+        .orders-light .hover\\:bg-purple-600:hover { background: #9333ea; }
+        .orders-light .hover\\:bg-green-700:hover { background: #15803d; }
+        .orders-light .hover\\:bg-green-600:hover { background: #16a34a; }
+
+        /* --- Ring / focus --- */
+        .orders-light .ring-purple-500\\/40 { --tw-ring-color: rgba(168,85,247,0.3); }
         .orders-light .focus\\:border-purple-500:focus { border-color: #a855f7; }
+        .orders-light .border-purple-500 { border-color: #a855f7; }
+        .orders-light .ring-1.ring-purple-500\\/40 { --tw-ring-color: rgba(168,85,247,0.3); }
+
+        /* --- Inputs / form elements --- */
+        .orders-light input[type="checkbox"] { background: #f1f5f9; border-color: #cbd5e1; }
+        .orders-light input[type="text"], .orders-light input.bg-gray-900 { background: #f8fafc !important; color: #0f172a !important; border-color: #cbd5e1 !important; }
+        .orders-light select { background: #f8fafc; color: #0f172a; border-color: #cbd5e1; }
+
+        /* --- Status pill overrides for contrast --- */
+        .orders-light .bg-pink-200 { background: #fbcfe8; }
+        .orders-light .bg-amber-200 { background: #fde68a; }
+        .orders-light .bg-cyan-200 { background: #a5f3fc; }
+        .orders-light .bg-emerald-200 { background: #a7f3d0; }
+        .orders-light .bg-green-200 { background: #bbf7d0; }
+        .orders-light .bg-blue-200 { background: #bfdbfe; }
       `}</style>
       <div className="max-w-6xl mx-auto space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
