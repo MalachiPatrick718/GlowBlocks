@@ -236,6 +236,12 @@ function PackingLabelContent() {
           <p className="text-sm text-gray-500 mb-3">We hope you love your GlowBlocks. Enjoy 10% off your next order, use code: <span className="font-bold text-purple-600">POP</span></p>
           <p className="text-xs text-gray-400 mt-3">glowblocks.shop</p>
         </div>
+
+        <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+          <p className="text-xs text-gray-500 leading-relaxed max-w-md mx-auto">
+            <span className="font-semibold text-gray-600">Battery Info:</span> Your GlowBlock battery lasts approximately 5–6 months. When it&apos;s time for a replacement, you can return your GlowBlock(s) to us for servicing, or purchase a CR2450 coin-cell battery and replace it yourself at your own risk.
+          </p>
+        </div>
       </div>
     </>
   );
