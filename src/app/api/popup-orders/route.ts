@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { POPUP_COLOR_MAP } from '@/data/popupColorCatalog';
 import { notify } from '@/lib/notify';
+import { sendSMS } from '@/lib/sms';
 import { popupOrderConfirmationEmail, inProgressEmail, donePickupEmail, doneShipEmail, deliveredEmail } from '@/lib/email-templates';
 
 const apiKey = process.env.AIRTABLE_API_KEY;
@@ -350,6 +351,14 @@ export async function POST(req: NextRequest) {
         emailHtml: popupOrderConfirmationEmail(firstName, orderNumber, setsLabel, normalizedDeliveryMethod, customerEmail),
         smsMessage: smsMsg,
       }).catch((err) => console.error('Failed to send order confirmation:', err));
+
+      // Notify admin of new order
+      const adminPhone = process.env.ADMIN_PHONE;
+      if (adminPhone) {
+        const wordsList = sets.map((s: { text: string }) => `"${s.text}"`).join(', ');
+        sendSMS(adminPhone, `New popup order #${orderNumber} from ${String(customerName)}: ${wordsList} (${normalizedDeliveryMethod})`)
+          .catch((err) => console.error('Failed to send admin order notification:', err));
+      }
     }
 
     return NextResponse.json({

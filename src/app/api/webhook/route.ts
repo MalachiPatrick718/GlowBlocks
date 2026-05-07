@@ -282,6 +282,15 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // Notify admin of new order
+        const adminPhone = process.env.ADMIN_PHONE;
+        if (adminPhone) {
+          const orderSummary = items.map((item: { text: string; quantity?: number }) => `"${item.text}" x${item.quantity || 1}`).join(', ');
+          const totalFormatted2 = `$${((fullSession.amount_total || 0) / 100).toFixed(2)}`;
+          sendSMS(adminPhone, `New online order from ${customerName}: ${orderSummary} — ${totalFormatted2}`)
+            .catch((err) => console.error('Failed to send admin order notification:', err));
+        }
+
         // Deduct inventory immediately for online orders
         const orderItems = items.map((item: { text: string; quantity?: number }) => ({
           text: item.text,
