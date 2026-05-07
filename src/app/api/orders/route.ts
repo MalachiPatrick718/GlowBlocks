@@ -319,3 +319,74 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to update status' }, { status: 500 });
   }
 }
+
+export async function PUT(req: NextRequest) {
+  try {
+    if (!apiKey || !baseId) {
+      return NextResponse.json({ error: 'Airtable is not configured' }, { status: 500 });
+    }
+    if (!isAuthorized(req)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id, customerName, email, address, items } = await req.json();
+    if (!id) {
+      return NextResponse.json({ error: 'Missing record id' }, { status: 400 });
+    }
+
+    const fields: Record<string, string> = {};
+    if (customerName !== undefined) fields['Customer Name'] = String(customerName);
+    if (email !== undefined) fields['Email'] = String(email);
+    if (address !== undefined) fields['Address'] = String(address);
+    if (items !== undefined) fields['Items'] = String(items);
+
+    if (Object.keys(fields).length === 0) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
+    }
+
+    const res = await fetch(getAirtableUrl(), {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ records: [{ id: String(id), fields }] }),
+    });
+
+    if (!res.ok) {
+      return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Orders PUT error:', error);
+    return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    if (!apiKey || !baseId) {
+      return NextResponse.json({ error: 'Airtable is not configured' }, { status: 500 });
+    }
+    if (!isAuthorized(req)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await req.json();
+    if (!id) {
+      return NextResponse.json({ error: 'Missing record id' }, { status: 400 });
+    }
+
+    const res = await fetch(`${getAirtableUrl()}/${encodeURIComponent(String(id))}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+
+    if (!res.ok) {
+      return NextResponse.json({ error: 'Failed to delete order' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Orders DELETE error:', error);
+    return NextResponse.json({ error: 'Failed to delete order' }, { status: 500 });
+  }
+}
