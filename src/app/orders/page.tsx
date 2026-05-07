@@ -152,6 +152,7 @@ const PICKUP_STATUSES = ['Not Started', 'In Progress', 'Done'];
 const LOCKED_STATUSES = ['shipped', 'delivered'];
 
 const AUTH_STORAGE_KEY = 'glowblocks-admin-key';
+const THEME_STORAGE_KEY = 'glowblocks-orders-theme';
 
 export default function OrdersPage() {
   return (
@@ -164,6 +165,15 @@ export default function OrdersPage() {
 function OrdersContent() {
   const searchParams = useSearchParams();
   const paramKey = searchParams.get('key') || '';
+
+  // Theme
+  const [light, setLight] = useState(false);
+  useEffect(() => { setLight(localStorage.getItem(THEME_STORAGE_KEY) === 'light'); }, []);
+  const toggleTheme = () => {
+    const next = !light;
+    setLight(next);
+    localStorage.setItem(THEME_STORAGE_KEY, next ? 'light' : 'dark');
+  };
 
   // Admin key: from URL param, localStorage, or prompt
   const [key, setKey] = useState('');
@@ -485,7 +495,60 @@ function OrdersContent() {
   }
 
   return (
-    <div className="min-h-screen py-8 px-4">
+    <div className={`min-h-screen py-8 px-4 transition-colors duration-200 ${light ? 'orders-light' : ''}`}>
+      <style jsx>{`
+        .orders-light { background: #f8fafc; color: #1e293b; }
+        .orders-light .gradient-text { background: linear-gradient(135deg, #c026d3, #9333ea, #6366f1); -webkit-background-clip: text; background-clip: text; }
+        .orders-light .bg-gray-950 { background: #ffffff; }
+        .orders-light .bg-gray-900 { background: #ffffff; }
+        .orders-light .bg-gray-900\\/50 { background: #f8fafc; }
+        .orders-light .bg-black\\/40 { background: #f1f5f9; }
+        .orders-light .bg-gray-800 { background: #f1f5f9; }
+        .orders-light .border-gray-800 { border-color: #e2e8f0; }
+        .orders-light .border-gray-700 { border-color: #cbd5e1; }
+        .orders-light .border-gray-600 { border-color: #cbd5e1; }
+        .orders-light .text-white { color: #0f172a; }
+        .orders-light .text-gray-300 { color: #475569; }
+        .orders-light .text-gray-400 { color: #64748b; }
+        .orders-light .text-gray-500 { color: #64748b; }
+        .orders-light .text-gray-600 { color: #475569; }
+        .orders-light .text-red-300 { color: #dc2626; }
+        .orders-light .text-red-400 { color: #dc2626; }
+        .orders-light .text-green-400 { color: #16a34a; }
+        .orders-light .text-purple-300 { color: #7c3aed; }
+        .orders-light .text-purple-400 { color: #7c3aed; }
+        .orders-light .text-blue-300 { color: #2563eb; }
+        .orders-light .text-cyan-400 { color: #0891b2; }
+        .orders-light .text-yellow-400 { color: #ca8a04; }
+        .orders-light .bg-gray-900\\/50 { background: #f8fafc; }
+        .orders-light .hover\\:bg-gray-700:hover { background: #e2e8f0; }
+        .orders-light .hover\\:text-white:hover { color: #0f172a; }
+        .orders-light .hover\\:border-gray-500:hover { border-color: #94a3b8; }
+        .orders-light .bg-purple-900\\/50 { background: #f3e8ff; }
+        .orders-light .border-purple-600\\/40 { border-color: #c084fc; }
+        .orders-light .bg-blue-900\\/50 { background: #dbeafe; }
+        .orders-light .border-blue-600\\/40 { border-color: #93c5fd; }
+        .orders-light .bg-green-900\\/50 { background: #dcfce7; }
+        .orders-light .border-green-600\\/40 { border-color: #86efac; }
+        .orders-light .bg-red-900\\/50 { background: #fef2f2; }
+        .orders-light .border-red-600\\/40 { border-color: #fca5a5; }
+        .orders-light .bg-yellow-900\\/50 { background: #fefce8; }
+        .orders-light .border-yellow-600\\/40 { border-color: #fde68a; }
+        .orders-light .bg-cyan-950\\/30 { background: #ecfeff; }
+        .orders-light .border-cyan-800\\/40 { border-color: #a5f3fc; }
+        .orders-light .bg-green-800 { background: #16a34a; }
+        .orders-light .bg-purple-800 { background: #7c3aed; }
+        .orders-light .bg-gray-950\\/95 { background: rgba(255,255,255,0.97); }
+        .orders-light .border-purple-700 { border-color: #c084fc; }
+        .orders-light .ring-purple-500\\/40 { --tw-ring-color: rgba(168,85,247,0.3); }
+        .orders-light .bg-green-900\\/40 { background: #dcfce7; }
+        .orders-light .border-green-700\\/40 { border-color: #86efac; }
+        .orders-light .hover\\:bg-red-900\\/50:hover { background: #fef2f2; }
+        .orders-light .hover\\:text-red-300:hover { color: #dc2626; }
+        .orders-light .hover\\:border-red-600:hover { border-color: #dc2626; }
+        .orders-light input[type="checkbox"] { background: #f1f5f9; border-color: #cbd5e1; }
+        .orders-light .focus\\:border-purple-500:focus { border-color: #a855f7; }
+      `}</style>
       <div className="max-w-6xl mx-auto space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl md:text-4xl font-bold gradient-text">
@@ -497,6 +560,10 @@ function OrdersContent() {
             )}
           </h1>
           <div className="flex gap-2">
+            <button onClick={toggleTheme}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${light ? 'bg-gray-200 text-gray-800 hover:bg-gray-300' : 'bg-gray-800 hover:bg-gray-700 text-white'}`}>
+              {light ? 'Dark' : 'Light'}
+            </button>
             <Link href={`/scan?key=${encodeURIComponent(key)}`} className="px-4 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 text-sm font-semibold text-white">Scanner</Link>
             <Link href={`/inventory?key=${encodeURIComponent(key)}`} className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm font-semibold text-white">Inventory</Link>
           </div>
