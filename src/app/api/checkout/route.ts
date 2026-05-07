@@ -14,7 +14,7 @@ function getPricePerBlock(totalBlocks: number): number {
 
 export async function POST(req: NextRequest) {
   try {
-    const { items, referral, promoId, promoCode } = await req.json();
+    const { items, referral, promoId, promoCode, gift } = await req.json();
 
     if (!process.env.STRIPE_SECRET_KEY) {
       return NextResponse.json(
@@ -125,6 +125,12 @@ export async function POST(req: NextRequest) {
           }))
         ),
         ...(referral ? { referral: String(referral).slice(0, 500) } : {}),
+        ...(gift?.isGift ? { gift_data: JSON.stringify({
+          isGift: true,
+          recipientName: String(gift.recipientName || '').slice(0, 100),
+          giftNote: String(gift.giftNote || '').slice(0, 200),
+          shipToRecipient: !!gift.shipToRecipient,
+        }) } : {}),
       },
     });
 

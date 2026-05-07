@@ -154,6 +154,8 @@ function buildOnlineOrder(record: any) {
     colors,
     date: fields['Date'] || record.createdTime?.split('T')[0] || '',
     pricing: { subtotal: totalVal, customColorFee: 0, discount: 0, shipping: 0, tax: 0, total: totalVal },
+    giftRecipient: fields['Gift Recipient'] || '',
+    giftNote: fields['Gift Note'] || '',
   };
 }
 

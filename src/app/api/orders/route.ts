@@ -81,6 +81,9 @@ export async function GET(req: NextRequest) {
           orderText: record.fields['Order Text'] || '',
           boardIds,
           orderDataItems,
+          gift: record.fields['Gift'] || '',
+          giftRecipient: record.fields['Gift Recipient'] || '',
+          giftNote: record.fields['Gift Note'] || '',
         };
       })
       .sort((a: { date: string }, b: { date: string }) => {

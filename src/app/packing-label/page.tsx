@@ -31,6 +31,8 @@ interface LabelData {
   colors: ColorEntry[];
   sets?: SetEntry[];
   date?: string;
+  giftRecipient?: string;
+  giftNote?: string;
 }
 
 export default function PackingLabelPage() {
@@ -99,6 +101,22 @@ function SlipSection({ data, showDivider, large }: { data: LabelData; showDivide
           )}
         </div>
       ))}
+
+      {/* Gift note */}
+      {(data.giftRecipient || data.giftNote) && (
+        <div className="mt-6 mx-auto max-w-sm border border-gray-300 rounded-lg p-4 text-center">
+          {data.giftRecipient && (
+            <p className={`${large ? 'text-lg' : 'text-base'} font-semibold text-black mb-1`}>
+              To: {data.giftRecipient}
+            </p>
+          )}
+          {data.giftNote && (
+            <p className={`${large ? 'text-sm' : 'text-xs'} text-gray-600 italic leading-relaxed`}>
+              &ldquo;{data.giftNote}&rdquo;
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -40,6 +40,9 @@ interface UnifiedOrder {
   stripeSessionId?: string;
   orderText?: string;
   orderDataItems?: { text: string; colors: string[]; quantity: number }[];
+  gift?: string;
+  giftRecipient?: string;
+  giftNote?: string;
   // Shared
   boardIds?: (string | null)[];
   trackingNumber?: string;
@@ -644,6 +647,7 @@ function OrdersContent() {
                       {order.onSiteEligible === false && <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-900/50 text-red-400 border border-red-600/40">Not Available On-Site</span>}
                       {scannedCount > 0 && scannedCount >= nonSpaceCount && <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-900/50 text-green-400 border border-green-600/40">PCBs ✓</span>}
                       {scannedCount > 0 && scannedCount < nonSpaceCount && <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-900/50 text-blue-400 border border-blue-600/40">PCBs {scannedCount}/{nonSpaceCount}</span>}
+                      {order.gift === 'Yes' && <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-pink-900/50 text-pink-300 border border-pink-600/40">Gift</span>}
                     </div>
                     {order.source === 'popup' && <p className="text-xs text-gray-500">Order Number</p>}
                     {order.date && order.source === 'online' && <p className="text-xs text-gray-500">{order.date}</p>}
@@ -693,6 +697,8 @@ function OrdersContent() {
                   <p><span className="text-gray-400">Delivery:</span> {isPickup ? 'Pick Up' : 'Ship to Me'}</p>
                   <p><span className="text-gray-400">Address:</span> {order.address || '-'}</p>
                   {order.source === 'online' && <p><span className="text-gray-400">Shipping:</span> {order.shippingMethod} {order.shippingCost && <span className="text-gray-500">({order.shippingCost})</span>}</p>}
+                  {order.gift === 'Yes' && order.giftRecipient && <p><span className="text-gray-400">Gift For:</span> <span className="text-pink-300">{order.giftRecipient}</span></p>}
+                  {order.gift === 'Yes' && order.giftNote && <p className="md:col-span-2"><span className="text-gray-400">Gift Note:</span> <span className="text-pink-300 italic">&ldquo;{order.giftNote}&rdquo;</span></p>}
                 </div>
               )}
 

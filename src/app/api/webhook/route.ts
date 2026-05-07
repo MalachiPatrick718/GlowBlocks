@@ -225,6 +225,22 @@ export async function POST(req: NextRequest) {
       const baseId = process.env.AIRTABLE_BASE_ID;
       const tableName = process.env.AIRTABLE_ORDERS_TABLE || 'Orders';
 
+      // Parse gift data from metadata
+      let giftFields: Record<string, string> = {};
+      try {
+        const giftRaw = fullSession.metadata?.gift_data;
+        if (giftRaw) {
+          const giftData = JSON.parse(giftRaw);
+          if (giftData.isGift) {
+            giftFields = {
+              'Gift': 'Yes',
+              'Gift Recipient': String(giftData.recipientName || ''),
+              'Gift Note': String(giftData.giftNote || ''),
+            };
+          }
+        }
+      } catch {}
+
       if (apiKey && baseId) {
         const res = await fetch(
           `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`,
@@ -251,6 +267,7 @@ export async function POST(req: NextRequest) {
                 'Order Text': fullOrderText,
                 'Order Data': JSON.stringify(orderData),
                 ...(fullSession.metadata?.referral ? { 'Referral': fullSession.metadata.referral } : {}),
+                ...giftFields,
               },
             }),
           }
