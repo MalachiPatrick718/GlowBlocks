@@ -70,14 +70,28 @@ function SlipSection({ data, showDivider }: { data: LabelData; showDivider: bool
     <div style={{ breakInside: 'avoid' }}>
       {showDivider && <hr className="border-gray-300 border-dashed my-8" />}
 
-      <p className="text-lg font-bold text-black text-center mb-4">
+      <p className="text-lg font-bold text-black text-center mb-1">
         {data.customerName || '-'}
       </p>
+
+      {data.orderNumber && (
+        <p className="text-sm text-gray-500 text-center mb-4">Order #{data.orderNumber}</p>
+      )}
 
       {sections.map((section, idx) => (
         <div key={idx} className={idx > 0 ? 'mt-6' : ''}>
           {section.colors.length > 0 ? (
-            <BlockRow colors={section.colors} />
+            <>
+              <BlockRow colors={section.colors} />
+              <div className="flex justify-center gap-3 mt-2 flex-wrap">
+                {section.colors.map((c, i) => (
+                  <div key={i} className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <span className="inline-block w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: c.colorHex }} />
+                    {c.colorName || c.colorHex}
+                  </div>
+                ))}
+              </div>
+            </>
           ) : (
             <p className="text-3xl font-black tracking-[0.2em] text-center">
               {section.text}
@@ -216,6 +230,13 @@ function PackingLabelContent() {
             showDivider={idx > 0}
           />
         ))}
+
+        <div className="mt-10 pt-6 border-t border-gray-200 text-center">
+          <p className="text-base font-semibold text-black mb-2">Thank you for your order!</p>
+          <p className="text-sm text-gray-500 mb-3">We hope you love your GlowBlocks. Enjoy 10% off your next order:</p>
+          <p className="text-lg font-bold tracking-widest text-purple-600">POP</p>
+          <p className="text-xs text-gray-400 mt-3">glowblocksstudio.com</p>
+        </div>
       </div>
     </>
   );
