@@ -237,9 +237,12 @@ function PackingLabelContent() {
           <p className="text-xs text-gray-400 mt-3">glowblocks.shop</p>
         </div>
 
-        <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+        <div className="mt-6 pt-4 border-t border-gray-100 text-center space-y-3">
           <p className="text-xs text-gray-500 leading-relaxed max-w-md mx-auto">
-            <span className="font-semibold text-gray-600">Battery Info: </span> Your Glowblocks battery lasts approximately 5–6 months. When it&apos;s time for a replacement, you can return your Glowblock(s) to us for servicing, or purchase a CR2450 coin-cell battery and replace it yourself at your own risk. To request a return label and box, submit a Glowblocks Service Request on our Contact page at glowblocks.shop/service or email orders@glowblocks.shop.
+            <span className="font-semibold text-gray-600">Battery Info: </span> Your Glowblocks battery lasts approximately 5–6 months. When it&apos;s time for a replacement, you can return your Glowblock(s) to us for servicing, or purchase a CR2450 coin-cell battery and replace it yourself at your own risk.
+          </p>
+          <p className="text-xs text-gray-500 leading-relaxed max-w-md mx-auto">
+            <span className="font-semibold text-gray-600">Note: </span> To request a return label and box, submit a Glowblocks Service Request at glowblocks.shop/service or email orders@glowblocks.shop.
           </p>
         </div>
       </div>
