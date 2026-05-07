@@ -24,20 +24,33 @@ export async function sendSMS(to: string, message: string): Promise<boolean> {
   params.append('From', twilioFromNumber);
   params.append('Body', message);
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${auth}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: params.toString(),
-  });
+  // Retry up to 3 times for transient network errors (ECONNRESET, etc.)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+      });
 
-  if (!res.ok) {
-    const err = await res.text();
-    console.error('Twilio send error:', err);
-    return false;
+      if (!res.ok) {
+        const err = await res.text();
+        console.error(`Twilio send error (attempt ${attempt}):`, err);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error(`Twilio network error (attempt ${attempt}/${3}):`, err);
+      if (attempt < 3) {
+        await new Promise(r => setTimeout(r, 500 * attempt));
+      }
+    }
   }
 
-  return true;
+  console.error('Twilio SMS failed after 3 attempts');
+  return false;
 }
