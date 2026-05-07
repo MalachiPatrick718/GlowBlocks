@@ -220,7 +220,7 @@ function PackingLabelContent() {
       </div>
 
       <div className="max-w-[7in] mx-auto my-8 print:my-0 bg-white print:shadow-none border border-gray-200 print:border-none rounded-lg print:rounded-none p-10 font-sans text-black">
-        <h1 className="brand-title text-4xl text-center mb-1">GlowBlocks Studio</h1>
+        <h1 className="brand-title text-4xl text-center mb-1">Glowblocks Studio</h1>
         <p className="text-sm text-gray-400 text-center tracking-widest uppercase mb-8">Packing Slip</p>
 
         {dataList.map((data, idx) => (
@@ -233,13 +233,13 @@ function PackingLabelContent() {
 
         <div className="mt-10 pt-6 border-t border-gray-200 text-center">
           <p className="text-base font-semibold text-black mb-2">Thank you for your order!</p>
-          <p className="text-sm text-gray-500 mb-3">We hope you love your GlowBlocks. Enjoy 10% off your next order, use code: <span className="font-bold text-purple-600">POP</span></p>
+          <p className="text-sm text-gray-500 mb-3">We hope you love your Glowblocks. Enjoy 10% off your next order, use code: <span className="font-bold text-purple-600">POP</span></p>
           <p className="text-xs text-gray-400 mt-3">glowblocks.shop</p>
         </div>
 
         <div className="mt-6 pt-4 border-t border-gray-100 text-center">
           <p className="text-xs text-gray-500 leading-relaxed max-w-md mx-auto">
-            <span className="font-semibold text-gray-600">Battery Info:</span> Your GlowBlock battery lasts approximately 5–6 months. When it&apos;s time for a replacement, you can return your GlowBlock(s) to us for servicing, or purchase a CR2450 coin-cell battery and replace it yourself at your own risk.
+            <span className="font-semibold text-gray-600">Battery Info: </span> Your Glowblocks battery lasts approximately 5–6 months. When it&apos;s time for a replacement, you can return your GlowBlock(s) to us for servicing, or purchase a CR2450 coin-cell battery and replace it yourself at your own risk.
           </p>
         </div>
       </div>
