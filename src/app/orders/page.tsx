@@ -231,9 +231,29 @@ function OrdersContent() {
     try {
       const headers = { 'x-popup-admin-key': key };
       const [popupRes, onlineRes] = await Promise.allSettled([
-        fetch('/api/popup-orders', { headers, cache: 'no-store' }).then(r => r.json()),
-        fetch('/api/orders', { headers, cache: 'no-store' }).then(r => r.json()),
+        fetch('/api/popup-orders', { headers, cache: 'no-store' }).then(async r => {
+          if (r.status === 401) throw new Error('unauthorized');
+          if (!r.ok) throw new Error('fetch-error');
+          return r.json();
+        }),
+        fetch('/api/orders', { headers, cache: 'no-store' }).then(async r => {
+          if (r.status === 401) throw new Error('unauthorized');
+          if (!r.ok) throw new Error('fetch-error');
+          return r.json();
+        }),
       ]);
+
+      // Check if either API returned unauthorized
+      const unauthorized = [popupRes, onlineRes].some(
+        r => r.status === 'rejected' && r.reason?.message === 'unauthorized'
+      );
+      if (unauthorized) {
+        setKey('');
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+        setError('Invalid admin key. Please try again.');
+        setOrders([]);
+        return;
+      }
 
       const popupOrders: UnifiedOrder[] = (popupRes.status === 'fulfilled' && popupRes.value.orders || []).map((o: Record<string, unknown>) => ({ ...o, source: 'popup' as const }));
       const onlineOrders: UnifiedOrder[] = (onlineRes.status === 'fulfilled' && onlineRes.value.orders || []).map((o: Record<string, unknown>) => ({ ...o, source: 'online' as const }));
