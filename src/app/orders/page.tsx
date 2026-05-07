@@ -659,6 +659,7 @@ function OrdersContent() {
           </div>
         )}
 
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {filteredOrders.map((order) => {
           const oText = getOrderText(order);
           const ids = order.boardIds || [];
@@ -891,6 +892,7 @@ function OrdersContent() {
             </div>
           );
         })}
+        </div>
       </div>
 
       {/* Combined packing slip floating bar */}
