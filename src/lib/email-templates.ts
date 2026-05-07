@@ -21,10 +21,15 @@ export function popupOrderConfirmationEmail(
   orderNumber: string,
   setsLabel: string,
   deliveryMethod: string,
+  customerEmail?: string,
 ): string {
   const deliveryNote = deliveryMethod === 'pick-up'
     ? "We'll let you know when your order is ready for pickup!"
     : 'Be on the lookout for your GlowBlocks in 5-7 business days!';
+
+  const trackUrl = customerEmail
+    ? `${SITE_URL}/order-status?email=${encodeURIComponent(customerEmail)}`
+    : `${SITE_URL}/order-status`;
 
   return wrap(`
     <h2 style="color: ${BRAND_COLOR};">Thanks for your order, ${firstName}!</h2>
@@ -36,7 +41,7 @@ export function popupOrderConfirmationEmail(
     </div>
     <p>${deliveryNote}</p>
     <div style="text-align: center; margin: 24px 0;">
-      <a href="${SITE_URL}/order-status" style="display: inline-block; background: ${BRAND_COLOR}; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">Track Your Order</a>
+      <a href="${trackUrl}" style="display: inline-block; background: ${BRAND_COLOR}; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">Track Your Order</a>
     </div>
   `);
 }
@@ -46,7 +51,12 @@ export function onlineOrderConfirmationEmail(
   itemListHtml: string,
   totalFormatted: string,
   fullAddress: string,
+  customerEmail?: string,
 ): string {
+  const trackUrl = customerEmail
+    ? `${SITE_URL}/order-status?email=${encodeURIComponent(customerEmail)}`
+    : `${SITE_URL}/order-status`;
+
   return wrap(`
     <h2 style="color: ${BRAND_COLOR};">Thanks for your order, ${firstName}!</h2>
     <p>We've received your GlowBlocks order and are getting started on it.</p>
@@ -57,7 +67,7 @@ export function onlineOrderConfirmationEmail(
     <p><strong>Estimated delivery:</strong> 5-7 business days</p>
     <p style="color: #6b7280; font-size: 13px;">We'll send you a tracking number once your order ships.</p>
     <div style="text-align: center; margin: 24px 0;">
-      <a href="${SITE_URL}/order-status" style="display: inline-block; background: ${BRAND_COLOR}; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">Track Your Order</a>
+      <a href="${trackUrl}" style="display: inline-block; background: ${BRAND_COLOR}; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">Track Your Order</a>
     </div>
   `);
 }

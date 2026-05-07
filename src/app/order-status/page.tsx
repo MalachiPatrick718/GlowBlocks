@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 interface OrderResult {
   type: 'popup' | 'online';
@@ -46,28 +47,37 @@ function getPickupPill(status: string): { label: string; classes: string } | nul
 }
 
 export default function OrderStatusPage() {
+  return (
+    <Suspense>
+      <OrderStatusContent />
+    </Suspense>
+  );
+}
+
+function OrderStatusContent() {
+  const searchParams = useSearchParams();
   const [orderNumber, setOrderNumber] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<OrderResult[]>([]);
+  const autoSearched = useRef(false);
 
   const hasEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const hasPhone = phone.replace(/\D/g, '').length >= 10;
   const canSubmit = hasEmail || hasPhone;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const doLookup = useCallback(async (lookupEmail: string, lookupPhone: string, lookupOrder: string) => {
     setLoading(true);
     setError(null);
     setResults([]);
 
     try {
       const params = new URLSearchParams();
-      if (orderNumber.trim()) params.set('order', orderNumber.trim());
-      if (email.trim()) params.set('email', email.trim().toLowerCase());
-      if (phone.trim()) params.set('phone', phone.replace(/[^\d]/g, ''));
+      if (lookupOrder.trim()) params.set('order', lookupOrder.trim());
+      if (lookupEmail.trim()) params.set('email', lookupEmail.trim().toLowerCase());
+      if (lookupPhone.trim()) params.set('phone', lookupPhone.replace(/[^\d]/g, ''));
 
       const res = await fetch(`/api/order-status?${params.toString()}`);
       const data = await res.json();
@@ -88,6 +98,28 @@ export default function OrderStatusPage() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Auto-fill and auto-submit from URL params (e.g. from email link)
+  useEffect(() => {
+    if (autoSearched.current) return;
+    const paramEmail = searchParams.get('email') || '';
+    const paramPhone = searchParams.get('phone') || '';
+    const paramOrder = searchParams.get('order') || '';
+
+    if (paramEmail) setEmail(paramEmail);
+    if (paramPhone) setPhone(paramPhone);
+    if (paramOrder) setOrderNumber(paramOrder);
+
+    if (paramEmail || paramPhone) {
+      autoSearched.current = true;
+      doLookup(paramEmail, paramPhone, paramOrder);
+    }
+  }, [searchParams, doLookup]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    doLookup(email, phone, orderNumber);
   };
 
   return (

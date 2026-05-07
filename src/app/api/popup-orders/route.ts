@@ -343,7 +343,7 @@ export async function POST(req: NextRequest) {
         email: customerEmail,
         phone,
         emailSubject: 'Your GlowBlocks Order Confirmation',
-        emailHtml: popupOrderConfirmationEmail(firstName, orderNumber, setsLabel, normalizedDeliveryMethod),
+        emailHtml: popupOrderConfirmationEmail(firstName, orderNumber, setsLabel, normalizedDeliveryMethod, customerEmail),
         smsMessage: smsMsg,
       }).catch((err) => console.error('Failed to send order confirmation:', err));
     }

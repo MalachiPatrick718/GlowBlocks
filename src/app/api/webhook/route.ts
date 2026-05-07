@@ -268,7 +268,7 @@ export async function POST(req: NextRequest) {
             .join('');
 
           if (customerEmail) {
-            const html = onlineOrderConfirmationEmail(firstName, itemListHtml, totalFormatted, fullAddress || '');
+            const html = onlineOrderConfirmationEmail(firstName, itemListHtml, totalFormatted, fullAddress || '', customerEmail);
             await sendEmail(customerEmail, 'Your GlowBlocks Order Confirmation', html);
           }
 
