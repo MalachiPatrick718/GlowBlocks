@@ -196,8 +196,10 @@ export default function PopupPage() {
     const hasContact = customerName.trim().length > 1;
     const hasRequiredAddress = deliveryMethod === 'ship' ? address.trim().length > 5 : true;
     const hasLastName = deliveryMethod === 'ship' ? lastName.trim().length > 0 : true;
-    return hasContact && hasRequiredAddress && hasLastName;
-  }, [customerName, lastName, address, deliveryMethod]);
+    const hasPhone = phoneNumber.replace(/\D/g, '').length === 10;
+    const hasEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+    return hasContact && hasRequiredAddress && hasLastName && hasPhone && hasEmail;
+  }, [customerName, lastName, address, deliveryMethod, phoneNumber, email]);
 
   const uncoloredCount = useMemo(() => {
     if (colorMode !== 'custom' || !textComplete) return 0;
@@ -413,6 +415,10 @@ export default function PopupPage() {
         setValidationMessage('Enter your first name');
       } else if (deliveryMethod === 'ship' && lastName.trim().length === 0) {
         setValidationMessage('Enter your last name');
+      } else if (phoneNumber.replace(/\D/g, '').length !== 10) {
+        setValidationMessage('Enter a valid 10-digit phone number');
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        setValidationMessage('Enter a valid email address');
       } else if (deliveryMethod === 'ship' && address.trim().length <= 5) {
         setValidationMessage('Enter a shipping address');
       } else {
@@ -910,17 +916,21 @@ export default function PopupPage() {
                       setPhoneNumber(digits);
                     }
                   }}
-                  placeholder="Phone (optional)"
+                  placeholder="Phone number"
                   autoComplete="off"
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                  className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 ${
+                    highlightSection === 'contact' && phoneNumber.replace(/\D/g, '').length !== 10 ? 'border-amber-500' : 'border-gray-700'
+                  }`}
                 />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email (optional)"
+                  placeholder="Email address"
                   autoComplete="off"
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                  className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 ${
+                    highlightSection === 'contact' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ? 'border-amber-500' : 'border-gray-700'
+                  }`}
                 />
                 {deliveryMethod === 'ship' && (
                   <>
