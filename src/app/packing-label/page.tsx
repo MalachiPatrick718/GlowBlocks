@@ -15,15 +15,6 @@ interface SetEntry {
   colors: ColorEntry[];
 }
 
-interface PricingData {
-  subtotal: number;
-  customColorFee: number;
-  discount: number;
-  shipping: number;
-  tax: number;
-  total: number;
-}
-
 interface LabelData {
   source: string;
   customerName: string;
@@ -40,7 +31,6 @@ interface LabelData {
   colors: ColorEntry[];
   sets?: SetEntry[];
   date?: string;
-  pricing?: PricingData;
 }
 
 export default function PackingLabelPage() {
@@ -67,49 +57,6 @@ function BlockRow({ colors }: { colors: ColorEntry[] }) {
   );
 }
 
-function fmt(n: number): string {
-  return `$${n.toFixed(2)}`;
-}
-
-function PricingBreakdown({ pricing }: { pricing: PricingData }) {
-  return (
-    <div className="text-sm text-center mt-4 space-y-1">
-      <div className="flex justify-between max-w-[14rem] mx-auto">
-        <span className="text-gray-500">Subtotal</span>
-        <span>{fmt(pricing.subtotal)}</span>
-      </div>
-      {pricing.customColorFee > 0 && (
-        <div className="flex justify-between max-w-[14rem] mx-auto">
-          <span className="text-gray-500">Custom Color Fee</span>
-          <span>{fmt(pricing.customColorFee)}</span>
-        </div>
-      )}
-      {pricing.discount > 0 && (
-        <div className="flex justify-between max-w-[14rem] mx-auto">
-          <span className="text-gray-500">Discount</span>
-          <span className="text-green-600">-{fmt(pricing.discount)}</span>
-        </div>
-      )}
-      {pricing.shipping > 0 && (
-        <div className="flex justify-between max-w-[14rem] mx-auto">
-          <span className="text-gray-500">Shipping</span>
-          <span>{fmt(pricing.shipping)}</span>
-        </div>
-      )}
-      {pricing.tax > 0 && (
-        <div className="flex justify-between max-w-[14rem] mx-auto">
-          <span className="text-gray-500">Tax</span>
-          <span>{fmt(pricing.tax)}</span>
-        </div>
-      )}
-      <div className="flex justify-between max-w-[14rem] mx-auto font-bold pt-1 border-t border-gray-200">
-        <span>Total</span>
-        <span>{fmt(pricing.total)}</span>
-      </div>
-    </div>
-  );
-}
-
 function getColors(data: LabelData): { text: string; colors: ColorEntry[] }[] {
   if (data.source === 'popup' && data.sets && data.sets.length > 0) {
     return data.sets.map((set) => ({ text: set.text, colors: set.colors }));
@@ -117,7 +64,7 @@ function getColors(data: LabelData): { text: string; colors: ColorEntry[] }[] {
   return [{ text: data.text || '-', colors: data.colors }];
 }
 
-function SlipSection({ data, showDivider, showPricing }: { data: LabelData; showDivider: boolean; showPricing: boolean }) {
+function SlipSection({ data, showDivider }: { data: LabelData; showDivider: boolean }) {
   const sections = getColors(data);
   return (
     <div style={{ breakInside: 'avoid' }}>
@@ -138,10 +85,6 @@ function SlipSection({ data, showDivider, showPricing }: { data: LabelData; show
           )}
         </div>
       ))}
-
-      {showPricing && data.pricing && (
-        <PricingBreakdown pricing={data.pricing} />
-      )}
     </div>
   );
 }
@@ -271,30 +214,8 @@ function PackingLabelContent() {
             key={idx}
             data={data}
             showDivider={idx > 0}
-            showPricing
           />
         ))}
-
-        {dataList.length > 1 && (() => {
-          const combined: PricingData = { subtotal: 0, customColorFee: 0, discount: 0, shipping: 0, tax: 0, total: 0 };
-          for (const d of dataList) {
-            if (d.pricing) {
-              combined.subtotal += d.pricing.subtotal;
-              combined.customColorFee += d.pricing.customColorFee;
-              combined.discount += d.pricing.discount;
-              combined.shipping += d.pricing.shipping;
-              combined.tax += d.pricing.tax;
-              combined.total += d.pricing.total;
-            }
-          }
-          return (
-            <>
-              <hr className="border-gray-300 border-dashed my-8" />
-              <p className="text-lg font-bold text-black text-center mb-2">Combined Total</p>
-              <PricingBreakdown pricing={combined} />
-            </>
-          );
-        })()}
       </div>
     </>
   );
