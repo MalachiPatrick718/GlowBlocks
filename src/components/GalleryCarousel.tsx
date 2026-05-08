@@ -9,13 +9,6 @@ type MediaItem =
 
 const MEDIA: MediaItem[] = [
   { type: 'video', src: '/videos/gallery-1.mp4', alt: 'Glowblocks in action' },
-  { type: 'image', src: '/images/gallery/1.png', alt: 'GlowBlocks photo 1' },
-  { type: 'image', src: '/images/gallery/2.png', alt: 'GlowBlocks photo 2' },
-  { type: 'image', src: '/images/gallery/4.png', alt: 'GlowBlocks photo 3' },
-  { type: 'image', src: '/images/gallery/5.png', alt: 'GlowBlocks photo 4' },
-  { type: 'image', src: '/images/gallery/6.png', alt: 'GlowBlocks photo 5' },
-  { type: 'image', src: '/images/gallery/7.png', alt: 'GlowBlocks photo 6' },
-  { type: 'image', src: '/images/gallery/8.png', alt: 'GlowBlocks photo 7' },
   { type: 'image', src: '/images/gallery/9.jpeg', alt: 'GlowBlocks photo 8' },
   { type: 'image', src: '/images/gallery/10.jpeg', alt: 'GlowBlocks photo 9' },
   { type: 'image', src: '/images/gallery/11.jpeg', alt: 'GlowBlocks photo 10' },
