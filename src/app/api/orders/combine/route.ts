@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       mergedFields = mergePopupOrders(primary.fields, others.map(r => r.fields));
     }
 
-    // Update primary record
+    // Update primary record with only the merged fields
     const updateRes = await fetch(url, {
       method: 'PATCH',
       headers: getHeaders(),
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     if (!updateRes.ok) {
       const err = await updateRes.json();
       console.error('Combine update error:', err);
-      return NextResponse.json({ error: 'Failed to update combined order' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to update combined order: ' + JSON.stringify(err) }, { status: 500 });
     }
 
     // Delete other records (Airtable supports up to 10 at a time via query params)
@@ -117,7 +117,9 @@ function mergeOnlineOrders(
   others: Record<string, unknown>[],
 ): Record<string, unknown> {
   const all = [primary, ...others];
-  const f = { ...primary };
+
+  // Only build an object with the specific writable fields we want to update
+  const f: Record<string, unknown> = {};
 
   // Concatenate text fields
   const items = all.map(r => String(r['Items'] || '')).filter(Boolean);
@@ -156,15 +158,11 @@ function mergeOnlineOrders(
   f['Order Data'] = JSON.stringify(mergedOrderData);
 
   // Gift: keep whichever has gift data
-  if (!f['Gift'] || f['Gift'] !== 'Yes') {
-    for (const r of others) {
-      if (r['Gift'] === 'Yes') {
-        f['Gift'] = 'Yes';
-        f['Gift Recipient'] = r['Gift Recipient'] || '';
-        f['Gift Note'] = r['Gift Note'] || '';
-        break;
-      }
-    }
+  const giftRecord = all.find(r => r['Gift'] === 'Yes');
+  if (giftRecord) {
+    f['Gift'] = 'Yes';
+    f['Gift Recipient'] = giftRecord['Gift Recipient'] || '';
+    f['Gift Note'] = giftRecord['Gift Note'] || '';
   }
 
   // Reset notification flags so combined order gets fresh notifications
@@ -182,7 +180,9 @@ function mergePopupOrders(
   others: Record<string, unknown>[],
 ): Record<string, unknown> {
   const all = [primary, ...others];
-  const f = { ...primary };
+
+  // Only build an object with the specific writable fields we want to update
+  const f: Record<string, unknown> = {};
 
   // Concatenate words
   const words = all.map(r => String(r['Name/Word'] || '')).filter(Boolean);

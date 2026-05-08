@@ -423,7 +423,7 @@ function OrdersContent() {
   const combineOrders = async () => {
     if (slipSelection.length < 2) return;
     const sources = new Set(slipSelection.map(s => s.source));
-    if (sources.size > 1) { setError('Cannot combine orders from different sources (popup vs online).'); return; }
+    if (sources.size > 1) { alert('Cannot combine orders from different sources (popup vs online).'); return; }
     const source = slipSelection[0].source;
     const names = slipSelection.map(s => {
       const o = orders.find(o => o.id === s.id);
@@ -431,6 +431,7 @@ function OrdersContent() {
     });
     if (!confirm(`Combine ${slipSelection.length} ${source} orders into one?\n\n${names.join('\n')}\n\nThe first order will be kept with all items merged. The others will be deleted. This cannot be undone.`)) return;
     setCombiningOrders(true);
+    setError(null);
     try {
       const res = await fetch('/api/orders/combine', {
         method: 'POST',
@@ -438,10 +439,10 @@ function OrdersContent() {
         body: JSON.stringify({ orderIds: slipSelection.map(s => s.id), source }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || 'Failed to combine orders.'); return; }
+      if (!res.ok) { alert(data.error || 'Failed to combine orders.'); return; }
       clearSlipSelection();
       await fetchOrders(true);
-    } catch { setError('Failed to combine orders.'); } finally { setCombiningOrders(false); }
+    } catch { alert('Failed to combine orders. Check your connection and try again.'); } finally { setCombiningOrders(false); }
   };
 
   // --- Filtering ---
