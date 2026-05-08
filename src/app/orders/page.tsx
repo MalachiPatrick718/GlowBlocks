@@ -685,7 +685,7 @@ function OrdersContent() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="columns-1 lg:columns-2 gap-4 [column-fill:auto]">
         {filteredOrders.map((order) => {
           const oText = getOrderText(order);
           const ids = order.boardIds || [];
@@ -697,7 +697,7 @@ function OrdersContent() {
           const colorLines = order.source === 'popup' ? getColorLines(order) : getOnlineColorLines(order);
 
           return (
-            <div key={order.id} className={`rounded-2xl border ${slipSelectedIds.has(order.id) ? 'border-purple-500 ring-1 ring-purple-500/40' : 'border-gray-800'} bg-gray-950 p-5 space-y-3`}>
+            <div key={order.id} className={`rounded-2xl border ${slipSelectedIds.has(order.id) ? 'border-purple-500 ring-1 ring-purple-500/40' : 'border-gray-800'} bg-gray-950 p-5 space-y-3 break-inside-avoid mb-4`}>
               {/* Header */}
               <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                 <div className="flex items-start gap-3">
