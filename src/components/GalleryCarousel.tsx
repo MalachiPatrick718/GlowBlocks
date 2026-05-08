@@ -5,10 +5,10 @@ import Image from 'next/image';
 
 type MediaItem =
   | { type: 'image'; src: string; alt: string }
-  | { type: 'video'; src: string; alt: string };
+  | { type: 'video'; src: string; alt: string; portrait?: boolean };
 
 const MEDIA: MediaItem[] = [
-  { type: 'video', src: '/videos/gallery-1.mp4', alt: 'Glowblocks in action' },
+  { type: 'video', src: '/videos/gallery-1.mp4', alt: 'Glowblocks in action', portrait: true },
   { type: 'image', src: '/images/gallery/9.jpeg', alt: 'GlowBlocks photo 8' },
   { type: 'image', src: '/images/gallery/10.jpeg', alt: 'GlowBlocks photo 9' },
   { type: 'image', src: '/images/gallery/11.jpeg', alt: 'GlowBlocks photo 10' },
@@ -23,6 +23,7 @@ export default function GalleryCarousel() {
   const next = () => setCurrent((c) => (c === MEDIA.length - 1 ? 0 : c + 1));
 
   const item = MEDIA[current];
+  const isPortraitVideo = item.type === 'video' && 'portrait' in item && item.portrait;
 
   // Pause video when navigating away, play when navigating to a video
   useEffect(() => {
@@ -34,7 +35,7 @@ export default function GalleryCarousel() {
   return (
     <div className="relative max-w-4xl mx-auto">
       {/* Main display */}
-      <div className="relative aspect-[16/10] bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+      <div className={`relative bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden ${isPortraitVideo ? 'aspect-[9/16] max-w-sm mx-auto' : 'aspect-[16/10]'}`}>
         {item.type === 'video' ? (
           <video
             ref={videoRef}
