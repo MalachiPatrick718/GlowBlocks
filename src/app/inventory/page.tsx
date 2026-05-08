@@ -155,7 +155,7 @@ function InventoryContent() {
     return { eligible: shortages.length === 0, shortages, totalLetters };
   }, [checkerText, inventory]);
 
-  // Compute needed client-side so it updates immediately on input
+  // Compute needed and stock level client-side so they update immediately
   const needed = useMemo(() => {
     const result: Record<string, number> = {};
     for (const item of [...MAIN_ITEMS, ...LETTERS]) {
@@ -163,6 +163,21 @@ function InventoryContent() {
       if (target != null && target > 0) {
         const current = Number(inventory[item] || 0);
         result[item] = Math.max(0, target - current);
+      }
+    }
+    return result;
+  }, [inventory, targets]);
+
+  // Stock level: 'good' (>= target), 'warning' (>= 50% target), 'low' (< 50% target)
+  const stockLevel = useMemo(() => {
+    const result: Record<string, 'good' | 'warning' | 'low'> = {};
+    for (const item of [...MAIN_ITEMS, ...LETTERS]) {
+      const target = targets[item];
+      if (target != null && target > 0) {
+        const current = Number(inventory[item] || 0);
+        if (current >= target) result[item] = 'good';
+        else if (current >= target / 2) result[item] = 'warning';
+        else result[item] = 'low';
       }
     }
     return result;
@@ -260,24 +275,30 @@ function InventoryContent() {
   const renderInput = (item: string) => {
     const raw = inventory[item];
     const display = raw === undefined || raw === null ? '0' : String(raw);
-    const isLowStock = lowStock.includes(item);
+    const level = stockLevel[item];
     const target = targets[item];
     const targetDisplay = target === undefined || target === null ? '' : String(target);
     const need = needed[item];
     const isSaving = savingItem === item;
+
+    const borderClass = level === 'low' ? 'border-red-500 bg-red-950/20'
+      : level === 'warning' ? 'border-amber-500/50 bg-amber-950/10'
+      : 'border-gray-800 bg-gray-950';
+
     return (
-      <div key={item} className={`rounded-lg border p-3 ${isLowStock ? 'border-red-500 bg-red-950/20' : 'border-gray-800 bg-gray-950'} ${isSaving ? 'opacity-70' : ''}`}>
+      <div key={item} className={`rounded-lg border p-3 ${borderClass} ${isSaving ? 'opacity-70' : ''}`}>
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-300">{item}</p>
           <div className="text-right">
-            {isLowStock && (
-              <span className="text-xs font-semibold text-red-400 flex items-center gap-1">
-                ⚠ Low
-              </span>
+            {level === 'low' && (
+              <span className="text-xs font-semibold text-red-400">⚠ Low</span>
             )}
-            {need != null && need > 0 && (
-              <p className="text-xs text-amber-400">
-                Need: <span className="font-medium">{need}</span>
+            {level === 'warning' && (
+              <span className="text-xs font-semibold text-amber-400">● Low-ish</span>
+            )}
+            {need != null && (
+              <p className={`text-xs ${need > 0 ? (level === 'low' ? 'text-red-400' : 'text-amber-400') : 'text-green-500'}`}>
+                Needed: <span className="font-medium">{need}</span>
               </p>
             )}
           </div>
@@ -309,7 +330,7 @@ function InventoryContent() {
                   (e.target as HTMLInputElement).blur();
                 }
               }}
-              className={`w-full px-3 py-2 rounded-md bg-black/50 border text-white ${isLowStock ? 'border-red-500' : 'border-gray-700'}`}
+              className={`w-full px-3 py-2 rounded-md bg-black/50 border text-white ${level === 'low' ? 'border-red-500' : level === 'warning' ? 'border-amber-500/50' : 'border-gray-700'}`}
             />
           </div>
           <div className="flex-1">
