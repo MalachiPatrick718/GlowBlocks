@@ -84,7 +84,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { inventory } = await req.json();
+    const { inventory, targets } = await req.json();
     if (!inventory || typeof inventory !== 'object') {
       return NextResponse.json({ error: 'Invalid inventory payload' }, { status: 400 });
     }
@@ -103,15 +103,21 @@ export async function PUT(req: NextRequest) {
       existingByItem.set(item, { id: record.id, quantity: Number(record.fields.Quantity) || 0 });
     });
 
-    const updates: Array<{ id: string; fields: { Quantity: number } }> = [];
-    const creates: Array<{ fields: { Item: string; Quantity: number } }> = [];
+    const hasTargets = targets && typeof targets === 'object';
+
+    const updates: Array<{ id: string; fields: { Quantity: number; Target?: number } }> = [];
+    const creates: Array<{ fields: { Item: string; Quantity: number; Target?: number } }> = [];
     Object.entries(inventory as Record<string, number>).forEach(([item, value]) => {
       const qty = Number(value) || 0;
       const existing = existingByItem.get(item);
       if (existing) {
-        updates.push({ id: existing.id, fields: { Quantity: qty } });
+        const fields: { Quantity: number; Target?: number } = { Quantity: qty };
+        if (hasTargets && item in targets) fields.Target = Number(targets[item]) || 0;
+        updates.push({ id: existing.id, fields });
       } else {
-        creates.push({ fields: { Item: item, Quantity: qty } });
+        const fields: { Item: string; Quantity: number; Target?: number } = { Item: item, Quantity: qty };
+        if (hasTargets && item in targets) fields.Target = Number(targets[item]) || 0;
+        creates.push({ fields });
       }
     });
 

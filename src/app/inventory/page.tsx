@@ -204,7 +204,7 @@ function InventoryContent() {
           'Content-Type': 'application/json',
           'x-popup-admin-key': key,
         },
-        body: JSON.stringify({ inventory }),
+        body: JSON.stringify({ inventory, targets }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -225,6 +225,7 @@ function InventoryContent() {
     const display = raw === undefined || raw === null ? '0' : String(raw);
     const isLowStock = lowStock.includes(item);
     const target = targets[item];
+    const targetDisplay = target === undefined || target === null ? '' : String(target);
     const need = needed[item];
     return (
       <div key={item} className={`rounded-lg border p-3 ${isLowStock ? 'border-red-500 bg-red-950/20' : 'border-gray-800 bg-gray-950'}`}>
@@ -236,9 +237,6 @@ function InventoryContent() {
                 ⚠ Low
               </span>
             )}
-            {target != null && (
-              <p className="text-xs text-gray-500">Target: <span className="text-gray-300 font-medium">{target}</span></p>
-            )}
             {need != null && (
               <p className={`text-xs ${need > 0 ? 'text-amber-400' : 'text-green-500'}`}>
                 Needed: <span className="font-medium">{need}</span>
@@ -246,26 +244,49 @@ function InventoryContent() {
             )}
           </div>
         </div>
-        <input
-          type="number"
-          min={0}
-          value={display}
-          onFocus={(e) => e.target.select()}
-          onChange={(e) => {
-            const val = e.target.value;
-            setInventory((prev) => ({
-              ...prev,
-              [item]: val === '' ? '' : Math.max(0, Number(val)),
-            }));
-          }}
-          onBlur={() => {
-            setInventory((prev) => ({
-              ...prev,
-              [item]: Math.max(0, Number(prev[item] || 0)),
-            }));
-          }}
-          className={`mt-2 w-full px-3 py-2 rounded-md bg-black/50 border text-white ${isLowStock ? 'border-red-500' : 'border-gray-700'}`}
-        />
+        <div className="flex gap-2 mt-2">
+          <div className="flex-1">
+            <label className="text-[10px] text-gray-500 uppercase tracking-wider">Stock</label>
+            <input
+              type="number"
+              min={0}
+              value={display}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => {
+                const val = e.target.value;
+                setInventory((prev) => ({
+                  ...prev,
+                  [item]: val === '' ? '' : Math.max(0, Number(val)),
+                }));
+              }}
+              onBlur={() => {
+                setInventory((prev) => ({
+                  ...prev,
+                  [item]: Math.max(0, Number(prev[item] || 0)),
+                }));
+              }}
+              className={`w-full px-3 py-2 rounded-md bg-black/50 border text-white ${isLowStock ? 'border-red-500' : 'border-gray-700'}`}
+            />
+          </div>
+          <div className="w-16">
+            <label className="text-[10px] text-gray-500 uppercase tracking-wider">Target</label>
+            <input
+              type="number"
+              min={0}
+              value={targetDisplay}
+              placeholder="—"
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => {
+                const val = e.target.value;
+                setTargets((prev) => ({
+                  ...prev,
+                  [item]: val === '' ? 0 : Math.max(0, Number(val)),
+                }));
+              }}
+              className="w-full px-2 py-2 rounded-md bg-black/50 border border-gray-700 text-purple-300 text-center"
+            />
+          </div>
+        </div>
       </div>
     );
   };
