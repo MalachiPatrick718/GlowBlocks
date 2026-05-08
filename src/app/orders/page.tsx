@@ -216,6 +216,7 @@ function OrdersContent() {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [editFields, setEditFields] = useState<Record<string, string>>({});
+  const [combiningOrders, setCombiningOrders] = useState(false);
   const [pickupDrafts, setPickupDrafts] = useState<Record<string, string>>({});
 
   // Multi-order packing slip selection
@@ -417,6 +418,30 @@ function OrdersContent() {
       if (!res.ok) { const data = await res.json(); setError(data.error || 'Failed to delete order.'); return; }
       setOrders(prev => prev.filter(o => o.id !== order.id));
     } catch { setError('Failed to delete order.'); }
+  };
+
+  const combineOrders = async () => {
+    if (slipSelection.length < 2) return;
+    const sources = new Set(slipSelection.map(s => s.source));
+    if (sources.size > 1) { setError('Cannot combine orders from different sources (popup vs online).'); return; }
+    const source = slipSelection[0].source;
+    const names = slipSelection.map(s => {
+      const o = orders.find(o => o.id === s.id);
+      return o ? (o.customerName || o.orderNumber || o.id) : s.id;
+    });
+    if (!confirm(`Combine ${slipSelection.length} ${source} orders into one?\n\n${names.join('\n')}\n\nThe first order will be kept with all items merged. The others will be deleted. This cannot be undone.`)) return;
+    setCombiningOrders(true);
+    try {
+      const res = await fetch('/api/orders/combine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-popup-admin-key': key },
+        body: JSON.stringify({ orderIds: slipSelection.map(s => s.id), source }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Failed to combine orders.'); return; }
+      clearSlipSelection();
+      await fetchOrders(true);
+    } catch { setError('Failed to combine orders.'); } finally { setCombiningOrders(false); }
   };
 
   // --- Filtering ---
@@ -895,17 +920,23 @@ function OrdersContent() {
         </div>
       </div>
 
-      {/* Combined packing slip floating bar */}
+      {/* Selection floating bar */}
       {slipSelection.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-gray-950/95 border-t border-purple-700 backdrop-blur-sm px-4 py-3">
           <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
-            <p className="text-sm text-gray-300"><span className="font-bold text-purple-400">{slipSelection.length}</span> order{slipSelection.length !== 1 ? 's' : ''} selected for packing slip</p>
-            <div className="flex items-center gap-2">
+            <p className="text-sm text-gray-300"><span className="font-bold text-purple-400">{slipSelection.length}</span> order{slipSelection.length !== 1 ? 's' : ''} selected</p>
+            <div className="flex flex-wrap items-center gap-2">
               <button onClick={clearSlipSelection} className="px-3 py-1.5 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold transition-colors">Clear</button>
               <a href={`/packing-label?orders=${encodeURIComponent(slipSelection.map(s => `${s.source}:${s.id}`).join(','))}&key=${encodeURIComponent(key)}`} target="_blank" rel="noopener noreferrer"
                 className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition-colors">
-                Create Combined Packing Slip
+                Combined Packing Slip
               </a>
+              {slipSelection.length >= 2 && new Set(slipSelection.map(s => s.source)).size === 1 && (
+                <button onClick={combineOrders} disabled={combiningOrders}
+                  className="px-4 py-1.5 rounded-lg bg-green-700 hover:bg-green-600 text-white text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  {combiningOrders ? 'Combining...' : 'Combine Orders'}
+                </button>
+              )}
             </div>
           </div>
         </div>
