@@ -157,3 +157,45 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to save inventory' }, { status: 500 });
   }
 }
+
+// PATCH: update a single inventory record (quantity and/or target)
+export async function PATCH(req: NextRequest) {
+  try {
+    if (!apiKey || !baseId) {
+      return NextResponse.json({ error: 'Airtable is not configured' }, { status: 500 });
+    }
+    if (!isAuthorized(req)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { recordId, quantity, target } = await req.json();
+    if (!recordId) {
+      return NextResponse.json({ error: 'Missing recordId' }, { status: 400 });
+    }
+
+    const fields: Record<string, number> = {};
+    if (quantity !== undefined) fields.Quantity = Number(quantity) || 0;
+    if (target !== undefined) fields.Target = Number(target) || 0;
+
+    if (Object.keys(fields).length === 0) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
+    }
+
+    const res = await fetch(getAirtableUrl(), {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ records: [{ id: String(recordId), fields }] }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      console.error('Inventory PATCH error:', err);
+      return NextResponse.json({ error: 'Failed to update item' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Inventory PATCH error:', error);
+    return NextResponse.json({ error: 'Failed to update item' }, { status: 500 });
+  }
+}

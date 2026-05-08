@@ -115,10 +115,11 @@ function InventoryContent() {
   const key = searchParams.get('key') || '';
   const [inventory, setInventory] = useState<Record<string, number | string>>({});
   const [targets, setTargets] = useState<Record<string, number>>({});
-  const [needed, setNeeded] = useState<Record<string, number>>({});
+  const [recordIds, setRecordIds] = useState<Record<string, string>>({});
   const [lowStock, setLowStock] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingItem, setSavingItem] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [checkerText, setCheckerText] = useState('');
 
@@ -154,6 +155,19 @@ function InventoryContent() {
     return { eligible: shortages.length === 0, shortages, totalLetters };
   }, [checkerText, inventory]);
 
+  // Compute needed client-side so it updates immediately on input
+  const needed = useMemo(() => {
+    const result: Record<string, number> = {};
+    for (const item of [...MAIN_ITEMS, ...LETTERS]) {
+      const target = targets[item];
+      if (target != null && target > 0) {
+        const current = Number(inventory[item] || 0);
+        result[item] = Math.max(0, target - current);
+      }
+    }
+    return result;
+  }, [inventory, targets]);
+
   const recommendations = useMemo(() => {
     return computeRecommendations(inventory, targets);
   }, [inventory, targets]);
@@ -181,7 +195,7 @@ function InventoryContent() {
         }
         setInventory(data.inventory || {});
         setTargets(data.targets || {});
-        setNeeded(data.needed || {});
+        setRecordIds(data.recordIds || {});
         setLowStock(data.lowStock || []);
       } catch {
         setMessage('Failed to load inventory.');
@@ -211,12 +225,35 @@ function InventoryContent() {
         setMessage(data.error || 'Failed to save inventory.');
         return;
       }
-      setMessage('Inventory saved. Reloading...');
-      window.location.reload();
+      setMessage('All saved.');
+      setTimeout(() => setMessage(null), 2000);
     } catch {
       setMessage('Failed to save inventory.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Auto-save a single item on blur or Enter
+  const saveItem = async (item: string) => {
+    const rid = recordIds[item];
+    if (!key || !rid) return;
+    setSavingItem(item);
+    try {
+      const res = await fetch('/api/inventory', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-popup-admin-key': key },
+        body: JSON.stringify({
+          recordId: rid,
+          quantity: Number(inventory[item] || 0),
+          target: Number(targets[item] || 0),
+        }),
+      });
+      if (!res.ok) console.error('Auto-save failed for', item);
+    } catch {
+      console.error('Auto-save failed for', item);
+    } finally {
+      setSavingItem(null);
     }
   };
 
@@ -227,8 +264,9 @@ function InventoryContent() {
     const target = targets[item];
     const targetDisplay = target === undefined || target === null ? '' : String(target);
     const need = needed[item];
+    const isSaving = savingItem === item;
     return (
-      <div key={item} className={`rounded-lg border p-3 ${isLowStock ? 'border-red-500 bg-red-950/20' : 'border-gray-800 bg-gray-950'}`}>
+      <div key={item} className={`rounded-lg border p-3 ${isLowStock ? 'border-red-500 bg-red-950/20' : 'border-gray-800 bg-gray-950'} ${isSaving ? 'opacity-70' : ''}`}>
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-300">{item}</p>
           <div className="text-right">
@@ -237,9 +275,9 @@ function InventoryContent() {
                 ⚠ Low
               </span>
             )}
-            {need != null && (
-              <p className={`text-xs ${need > 0 ? 'text-amber-400' : 'text-green-500'}`}>
-                Needed: <span className="font-medium">{need}</span>
+            {need != null && need > 0 && (
+              <p className="text-xs text-amber-400">
+                Need: <span className="font-medium">{need}</span>
               </p>
             )}
           </div>
@@ -260,15 +298,21 @@ function InventoryContent() {
                 }));
               }}
               onBlur={() => {
-                setInventory((prev) => ({
-                  ...prev,
-                  [item]: Math.max(0, Number(prev[item] || 0)),
-                }));
+                setInventory((prev) => {
+                  const updated = { ...prev, [item]: Math.max(0, Number(prev[item] || 0)) };
+                  return updated;
+                });
+                saveItem(item);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  (e.target as HTMLInputElement).blur();
+                }
               }}
               className={`w-full px-3 py-2 rounded-md bg-black/50 border text-white ${isLowStock ? 'border-red-500' : 'border-gray-700'}`}
             />
           </div>
-          <div className="w-16">
+          <div className="flex-1">
             <label className="text-[10px] text-gray-500 uppercase tracking-wider">Target</label>
             <input
               type="number"
@@ -283,7 +327,13 @@ function InventoryContent() {
                   [item]: val === '' ? 0 : Math.max(0, Number(val)),
                 }));
               }}
-              className="w-full px-2 py-2 rounded-md bg-black/50 border border-gray-700 text-purple-300 text-center"
+              onBlur={() => saveItem(item)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              className="w-full px-3 py-2 rounded-md bg-black/50 border border-gray-700 text-purple-300"
             />
           </div>
         </div>
