@@ -872,7 +872,7 @@ function OrdersContent() {
               )}
 
               {/* Bottom actions */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <a href={`/packing-label?id=${encodeURIComponent(order.id)}&source=${order.source === 'popup' ? 'popup' : 'online'}&key=${encodeURIComponent(key)}`} target="_blank" rel="noopener noreferrer"
                   className="inline-block px-4 py-2 rounded-lg bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:text-white text-xs font-semibold transition-colors">
                   Print Packing Slip
@@ -883,12 +883,12 @@ function OrdersContent() {
                 </a>
                 {editingOrderId !== order.id && (
                   <>
-                    <button type="button" onClick={() => startEdit(order)} className="px-3 py-2 rounded-lg bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:text-white text-xs font-semibold transition-colors">Edit</button>
-                    <button type="button" onClick={() => deleteOrder(order)} className="px-3 py-2 rounded-lg bg-gray-800 text-red-400 border border-gray-600 hover:bg-red-900/50 hover:text-red-300 hover:border-red-600 text-xs font-semibold transition-colors">Delete</button>
+                    <button type="button" onClick={() => startEdit(order)} className="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:text-white text-xs font-semibold transition-colors">Edit</button>
+                    <button type="button" onClick={() => deleteOrder(order)} className="px-4 py-2 rounded-lg bg-gray-800 text-red-400 border border-gray-600 hover:bg-red-900/50 hover:text-red-300 hover:border-red-600 text-xs font-semibold transition-colors">Delete</button>
                   </>
                 )}
-                {order.source === 'online' && order.stripeSessionId && <p className="text-xs text-gray-600 font-mono ml-auto">{order.stripeSessionId}</p>}
               </div>
+              {order.source === 'online' && order.stripeSessionId && <p className="text-xs text-gray-600 font-mono truncate">{order.stripeSessionId}</p>}
             </div>
           );
         })}
