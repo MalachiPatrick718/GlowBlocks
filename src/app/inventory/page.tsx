@@ -332,7 +332,7 @@ function InventoryContent() {
                   (e.target as HTMLInputElement).blur();
                 }
               }}
-              className={`w-full px-4 py-2 rounded-md bg-black/50 border text-white text-center ${level === 'low' ? 'border-red-500' : level === 'warning' ? 'border-amber-500/50' : 'border-gray-700'}`}
+              className={`w-full px-1 py-2 rounded-md bg-black/50 border text-white text-center text-sm ${level === 'low' ? 'border-red-500' : level === 'warning' ? 'border-amber-500/50' : 'border-gray-700'}`}
             />
           </div>
           <div className="flex-1">
@@ -357,7 +357,7 @@ function InventoryContent() {
                   (e.target as HTMLInputElement).blur();
                 }
               }}
-              className="w-full px-4 py-2 rounded-md bg-black/50 border border-gray-700 text-purple-300 text-center"
+              className="w-full px-1 py-2 rounded-md bg-black/50 border border-gray-700 text-purple-300 text-center text-sm"
             />
           </div>
         </div>
