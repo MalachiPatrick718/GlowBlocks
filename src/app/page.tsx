@@ -40,10 +40,34 @@ export default function Home() {
       {/* How It Works — Interactive Demo */}
       <InteractiveDemo />
 
-      {/* Gallery */}
+      {/* Meet the Creator */}
+      <section className="py-12 sm:py-16 px-4 bg-gray-950/50">
+        <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center gap-8">
+          <div className="shrink-0">
+            <Image
+              src="/images/founder.jpg"
+              alt="Malachi Patrick — Founder of GlowBlocks"
+              width={160}
+              height={160}
+              className="rounded-2xl object-cover border-2 border-purple-500/40 shadow-lg shadow-purple-500/10"
+            />
+          </div>
+          <div className="text-center sm:text-left space-y-3">
+            <h2 className="text-2xl font-bold gradient-text">Meet the Creator</h2>
+            <p className="text-gray-300 leading-relaxed">
+              Hey, I&apos;m Malachi — the founder, designer, and builder behind GlowBlocks Studio. I hand-assemble every single Glowblock right here in Englewood, New Jersey. No app, no WiFi, no setup. Just magic you can hold in your hands.
+            </p>
+            <Link href="/about" className="inline-block text-purple-400 hover:text-purple-300 font-medium transition-colors">
+              Read more about GlowBlocks &rarr;
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Glowblocks Gallery */}
       <section className="py-10 sm:py-14 px-4">
         <div className="max-w-4xl mx-auto text-center space-y-8">
-          <h2 className="text-2xl sm:text-3xl font-bold gradient-text">See them in action</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold gradient-text">Glowblocks Gallery</h2>
           <GalleryCarousel />
         </div>
       </section>
@@ -90,30 +114,6 @@ export default function Home() {
           <Link href="/reviews" className="text-purple-400 hover:text-purple-300 font-medium transition-colors">
             Read all reviews &rarr;
           </Link>
-        </div>
-      </section>
-
-      {/* Meet the Creator */}
-      <section className="py-12 sm:py-16 px-4">
-        <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center gap-8">
-          <div className="shrink-0">
-            <Image
-              src="/images/founder.jpg"
-              alt="Malachi Patrick — Founder of GlowBlocks"
-              width={160}
-              height={160}
-              className="rounded-2xl object-cover border-2 border-purple-500/40 shadow-lg shadow-purple-500/10"
-            />
-          </div>
-          <div className="text-center sm:text-left space-y-3">
-            <h2 className="text-2xl font-bold gradient-text">Meet the Creator</h2>
-            <p className="text-gray-300 leading-relaxed">
-              Hey, I&apos;m Malachi — the founder, designer, and builder behind GlowBlocks Studio. I hand-assemble every single Glowblock right here in Englewood, New Jersey. No app, no WiFi, no setup. Just magic you can hold in your hands.
-            </p>
-            <Link href="/about" className="inline-block text-purple-400 hover:text-purple-300 font-medium transition-colors">
-              Read more about GlowBlocks &rarr;
-            </Link>
-          </div>
         </div>
       </section>
     </div>
