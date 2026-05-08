@@ -283,6 +283,7 @@ function InventoryContent() {
 
     const borderClass = level === 'low' ? 'border-red-500 bg-red-950/20'
       : level === 'warning' ? 'border-amber-500/50 bg-amber-950/10'
+      : level === 'good' ? 'border-green-600/50 bg-green-950/10'
       : 'border-gray-800 bg-gray-950';
 
     return (
