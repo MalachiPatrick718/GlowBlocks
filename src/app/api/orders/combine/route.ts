@@ -165,13 +165,6 @@ function mergeOnlineOrders(
     f['Gift Note'] = giftRecord['Gift Note'] || '';
   }
 
-  // Reset notification flags so combined order gets fresh notifications
-  f['In Progress Email Sent'] = false;
-  f['In Progress Text Sent'] = false;
-  f['Done Email Sent'] = false;
-  f['Done Text Sent'] = false;
-  f['Delivery Notification Sent'] = false;
-
   return f;
 }
 
@@ -221,13 +214,6 @@ function mergePopupOrders(
   // Use earliest status
   const statuses = all.map(r => String(r['Order Status'] || 'Not Started'));
   f['Order Status'] = earliestStatus(statuses);
-
-  // Reset notification flags
-  f['In Progress Email Sent'] = false;
-  f['In Progress Text Sent'] = false;
-  f['Done Email Sent'] = false;
-  f['Done Text Sent'] = false;
-  f['Delivery Notification Sent'] = false;
 
   return f;
 }
