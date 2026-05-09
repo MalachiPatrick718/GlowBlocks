@@ -19,28 +19,38 @@ function computePrintBatches(
   inv: Record<string, number | string>,
   tgts: Record<string, number>,
 ): PrintBatch[] {
-  // Build a flat list of all letters needed to reach targets
-  const allNeeded: string[] = [];
+  // Build deficit map: how many of each letter are needed
+  const deficits: { letter: string; count: number }[] = [];
+  let totalNeeded = 0;
   for (const letter of LETTERS) {
     const current = Number(inv[letter] || 0);
     const target = tgts[letter] || 0;
     if (target > current) {
       const deficit = target - current;
-      for (let i = 0; i < deficit; i++) {
-        allNeeded.push(letter);
-      }
+      deficits.push({ letter, count: deficit });
+      totalNeeded += deficit;
     }
   }
 
-  if (allNeeded.length === 0) return [];
+  if (totalNeeded === 0) return [];
 
-  // Chunk into groups of BATCH_SIZE
-  const batches: PrintBatch[] = [];
-  for (let i = 0; i < allNeeded.length; i += BATCH_SIZE) {
-    batches.push({
-      id: batches.length + 1,
-      letters: allNeeded.slice(i, i + BATCH_SIZE),
-    });
+  const numBatches = Math.ceil(totalNeeded / BATCH_SIZE);
+  const batches: PrintBatch[] = Array.from({ length: numBatches }, (_, i) => ({
+    id: i + 1,
+    letters: [],
+  }));
+
+  // Distribute letters across batches round-robin style so each batch
+  // gets a mix of different letters. Sort deficits largest-first so the
+  // most-needed letters spread across the most batches.
+  deficits.sort((a, b) => b.count - a.count);
+
+  let batchIdx = 0;
+  for (const { letter, count } of deficits) {
+    for (let i = 0; i < count; i++) {
+      batches[batchIdx].letters.push(letter);
+      batchIdx = (batchIdx + 1) % numBatches;
+    }
   }
 
   return batches;
