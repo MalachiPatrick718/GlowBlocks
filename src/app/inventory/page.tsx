@@ -61,23 +61,32 @@ function computeRecommendations(
     const totalRemaining = Object.values(remaining).reduce((s, v) => s + Math.max(0, v), 0);
     if (totalRemaining <= 0) break;
 
-    // Score each batch by how many deficit units it fills
+    // Score each batch by net value: useful fills minus waste (overproduced letters)
     let bestBatch = -1;
-    let bestScore = 0;
+    let bestNet = -Infinity;
+    let bestUseful = 0;
     for (const batch of BATCHES) {
-      let score = 0;
+      let useful = 0;
+      let waste = 0;
       for (const [letter, count] of Object.entries(batch.letters)) {
-        if ((remaining[letter] || 0) > 0) {
-          score += Math.min(count, remaining[letter]);
+        const rem = remaining[letter] || 0;
+        if (rem > 0) {
+          useful += Math.min(count, rem);
+          waste += Math.max(0, count - rem);
+        } else {
+          waste += count;
         }
       }
-      if (score > bestScore) {
-        bestScore = score;
+      if (useful === 0) continue;
+      const net = useful - waste;
+      if (net > bestNet || (net === bestNet && useful > bestUseful)) {
+        bestNet = net;
+        bestUseful = useful;
         bestBatch = batch.id;
       }
     }
 
-    if (bestBatch < 0 || bestScore === 0) break;
+    if (bestBatch < 0 || bestUseful === 0) break;
 
     // Apply the batch
     const batch = BATCHES.find(b => b.id === bestBatch)!;
@@ -96,7 +105,7 @@ function computeRecommendations(
       const batch = BATCHES.find(b => b.id === batchId)!;
       const fills = Object.entries(batch.letters)
         .filter(([letter]) => (deficit[letter] || 0) > 0)
-        .map(([letter, adds]) => ({ letter, adds: adds * count }));
+        .map(([letter, adds]) => ({ letter, adds: Math.min(adds * count, deficit[letter]) }));
       return { batchId, count, letters: batch.letters, fills };
     })
     .sort((a, b) => a.batchId - b.batchId);
