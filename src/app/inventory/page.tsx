@@ -19,15 +19,16 @@ function computePrintBatches(
   inv: Record<string, number | string>,
   tgts: Record<string, number>,
 ): PrintBatch[] {
-  // Build deficit map: how many of each letter are needed
-  const deficits: { letter: string; count: number }[] = [];
+  // Build deficit map with stock level priority
+  const deficits: { letter: string; count: number; level: 'low' | 'warning' }[] = [];
   let totalNeeded = 0;
   for (const letter of LETTERS) {
     const current = Number(inv[letter] || 0);
     const target = tgts[letter] || 0;
     if (target > current) {
       const deficit = target - current;
-      deficits.push({ letter, count: deficit });
+      const level = current < target / 2 ? 'low' : 'warning';
+      deficits.push({ letter, count: deficit, level });
       totalNeeded += deficit;
     }
   }
@@ -40,10 +41,13 @@ function computePrintBatches(
     letters: [],
   }));
 
-  // Distribute letters across batches round-robin style so each batch
-  // gets a mix of different letters. Sort deficits largest-first so the
-  // most-needed letters spread across the most batches.
-  deficits.sort((a, b) => b.count - a.count);
+  // Prioritize low stock letters first, then warning level.
+  // Within each level, sort by largest deficit so those letters
+  // spread across the most batches via round-robin.
+  deficits.sort((a, b) => {
+    if (a.level !== b.level) return a.level === 'low' ? -1 : 1;
+    return b.count - a.count;
+  });
 
   let batchIdx = 0;
   for (const { letter, count } of deficits) {
@@ -70,7 +74,6 @@ function InventoryContent() {
   const [inventory, setInventory] = useState<Record<string, number | string>>({});
   const [targets, setTargets] = useState<Record<string, number>>({});
   const [recordIds, setRecordIds] = useState<Record<string, string>>({});
-  const [lowStock, setLowStock] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingItem, setSavingItem] = useState<string | null>(null);
@@ -165,7 +168,6 @@ function InventoryContent() {
         setInventory(data.inventory || {});
         setTargets(data.targets || {});
         setRecordIds(data.recordIds || {});
-        setLowStock(data.lowStock || []);
       } catch {
         setMessage('Failed to load inventory.');
       } finally {
