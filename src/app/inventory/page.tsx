@@ -8,7 +8,7 @@ const MAIN_ITEMS = ['P6 Bases', 'PCB'];
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const PCB_REORDER_THRESHOLD = 80;
 
-const BATCH_SIZE = 12;
+const BATCH_SIZE = 9;
 
 interface PrintBatch {
   id: number;
