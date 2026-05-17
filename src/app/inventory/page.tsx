@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-const MAIN_ITEMS = ['P6 Bases', 'PCB'];
+const MAIN_ITEMS = ['P6 Bases', 'PCB', 'Left End', 'Middle', 'Right End'];
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const PCB_REORDER_THRESHOLD = 80;
 
@@ -92,6 +92,7 @@ function InventoryContent() {
 
     const shortages: { item: string; needed: number; available: number }[] = [];
 
+    // Check letter tops
     for (const [letter, needed] of Object.entries(counts)) {
       const available = Number(inventory[letter] || 0);
       if (available < needed) {
@@ -99,14 +100,40 @@ function InventoryContent() {
       }
     }
 
+    // Check bases
     const basesAvailable = Number(inventory['P6 Bases'] || 0);
     if (basesAvailable < totalLetters) {
       shortages.push({ item: 'P6 Bases', needed: totalLetters, available: basesAvailable });
     }
 
+    // Check PCBs
     const pcbAvailable = Number(inventory['PCB'] || 0);
     if (pcbAvailable < totalLetters) {
       shortages.push({ item: 'PCBs', needed: totalLetters, available: pcbAvailable });
+    }
+
+    // Check enclosures: first letter = Left End, last = Right End, middle letters = Middle
+    const leftNeeded = totalLetters >= 1 ? 1 : 0;
+    const rightNeeded = totalLetters >= 2 ? 1 : 0;
+    const middleNeeded = Math.max(0, totalLetters - 2);
+
+    if (leftNeeded > 0) {
+      const leftAvailable = Number(inventory['Left End'] || 0);
+      if (leftAvailable < leftNeeded) {
+        shortages.push({ item: 'Left End', needed: leftNeeded, available: leftAvailable });
+      }
+    }
+    if (rightNeeded > 0) {
+      const rightAvailable = Number(inventory['Right End'] || 0);
+      if (rightAvailable < rightNeeded) {
+        shortages.push({ item: 'Right End', needed: rightNeeded, available: rightAvailable });
+      }
+    }
+    if (middleNeeded > 0) {
+      const middleAvailable = Number(inventory['Middle'] || 0);
+      if (middleAvailable < middleNeeded) {
+        shortages.push({ item: 'Middle', needed: middleNeeded, available: middleAvailable });
+      }
     }
 
     return { eligible: shortages.length === 0, shortages, totalLetters };
