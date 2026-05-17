@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-const MAIN_ITEMS = ['P6 Bases', 'PCB', 'Left End', 'Middle', 'Right End'];
+const MAIN_ITEMS = ['PCB', 'Left End', 'Middle', 'Right End'];
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const PCB_REORDER_THRESHOLD = 80;
 
@@ -98,12 +98,6 @@ function InventoryContent() {
       if (available < needed) {
         shortages.push({ item: letter, needed, available });
       }
-    }
-
-    // Check bases
-    const basesAvailable = Number(inventory['P6 Bases'] || 0);
-    if (basesAvailable < totalLetters) {
-      shortages.push({ item: 'P6 Bases', needed: totalLetters, available: basesAvailable });
     }
 
     // Check PCBs
