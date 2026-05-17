@@ -373,6 +373,7 @@ export default function PopupPage() {
       setCustomerName('');
       setLastName('');
       setPhoneNumber('');
+      setEmail('');
       setAddress('');
       setDeliveryMethod('ship');
       setDiscountCode('');
