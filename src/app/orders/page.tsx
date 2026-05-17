@@ -207,6 +207,7 @@ function OrdersContent() {
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
   const [creatingLabelId, setCreatingLabelId] = useState<string | null>(null);
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
+  const [sendingReceiptId, setSendingReceiptId] = useState<string | null>(null);
   const [orderFilter, setOrderFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState<'all' | 'popup' | 'online'>('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -376,6 +377,16 @@ function OrdersContent() {
       if (!res.ok) { setError(data.error || 'Failed to mark as paid.'); return; }
       setOrders(prev => prev.map(o => o.id === order.id ? { ...o, paymentStatus: 'Paid' } : o));
     } catch { setError('Failed to mark as paid.'); } finally { setMarkingPaidId(null); }
+  };
+
+  const sendReceipt = async (order: UnifiedOrder) => {
+    if (!key) return;
+    setSendingReceiptId(order.id);
+    try {
+      const res = await fetch('/api/popup-orders', { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'x-popup-admin-key': key }, body: JSON.stringify({ id: order.id, sendReceipt: true }) });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Failed to send receipt.'); return; }
+    } catch { setError('Failed to send receipt.'); } finally { setSendingReceiptId(null); }
   };
 
   const createLabel = async (order: UnifiedOrder) => {
@@ -910,6 +921,12 @@ function OrdersContent() {
                 {editingOrderId !== order.id && (
                   <>
                     <button type="button" onClick={() => startEdit(order)} className="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:text-white text-xs font-semibold transition-colors">Edit</button>
+                    {order.source === 'popup' && (
+                      <button type="button" onClick={() => sendReceipt(order)} disabled={sendingReceiptId === order.id}
+                        className="px-4 py-2 rounded-lg bg-gray-800 text-indigo-400 border border-gray-600 hover:bg-indigo-900/50 hover:text-indigo-300 hover:border-indigo-600 text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        {sendingReceiptId === order.id ? 'Sending...' : 'Send Receipt'}
+                      </button>
+                    )}
                     <button type="button" onClick={() => deleteOrder(order)} className="px-4 py-2 rounded-lg bg-gray-800 text-red-400 border border-gray-600 hover:bg-red-900/50 hover:text-red-300 hover:border-red-600 text-xs font-semibold transition-colors">Delete</button>
                   </>
                 )}

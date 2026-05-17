@@ -161,3 +161,54 @@ export function followUpEmail(firstName: string, reviewUrl: string): string {
     <p style="color: #6b7280; font-size: 13px;">You can also attach a photo of your GlowBlocks in action!</p>
   `);
 }
+
+export function popupReceiptEmail(
+  firstName: string,
+  orderNumber: string,
+  word: string,
+  letterCount: number,
+  subtotal: number,
+  customColorFee: number,
+  discount: number,
+  shippingFee: number,
+  tax: number,
+  total: number,
+  deliveryMethod: string,
+  paymentStatus: string,
+): string {
+  const letterSubtotal = subtotal + discount - customColorFee;
+  const rows: string[] = [];
+  rows.push(`<tr><td style="padding: 6px 0; color: #6b7280;">Letters (${letterCount})</td><td style="padding: 6px 0; text-align: right; font-weight: 600;">$${letterSubtotal.toFixed(2)}</td></tr>`);
+  if (customColorFee > 0) {
+    rows.push(`<tr><td style="padding: 6px 0; color: #6b7280;">Custom Color Fee</td><td style="padding: 6px 0; text-align: right; font-weight: 600;">$${customColorFee.toFixed(2)}</td></tr>`);
+  }
+  if (discount > 0) {
+    rows.push(`<tr><td style="padding: 6px 0; color: #16a34a;">Discount (10%)</td><td style="padding: 6px 0; text-align: right; color: #16a34a; font-weight: 600;">-$${discount.toFixed(2)}</td></tr>`);
+  }
+  if (shippingFee > 0) {
+    rows.push(`<tr><td style="padding: 6px 0; color: #6b7280;">Shipping</td><td style="padding: 6px 0; text-align: right; font-weight: 600;">$${shippingFee.toFixed(2)}</td></tr>`);
+  }
+  rows.push(`<tr><td style="padding: 6px 0; color: #6b7280;">Tax</td><td style="padding: 6px 0; text-align: right; font-weight: 600;">$${tax.toFixed(2)}</td></tr>`);
+  rows.push(`<tr style="border-top: 2px solid #e5e7eb;"><td style="padding: 10px 0; font-weight: 700; font-size: 16px;">Total</td><td style="padding: 10px 0; text-align: right; font-weight: 700; font-size: 16px; color: ${BRAND_COLOR};">$${total.toFixed(2)}</td></tr>`);
+
+  const deliveryLabel = deliveryMethod === 'pick-up' ? 'Pick Up' : 'Ship to Customer';
+  const paymentLabel = paymentStatus === 'Paid' ? 'Paid' : 'Awaiting Payment';
+
+  return wrap(`
+    <h2 style="color: ${BRAND_COLOR};">Your GlowBlocks Receipt</h2>
+    <p>Hi ${firstName}, here's the receipt for your order.</p>
+    <div style="background: #f3f4f6; border-radius: 12px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0 0 4px; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Order Number</p>
+      <p style="margin: 0 0 12px; font-family: monospace; font-size: 22px; color: #1f2937; font-weight: 700;">${orderNumber}</p>
+      <p style="margin: 0 0 4px; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Custom Word</p>
+      <p style="margin: 0; font-size: 18px; color: #1f2937; font-weight: 600;">${word}</p>
+    </div>
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin: 20px 0;">
+      ${rows.join('')}
+    </table>
+    <div style="background: #f3f4f6; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #6b7280;">
+      <span style="font-weight: 600;">Delivery:</span> ${deliveryLabel} &nbsp;&bull;&nbsp; <span style="font-weight: 600;">Payment:</span> ${paymentLabel}
+    </div>
+    <p style="color: #6b7280; font-size: 13px;">Thank you for your purchase!</p>
+  `);
+}

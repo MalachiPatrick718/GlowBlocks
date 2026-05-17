@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { POPUP_COLOR_MAP } from '@/data/popupColorCatalog';
 import { notify } from '@/lib/notify';
 import { sendSMS } from '@/lib/sms';
-import { popupOrderConfirmationEmail, inProgressEmail, donePickupEmail, doneShipEmail, deliveredEmail } from '@/lib/email-templates';
+import { popupOrderConfirmationEmail, popupReceiptEmail, inProgressEmail, donePickupEmail, doneShipEmail, deliveredEmail } from '@/lib/email-templates';
 
 const apiKey = process.env.AIRTABLE_API_KEY;
 const baseId = process.env.AIRTABLE_BASE_ID;
@@ -506,8 +506,8 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, status, pickupStatus, scanBoard, paymentStatus: newPaymentStatus } = await req.json();
-    if (!id || (!status && !pickupStatus && !scanBoard && !newPaymentStatus)) {
+    const { id, status, pickupStatus, scanBoard, paymentStatus: newPaymentStatus, sendReceipt } = await req.json();
+    if (!id || (!status && !pickupStatus && !scanBoard && !newPaymentStatus && !sendReceipt)) {
       return NextResponse.json({ error: 'Missing record id and update fields' }, { status: 400 });
     }
 
@@ -625,6 +625,35 @@ export async function PATCH(req: NextRequest) {
       }
 
       return NextResponse.json({ success: true, boardIds });
+    }
+
+    // Handle send receipt
+    if (sendReceipt) {
+      const customerName = String(existingFields['Name'] || '');
+      const firstName = customerName.trim().split(' ')[0];
+      const customerEmail = String(existingFields['Email'] || '') || undefined;
+      const customerPhone = String(existingFields['Phone Number'] || '') || undefined;
+      const orderNumber = String(existingFields['Order Number'] || '');
+      const word = String(existingFields['Name/Word'] || '');
+      const letterCount = Number(existingFields['Letter Count'] || 0);
+      const subtotal = Number(existingFields['Subtotal'] || 0);
+      const customColorFee = Number(existingFields['Custom Color Fee'] || 0);
+      const discount = Number(existingFields['Discount'] || 0);
+      const shippingFee = Number(existingFields['Shipping Fee'] || 0);
+      const tax = Number(existingFields['Tax'] || 0);
+      const total = Number(existingFields['Total'] || 0);
+      const deliveryMethod = orderType.toLowerCase() === 'pickup' ? 'pick-up' : 'ship';
+      const paymentStatus = String(existingFields['Payment'] || 'Awaiting Payment');
+
+      const result = await notify({
+        email: customerEmail,
+        phone: customerPhone,
+        emailSubject: `Your GlowBlocks Receipt - Order #${orderNumber}`,
+        emailHtml: popupReceiptEmail(firstName, orderNumber, word, letterCount, subtotal, customColorFee, discount, shippingFee, tax, total, deliveryMethod, paymentStatus),
+        smsMessage: `Hi ${firstName}, here's your GlowBlocks receipt! Order #${orderNumber} - Total: $${total.toFixed(2)}. Thank you for your purchase!`,
+      });
+
+      return NextResponse.json({ success: true, emailSent: result.emailSent, smsSent: result.smsSent });
     }
 
     const fields: Record<string, string | boolean> = {};
